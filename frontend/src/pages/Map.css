@@ -1,0 +1,111 @@
+/* 지도(/map) — 색은 테마 변수로. Leaflet 기본 흰 팝업·컨트롤을 사이트 테마(다크/라이트)에 맞춘다. */
+.mp-page{display:flex;flex-direction:column;gap:12px}
+.mp-head .sec-p{margin-bottom:0}
+.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+
+.mp-bar{display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+.mp-chips{display:flex;gap:6px;flex-wrap:wrap}
+.mp-chip{display:inline-flex;align-items:center;gap:6px;font-weight:600}
+.mp-chip:not(.on){opacity:.7}
+.mp-ic{font-size:.9rem;line-height:1}
+.mp-ic.apply{color:#16a34a}
+.mp-ic.listing{color:var(--accent-2)}
+.mp-ic.price{color:var(--accent)}
+.mp-bar-r{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.mp-jump{width:auto;min-width:200px;padding:7px 10px;font-size:.95rem}
+@media (min-width:901px){.mp-bar-r{flex-wrap:nowrap}}
+/* 다크 테마 — OSM 타일을 뒤집어 어두운 바탕으로 (색조는 따뜻하게) */
+.mp-dark .leaflet-tile-pane{filter:invert(1) hue-rotate(180deg) brightness(.92) contrast(.88) sepia(.18)}
+
+.mp-wrap{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:12px;align-items:stretch}
+.mp-map-box{position:relative;border:1px solid var(--line);border-radius:16px;overflow:hidden;background:var(--surface-2)}
+.mp-map{height:70vh;min-height:420px;width:100%}
+.mp-map-box.placing .mp-map,.mp-map-box.placing .leaflet-container{cursor:crosshair}
+.mp-placing{position:absolute;top:10px;left:50%;transform:translateX(-50%);z-index:500;background:var(--btn-bg);color:var(--btn-ink);
+  font-weight:700;padding:6px 14px;border-radius:999px;box-shadow:0 4px 14px var(--shadow);font-size:.92rem;pointer-events:none}
+
+.mp-legend{position:absolute;left:10px;bottom:22px;z-index:500;display:flex;flex-direction:column;gap:4px;pointer-events:none}
+.mp-lg-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;background:var(--hdr-bg);border:1px solid var(--line);border-radius:10px;
+  padding:4px 9px;font-size:.78rem;color:var(--ink-2);backdrop-filter:blur(4px);max-width:calc(100vw - 60px)}
+.mp-lg-row span{display:inline-flex;align-items:center;gap:4px;white-space:nowrap}
+.mp-lg-row i{display:inline-block;width:11px;height:11px;border-radius:50%;border:1px solid rgba(0,0,0,.35)}
+.mp-lg-price{gap:3px}
+.mp-lg-price i{width:16px;border-radius:3px}
+.mp-lg-t{color:var(--muted);margin:0 4px}
+
+.mp-side{border:1px solid var(--line);background:var(--surface);border-radius:16px;padding:6px 12px 12px;display:flex;flex-direction:column;
+  height:70vh;min-height:420px;min-width:0}
+.mp-side .tabs{margin:0 0 8px}
+.mp-side .tabs small{color:var(--muted);font-size:.8rem;margin-left:2px}
+.mp-pane{display:flex;flex-direction:column;gap:8px;min-height:0;flex:1}
+.mp-filters{display:flex;flex-direction:column;gap:6px}
+.mp-filters select{padding:6px 10px;font-size:.92rem}
+.mp-seg{display:flex;gap:4px;flex-wrap:wrap}
+.mp-seg .pill{font-size:.85rem;padding:4px 10px}
+.mp-note{font-size:.84rem;color:var(--muted);margin:0;line-height:1.5}
+.mp-empty{color:var(--muted);font-size:.93rem;padding:14px 4px;line-height:1.6}
+.mp-list{list-style:none;margin:0;padding:0;overflow:auto;flex:1;min-height:0;display:flex;flex-direction:column;gap:6px}
+.mp-list button{all:unset;box-sizing:border-box;cursor:pointer;display:flex;flex-direction:column;gap:2px;width:100%;padding:9px 11px;
+  border:1px solid var(--line);border-radius:12px;background:var(--surface-2);position:relative}
+.mp-list button:hover{border-color:var(--accent)}
+.mp-list button:focus-visible{outline:2px solid var(--accent-2)}
+.mp-list b{font-size:.96rem;color:var(--ink);overflow-wrap:anywhere;line-height:1.4}
+.mp-list small{font-size:.83rem;color:var(--muted);overflow-wrap:anywhere}
+.mp-st{align-self:flex-start;font-size:.74rem;font-weight:700;color:#fff;padding:1px 8px;border-radius:999px;margin-bottom:2px}
+.mp-st.listing{background:var(--accent-deep);color:var(--btn-ink)}
+.mp-st.private{position:absolute;top:9px;right:10px;background:transparent;color:var(--muted);border:1px solid var(--line)}
+.mp-sw{position:absolute;right:11px;top:11px;width:14px;height:14px;border-radius:4px;border:1px solid rgba(0,0,0,.3)}
+.mp-foot{margin:0}
+
+/* 매물 핀 */
+.mp-pin{width:30px;height:30px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);background:var(--btn-bg);border:2px solid #1A1405;
+  box-shadow:0 3px 8px rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center}
+.mp-pin span{transform:rotate(45deg);font-size:.8rem;font-weight:800;color:#1A1405;font-family:var(--f-body)}
+.mp-pin.private{background:#8a8170;border-style:dashed}
+
+/* 팝업 — Leaflet 기본(흰 바탕)을 테마 색으로 */
+.leaflet-container{font-family:var(--f-body);background:var(--surface-2)}
+.leaflet-popup-content-wrapper,.leaflet-popup-tip{background:var(--surface);color:var(--ink);border:1px solid var(--line);box-shadow:0 6px 20px var(--shadow)}
+.leaflet-popup-content{margin:12px 14px;font-size:.9rem;line-height:1.5}
+.leaflet-container a.leaflet-popup-close-button{color:var(--muted)}
+.leaflet-tooltip{background:var(--surface);color:var(--ink);border:1px solid var(--line);font-size:.82rem}
+.leaflet-tooltip-top:before{border-top-color:var(--line)}
+.leaflet-bar a{background:var(--surface);color:var(--ink);border-bottom-color:var(--line)}
+.leaflet-bar a:hover{background:var(--surface-2)}
+.leaflet-control-attribution{background:var(--hdr-bg) !important;color:var(--muted)}
+.leaflet-control-attribution a{color:var(--ink-2)}
+.mp-pop{min-width:200px}
+.mp-pop-tag{display:inline-block;font-size:.74rem;font-weight:700;padding:1px 8px;border-radius:999px;border:1px solid var(--c);color:var(--ink);
+  background:color-mix(in srgb, var(--c) 22%, transparent);margin-bottom:4px}
+.mp-pop-h{display:block;font-size:1rem;color:var(--ink);margin-bottom:4px;overflow-wrap:anywhere}
+.mp-pop-price{font-weight:800;color:var(--accent-2);font-size:1.02rem;margin-bottom:4px}
+.mp-pop dl{display:grid;grid-template-columns:auto 1fr;gap:2px 10px;margin:4px 0}
+.mp-pop dt{color:var(--muted);white-space:nowrap}
+.mp-pop dd{margin:0;color:var(--ink-2);overflow-wrap:anywhere}
+.mp-pop dd small{color:var(--muted)}
+.mp-pop-memo{white-space:pre-wrap}
+.leaflet-container a.mp-pop-link{display:inline-block;margin-top:6px;color:var(--accent-2);font-weight:700;text-decoration:none}
+.leaflet-container a.mp-pop-link:hover{text-decoration:underline}
+.mp-pop-btns{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap}
+.mp-pop-btns button{all:unset;cursor:pointer;font-size:.82rem;padding:3px 10px;border-radius:8px;border:1px solid var(--line);color:var(--ink);background:var(--surface-2)}
+.mp-pop-btns button:hover{border-color:var(--accent)}
+.mp-pop-btns button.danger{color:var(--err-ink);border-color:var(--danger)}
+.mp-pop-hint{display:block;margin-top:4px;color:var(--muted);font-size:.76rem}
+
+/* 매물 양식 */
+.mp-form .field{margin-bottom:10px}
+.mp-form-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:0 12px}
+.mp-checks{justify-content:flex-end;gap:6px}
+.mp-checks label{display:flex;gap:6px;align-items:center;font-size:.9rem;color:var(--ink-2);cursor:pointer}
+
+/* 모바일 — 지도 60vh, 목록은 아래쪽 시트처럼 */
+@media (max-width:900px){
+  .mp-wrap{grid-template-columns:1fr}
+  .mp-map{height:60vh;min-height:320px}
+  .mp-side{height:auto;max-height:70vh;border-radius:18px 18px 12px 12px;box-shadow:0 -6px 18px var(--shadow);position:relative;padding-top:14px}
+  .mp-side::before{content:"";position:absolute;top:6px;left:50%;transform:translateX(-50%);width:40px;height:4px;border-radius:2px;background:var(--line)}
+  .mp-list{max-height:52vh}
+  .mp-jump{min-width:0;flex:1}
+  .mp-bar-r{width:100%}
+  .mp-legend{bottom:18px;left:6px}
+}

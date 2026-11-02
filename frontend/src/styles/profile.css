@@ -1,0 +1,80 @@
+/* 내 프로필(/me)·홈 온보딩·'나에게 영향 있는 것'·노트 '나에게 미치는 영향' 블록 */
+
+/* 시군구 고르기 */
+.rp{display:flex;flex-direction:column;gap:8px}
+.rp-chips{display:flex;flex-wrap:wrap;gap:6px}
+.rp-chip{display:inline-flex;align-items:center;gap:6px;padding:5px 6px 5px 12px;border-radius:999px;border:1px solid var(--accent);background:rgba(217,161,0,.16);color:var(--ink);font-size:.92rem}
+.rp-chip button{all:unset;cursor:pointer;width:22px;height:22px;border-radius:50%;display:grid;place-items:center;color:var(--ink-2)}
+.rp-chip button:hover,.rp-chip button:focus-visible{background:rgba(217,161,0,.3);color:var(--ink)}
+.rp-box{position:relative}
+.rp-box input{width:100%}
+.rp-list{position:absolute;z-index:20;left:0;right:0;top:calc(100% + 4px);margin:0;padding:4px;list-style:none;border:1px solid var(--line);background:var(--surface);border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.25);max-height:280px;overflow:auto}
+.rp-list li{padding:8px 12px;border-radius:8px;cursor:pointer;color:var(--ink-2)}
+.rp-list li.on,.rp-list li:hover{background:rgba(217,161,0,.18);color:var(--ink)}
+.rp-empty{margin-top:6px}
+
+/* 유형 고르기 (카드형 버튼) */
+.type-pick{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(200px,100%),1fr));gap:10px}
+.type-pick button{all:unset;cursor:pointer;border:1px solid var(--line);background:var(--surface);border-radius:14px;padding:14px 16px;display:flex;flex-direction:column;gap:4px;transition:border-color .15s,background .15s}
+.type-pick button b{color:var(--ink);font-size:1.02rem}
+.type-pick button span{color:var(--muted);font-size:.88rem}
+.type-pick button:hover{border-color:var(--accent-2)}
+.type-pick button.on{border-color:var(--accent);background:rgba(217,161,0,.16)}
+.type-pick button:focus-visible{outline:2px solid var(--accent-2)}
+
+/* /me */
+.me-page{display:flex;flex-direction:column;gap:18px;max-width:880px}
+.me-sec h3{margin:0 0 4px;font-size:1.12rem}
+.me-sec > .caption{margin:0 0 12px}
+.me-money{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(200px,100%),1fr));gap:12px}
+.me-money .field{margin:0}
+.me-money .hint{font-size:.85rem;color:var(--accent-2);min-height:1.2em}
+.me-sub{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(220px,100%),1fr));gap:12px}
+.me-sub .field{margin:0}
+.me-tests{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(200px,100%),1fr));gap:10px}
+.me-test{border:1px solid var(--line);border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:6px;background:var(--surface)}
+.me-test .k{font-size:.82rem;color:var(--muted)}
+.me-test b{color:var(--ink);font-size:1.02rem}
+.me-test .empty{color:var(--muted)}
+.me-test a{font-size:.88rem}
+.me-bar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;padding:12px 0;border-top:1px solid var(--line)}
+.me-bar .grow{flex:1}
+.dday{display:inline-block;margin-left:8px;padding:2px 8px;border-radius:999px;background:rgba(217,161,0,.18);color:var(--ink);font-size:.82rem;font-weight:700}
+
+/* 홈: 온보딩 · 나에게 영향 있는 것 */
+.onb{border:1px solid var(--accent);border-radius:18px;padding:20px;background:linear-gradient(135deg,rgba(245,184,0,.10),transparent 60%),var(--surface);margin-top:34px}
+.onb h3{margin:4px 0 6px;font-size:1.25rem}
+.onb-steps{display:flex;gap:8px;margin:6px 0 14px;font-size:.85rem;color:var(--muted)}
+.onb-steps span.on{color:var(--ink);font-weight:700}
+.onb .btn-row{margin-top:14px}
+.mine{margin-top:34px}
+.mine-basis{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:2px 0 0;color:var(--muted);font-size:.92rem}
+.mine-basis a{font-size:.9rem}
+.l3-card .why{font-size:.86rem;font-weight:700;color:var(--accent-2)}
+.l3-card .why.dim{color:var(--muted);font-weight:500}
+.mine-fill{margin-top:8px;font-size:.85rem;color:var(--muted)}
+
+/* 노트 상세: 나에게 미치는 영향 */
+.impact{margin-top:22px}
+.impact > h3{margin-bottom:4px}
+.impact details{border:1px solid var(--line);border-radius:12px;margin:8px 0;background:var(--surface)}
+.impact details.mine{border-color:var(--accent)}
+.impact summary{cursor:pointer;padding:12px 16px;font-weight:700;list-style:none;display:flex;gap:8px;align-items:center}
+.impact summary::-webkit-details-marker{display:none}
+.impact summary::before{content:"›";display:inline-block;transition:transform .15s;color:var(--muted)}
+.impact details[open] > summary::before{transform:rotate(90deg)}
+.impact summary .tag{font-size:.75rem;font-weight:700;padding:2px 8px;border-radius:999px;background:rgba(217,161,0,.22);color:var(--ink)}
+.impact .ib{padding:0 16px 12px}
+.impact .ib ol,.impact .ib ul{margin:4px 0 0;padding-left:1.3em}
+
+/* 노트 목록: 내 조건 토글 */
+.mine-toggle{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin:4px 0 8px}
+.mine-toggle .caption{margin:0}
+
+/* 테스트 결과 끝: 프로필 저장 CTA */
+.to-profile{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between;margin:16px 0;border:1px dashed var(--accent);border-radius:14px;padding:14px 16px}
+.to-profile span{color:var(--ink-2);font-size:.95rem}
+
+/* 헤더 '내 프로필' */
+.hdr-right .me-link{white-space:nowrap}
+@media (max-width:560px){.hdr-right .me-link .lbl{display:none}}

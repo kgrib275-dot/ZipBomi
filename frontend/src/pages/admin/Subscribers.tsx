@@ -1,0 +1,303 @@
+// 구독·발송 — 구독자 / 뉴스레터 / 월 구독 / Teams / 문의 (app_pages/admin/subscribers.py).
+import { useEffect, useState } from "react";
+import { Alert, Tabs, useLoad } from "../../components/ui";
+import { A, AdminHead, CsvButton, DataTable, Expander, Field, Generic, Row, asArray, bool, isObj, num, pick, str, today, useAct, usePaged, useRemembered } from "./common";
+import { JobStatus, RunLogTable, StartJob, useJobs } from "./JobRunner";
+
+const SECTIONS = ["구독자", "뉴스레터", "월 구독", "Teams", "문의"];
+const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
+
+function SubscribersTab() {
+  const { data, error, reload } = useLoad(() => A.get<unknown>("subscribers"), []);
+  const act = useAct();
+  const subs = asArray(data, "subscribers", "items");
+  const pending = isObj(data) ? asArray(pick(data, "pending", "pending_confirmations")) : [];
+  const counts = isObj(data) && isObj(data.counts) ? (data.counts as Row) : isObj(data) && isObj(data.referral) ? (data.referral as Row) : {};
+  const smtp = isObj(data) ? pick(data, "smtp_ok", "smtp_configured") : undefined;
+  const [q, setQ] = useRemembered<string>("subs-q", "");
+  const [email, setEmail] = useState("");
+  const [active, setActive] = useState<Record<string, boolean>>({});
+  useEffect(() => setActive(Object.fromEntries(subs.map((s) => [str(s.email), bool(s.active)]))), [data]); // eslint-disable-line react-hooks/exhaustive-deps
+  const byCode: Record<string, number> = {};
+  subs.forEach((s) => { const r = str(s.referred_by); if (r) byCode[r] = (byCode[r] || 0) + 1; });
+  // 질문 횟수 충전 (AX 질문하기 횟수제) — 충전 요청(ask_requested_at)이 있는 구독자를 맨 위에 따로 보여 준다
+  const requests = subs.filter((s) => str(s.ask_requested_at));
+  const [addN, setAddN] = useState<Record<string, number>>({});
+  const charge = async (email: string) => {
+    const n = Math.min(100, Math.max(1, Math.floor(addN[email] ?? 10)));
+    const r = await act(() => A.put<Row>("subscribers/credits", { email, add: n }), `${email} 에 ${n}회 충전했습니다.${smtp === false ? " (SMTP 미설정 — 안내 메일은 가지 않았습니다)" : ""}`);
+    if (r) reload();
+  };
+  const chargeCtl = (email: string) => (
+    <span className="inline" style={{ gap: 4 }}>
+      <input type="number" min={1} max={100} value={addN[email] ?? 10} style={{ width: 64 }} onChange={(e) => setAddN({ ...addN, [email]: Number(e.target.value) })} />
+      <button className="btn sm" type="button" onClick={() => charge(email)}>+{Math.min(100, Math.max(1, Math.floor(addN[email] ?? 10)))} 충전</button>
+    </span>
+  );
+  const view = subs.filter((s) => !q.trim() || str(s.email).toLowerCase().includes(q.trim().toLowerCase())).map((s) => ({
+    이메일: str(s.email), 구독일: str(s.created_at).slice(0, 19).replace("T", " "), 활성: str(s.email), 지역: Array.isArray(s.industries) ? s.industries.join(", ") : str(s.industries),
+    확인: !!s.confirmed_at || bool(s.confirmed), "추천 수": num(pick(s, "referrals", "referral_count")) || byCode[str(s.ref_code)] || 0,
+    질문: `${num(s.ask_used)}/${num(s.ask_credits)}${str(s.ask_requested_at) ? " 충전 요청" : ""}`, 충전: str(s.email),
+  }));
+  const csvRows = subs.map((s) => { const { token, ...rest } = s; void token; return rest; });
+  const pg = usePaged("subs", view, q.trim().toLowerCase(), 20);  // 쪽·보기 개수 F5 유지
+  const activeCount = Object.values(active).filter(Boolean).length;
+  return (
+    <div>
+      {error && <Alert kind="err">{error}</Alert>}
+      {requests.length > 0 && (
+        <div className="box" style={{ margin: "0 0 12px" }}>
+          <Alert kind="warn"><b>충전 요청 {requests.length}건</b> — 질문 횟수를 다 쓴 구독자가 충전을 기다립니다. 충전하면 구독자에게 안내 메일이 갑니다.</Alert>
+          {requests.map((s) => (
+            <div key={str(s.email)} className="list-row">
+              <div className="grow"><b>{str(s.email)}</b> · 질문 {num(s.ask_used)}/{num(s.ask_credits)} · 요청 {str(s.ask_requested_at).slice(0, 16).replace("T", " ")}</div>
+              {chargeCtl(str(s.email))}
+            </div>
+          ))}
+        </div>
+      )}
+      {pending.length > 0 && (
+        <div className="list-row">
+          <b className="grow">확인 대기 {pending.length}명 — 확인 메일의 링크를 눌러야 발송 대상이 됩니다. 7일이 지나면 자동 삭제됩니다.</b>
+          <button className="btn sm" disabled={smtp === false} title={smtp === false ? ".env에 SMTP를 설정하면 보낼 수 있습니다" : undefined} onClick={async () => {
+            const r = await act(() => A.post<Row>("subscribers/confirm-mails"));
+            if (r) act(async () => undefined, `${str(pick(r, "sent", "ok"))}/${str(pick(r, "total", "pending")) || pending.length}명에게 보냈습니다.`);
+          }}>📨 확인 메일 보내기</button>
+        </div>
+      )}
+      <p className="caption">
+        전체 {subs.length} · 활성 {activeCount} · 추천으로 구독 {num(counts.referred)} · 보상({str(counts.reward_at) || "?"}명) 달성 {num(counts.rewarded)}
+      </p>
+      <Field label="이메일 찾기"><input type="text" placeholder="일부만 입력해도 됩니다" value={q} onChange={(e) => setQ(e.target.value)} /></Field>
+      <div className="board-bar"><span className="caption">{pg.info}</span><span className="sp" />{pg.sizeSel}</div>
+      <DataTable rows={pg.shown} cols={["이메일", "구독일", "활성", "지역", "추천 수", "확인", "질문", "충전"]}
+        render={{
+          활성: (v) => <input type="checkbox" checked={!!active[str(v)]} onChange={(e) => setActive({ ...active, [str(v)]: e.target.checked })} />,
+          질문: (v) => { const t = str(v); const req = t.endsWith(" 충전 요청"); return <>{req ? t.slice(0, -6) : t}{req && <span className="badge" style={{ marginLeft: 6 }}>충전 요청</span>}</>; },
+          충전: (v) => chargeCtl(str(v)),
+        }} />
+      {pg.pager}
+      <div className="btn-row" style={{ margin: "10px 0" }}>
+        <button className="btn primary" onClick={async () => {
+          const changed = subs.filter((s) => active[str(s.email)] !== undefined && active[str(s.email)] !== bool(s.active));
+          await act(async () => { for (const s of changed) await A.put(`subscribers/${encodeURIComponent(str(s.email))}`, { active: active[str(s.email)] }); }, `저장했습니다. (${changed.length}명 변경)`);
+          reload();
+        }}>💾 활성 상태 저장</button>
+        <CsvButton name="subscribers.csv" rows={csvRows} />
+      </div>
+      <div className="inline">
+        <Field label="구독자 직접 추가"><input type="text" value={email} onChange={(e) => setEmail(e.target.value)} /></Field>
+        <button className="btn" onClick={async () => {
+          if (!EMAIL_RE.test(email.trim())) return act(async () => { throw new Error("이메일 형식을 확인해 주세요."); });
+          await act(() => A.post("subscribers", { email: email.trim() }), "추가했습니다.");
+          setEmail(""); reload();
+        }}>추가</button>
+      </div>
+    </div>
+  );
+}
+
+function NewsletterTab() {
+  const { finished } = useJobs();
+  const { data, error } = useLoad(() => A.get<Row>("newsletter"), [finished]);
+  const act = useAct();
+  const d = data || {};
+  const smtp = isObj(d.smtp) ? (d.smtp as Row) : {};
+  const configured = pick(d, "smtp_ok", "configured") !== undefined ? bool(pick(d, "smtp_ok", "configured")) : bool(smtp.configured);
+  const [to, setTo] = useState("");
+  const html = str(pick(d, "html", "preview", "preview_html"));
+  const history = asArray(pick(d, "history", "newsletters", "sent"));
+  return (
+    <div>
+      {error && <Alert kind="err">{error}</Alert>}
+      {configured ? (
+        <Alert kind="ok">✉ SMTP {str(smtp.host)}:{str(smtp.port)} ({str(smtp.tls)}) · 발신 {str(smtp.sender)}</Alert>
+      ) : (
+        <Alert kind="warn"><b>SMTP 미설정</b> — .env에 SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, SMTP_FROM, SMTP_TLS(starttls/ssl/none)를 넣으면 발송할 수 있습니다. 메일 링크 주소는 SITE_URL을 씁니다.</Alert>
+      )}
+      <p><b>다음 발송 제목</b> · {str(d.subject)}<br /><span className="caption">새 노트 {Array.isArray(d.notes) ? d.notes.length : num(pick(d, "notes", "note_count"))}편 · 활성 구독자 {num(pick(d, "subscribers", "recipients") ?? pick(isObj(d.counts) ? d.counts : {}, "subscribers"))}명</span></p>
+      <div className="inline" style={{ marginBottom: 10 }}>
+        <Field label="테스트 수신 주소"><input type="text" placeholder="me@company.com" value={to} onChange={(e) => setTo(e.target.value)} /></Field>
+        <button className="btn" disabled={!configured || !to.trim()} onClick={() => act(() => A.post("newsletter/test", { to: to.trim() }), `${to.trim()}로 보냈습니다.`)}>📨 테스트 발송</button>
+        <StartJob kind="newsletter" text="전체 발송" primary disabled={!configured} />
+      </div>
+      <JobStatus only={["newsletter"]} />
+      <Expander title="메일 미리보기" open>
+        {html ? <iframe className="adm-frame" title="메일 미리보기" sandbox="allow-popups allow-popups-to-escape-sandbox" srcDoc={html} style={{ height: 720 }} /> : <p className="caption">미리보기가 없습니다.</p>}
+      </Expander>
+      <PersonalPreview />
+      <h3 style={{ margin: "16px 0 8px" }}>발송 기록</h3>
+      <DataTable rows={history} cols={history.length ? ["sent_at", "subject", "recipients", "failed", "trigger"].filter((c) => c in history[0]) : undefined} />
+    </div>
+  );
+}
+
+/** 구독자별 맞춤 미리보기 — 관심 단지·내 조건 노트 블록이 어떻게 들어가는지 (발송하지 않는다). */
+function PersonalPreview() {
+  const [email, setEmail] = useState("");
+  const [res, setRes] = useState<{ html: string; personalized: boolean } | null>(null);
+  const act = useAct();
+  return (
+    <Expander title="구독자별 맞춤 미리보기 (발송 안 함)">
+      <p className="caption">프로필(유형·관심 지역)이나 관심 단지가 있는 구독자는 ① 내 관심 단지 ② 내 조건에 영향 있는 노트 ③ 전체 흐름 한 줄로 구성됩니다. 없으면 기본 구성입니다.</p>
+      <div className="inline" style={{ margin: "8px 0" }}>
+        <Field label="구독자 이메일"><input type="text" value={email} placeholder="subscriber@example.com" onChange={(e) => setEmail(e.target.value)} /></Field>
+        <button className="btn" disabled={!email.trim()} onClick={async () => {
+          const r = await act(() => A.get<{ html: string; personalized: boolean }>(`newsletter/preview?email=${encodeURIComponent(email.trim())}`));
+          if (r) setRes(r);
+        }}>미리보기</button>
+      </div>
+      {res && <>
+        <Alert kind={res.personalized ? "ok" : "info"}>{res.personalized ? "맞춤 구성으로 보입니다." : "맞춤 정보가 없어 기본 구성으로 보입니다."}</Alert>
+        <iframe className="adm-frame" title="구독자별 미리보기" sandbox="allow-popups allow-popups-to-escape-sandbox" srcDoc={res.html} style={{ height: 720 }} />
+      </>}
+    </Expander>
+  );
+}
+
+function MembersTab() {
+  const { data, error, reload } = useLoad(() => A.get<unknown>("members"), []);
+  const act = useAct();
+  const members = asArray(data, "members", "items");
+  const [f, setF] = useState({ email: "", months: 1, memo: "" });
+  const [issued, setIssued] = useState<{ who: string; code: string } | null>(null);
+  const t = today();
+  return (
+    <div>
+      <p className="caption">질문하기 추가 이용권. 결제는 사이트 밖에서 확인하고, 여기서 코드를 발급해 신청자에게 메일로 보냅니다. 신청은 '문의'에 [월 구독 신청]으로 들어옵니다. 코드는 발급 직후 한 번만 보입니다.</p>
+      {error && <Alert kind="err">{error}</Alert>}
+      <div className="inline" style={{ margin: "10px 0" }}>
+        <Field label="이메일"><input type="text" value={f.email} onChange={(e) => setF({ ...f, email: e.target.value })} /></Field>
+        <Field label="개월" className="narrow"><input type="number" min={1} max={12} value={f.months} style={{ width: 80 }} onChange={(e) => setF({ ...f, months: Number(e.target.value) })} /></Field>
+        <Field label="메모 (결제 확인 등)"><input type="text" maxLength={200} value={f.memo} onChange={(e) => setF({ ...f, memo: e.target.value })} /></Field>
+        <button className="btn primary" onClick={async () => {
+          if (!EMAIL_RE.test(f.email.trim())) return act(async () => { throw new Error("이메일 형식을 확인해 주세요."); });
+          const r = await act(() => A.post<Row>("members", { email: f.email.trim(), months: f.months, memo: f.memo }));
+          if (r) { setIssued({ who: f.email.trim(), code: str(r.code) }); setF({ email: "", months: 1, memo: "" }); reload(); }
+        }}>코드 발급</button>
+      </div>
+      {issued && (
+        <Alert kind="ok">
+          🔑 {issued.who} 코드 — 지금 복사해 보내 주세요. 다시 볼 수 없습니다.
+          <div className="code-block" style={{ margin: "8px 0" }}>{issued.code}</div>
+          <button className="btn sm" onClick={() => setIssued(null)}>확인했습니다</button>
+        </Alert>
+      )}
+      {members.map((m) => {
+        const expired = str(m.expires) < t;
+        const state = !bool(m.active) ? "해지" : expired ? "만료" : "이용 중";
+        return (
+          <div key={str(m.id)} className="list-row">
+            <div className="grow">
+              <b>{str(m.email)}</b> · {state} · {str(m.expires)}까지 · 오늘 {num(pick(m, "used_today", "used"))}회
+              {str(m.memo) && <div className="caption">{str(m.memo)}</div>}
+            </div>
+            <button className="btn sm" onClick={async () => { await act(() => A.post(`members/${m.id}/extend`, { months: 1 }), "1개월 연장했습니다."); reload(); }}>+1개월</button>
+            <button className="btn sm" onClick={async () => { await act(() => A.put(`members/${m.id}`, { active: !bool(m.active) }), bool(m.active) ? "해지했습니다." : "다시 사용합니다."); reload(); }}>{bool(m.active) ? "해지" : "다시 사용"}</button>
+          </div>
+        );
+      })}
+      {!members.length && !error && <Alert kind="info">아직 월 구독자가 없습니다.</Alert>}
+    </div>
+  );
+}
+
+/** 웹훅 한 줄 — 주소 전체를 보여 주고 복사·수정(이름·URL)·사용·테스트·삭제. 예전엔 앞 60자만 보여 "…"로 끝나 주소를 확인할 수 없었다. */
+function HookRow({ w, reload }: { w: Row; reload: () => void }) {
+  const act = useAct();
+  const on = w.enabled === undefined ? true : bool(w.enabled);
+  const [edit, setEdit] = useState(false);
+  const [f, setF] = useState({ name: str(w.name), url: str(w.url) });
+  const [copied, setCopied] = useState(false);
+  const copy = async () => {
+    try { await navigator.clipboard.writeText(str(w.url)); setCopied(true); window.setTimeout(() => setCopied(false), 1500); }
+    catch { window.prompt("복사할 주소", str(w.url)); }
+  };
+  if (edit) {
+    return (
+      <div className="list-row hook-edit">
+        <Field label="채널 이름" className="narrow"><input type="text" value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} /></Field>
+        <Field label="웹훅 URL"><input type="text" value={f.url} onChange={(e) => setF({ ...f, url: e.target.value })} /></Field>
+        <button className="btn sm primary" onClick={async () => {
+          if (!(f.name.trim() && /^https:\/\/\S+$/.test(f.url.trim()))) return act(async () => { throw new Error("이름과 https:// 로 시작하는 URL을 입력하세요."); });
+          const r = await act(() => A.put(`webhooks/${w.id}`, { name: f.name.trim(), url: f.url.trim() }), "저장했습니다.");
+          if (r) { setEdit(false); reload(); }
+        }}>저장</button>
+        <button className="btn sm ghost" onClick={() => { setF({ name: str(w.name), url: str(w.url) }); setEdit(false); }}>취소</button>
+      </div>
+    );
+  }
+  return (
+    <div className="list-row">
+      <div className="grow hook-url"><b>{str(w.name)}</b><code title={str(w.url)}>{str(w.url)}</code></div>
+      <button className="btn sm" onClick={copy}>{copied ? "✓ 복사됨" : "📋 복사"}</button>
+      <button className="btn sm" onClick={() => setEdit(true)}>✎ 수정</button>
+      <label className="chk"><input type="checkbox" checked={on} onChange={async (e) => { await act(() => A.put(`webhooks/${w.id}`, { enabled: e.target.checked }), "저장했습니다."); reload(); }} />사용</label>
+      <button className="btn sm" onClick={async () => { const r = await act(() => A.post<Row>(`webhooks/${w.id}/test`)); if (r) act(async () => { if (r.ok === false) throw new Error(`${str(w.name)}: ${str(pick(r, "msg", "message"))}`); }, `${str(w.name)}: ${str(pick(r, "msg", "message")) || "보냈습니다"}`); }}>📨 테스트</button>
+      <button className="btn sm" onClick={async () => { if (!window.confirm(`'${str(w.name)}' 웹훅을 삭제할까요?`)) return; await act(() => A.del(`webhooks/${w.id}`), "삭제했습니다."); reload(); }}>🗑 삭제</button>
+    </div>
+  );
+}
+
+function TeamsTab() {
+  const { finished } = useJobs();
+  const hooks = useLoad(() => A.get<unknown>("webhooks"), []);
+  const teams = useLoad(() => A.get<Row>("teams"), [finished]);
+  const act = useAct();
+  const list = asArray(hooks.data, "webhooks", "items");
+  const [f, setF] = useState({ name: "", url: "" });
+  const t = teams.data || {};
+  const issue = isObj(t.issue) ? (t.issue as Row) : null;
+  const noteCount = Array.isArray(t.notes) ? t.notes.length : num(pick(t, "notes", "note_count"));
+  return (
+    <div>
+      <p className="caption">Teams 채널 &gt; 워크플로 &gt; '웹후크 요청을 받으면 채널에 게시' 템플릿으로 만든 URL을 등록하세요.</p>
+      {hooks.error && <Alert kind="err">{hooks.error}</Alert>}
+      {list.map((w) => <HookRow key={str(w.id)} w={w} reload={hooks.reload} />)}
+      <div className="inline" style={{ margin: "10px 0" }}>
+        <Field label="채널 이름" className="narrow"><input type="text" value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} /></Field>
+        <Field label="웹훅 URL"><input type="text" value={f.url} onChange={(e) => setF({ ...f, url: e.target.value })} /></Field>
+        <button className="btn" onClick={async () => {
+          if (!(f.name.trim() && /^https:\/\/\S+$/.test(f.url.trim()))) return act(async () => { throw new Error("이름과 https:// 로 시작하는 URL을 입력하세요."); });
+          await act(() => A.post("webhooks", { name: f.name.trim(), url: f.url.trim() }), "추가했습니다.");
+          setF({ name: "", url: "" }); hooks.reload();
+        }}>추가</button>
+      </div>
+      {teams.error && <Alert kind="err">{teams.error}</Alert>}
+      <p><b>다음 발송 내용</b> · {issue ? `${str(issue.week)} 주간 흐름 · ` : ""}새 노트 {noteCount}편 (지난 Teams 발송 이후)</p>
+      <StartJob kind="teams" text="지금 Teams로 발송" primary disabled={!list.length} />
+      <JobStatus only={["teams"]} />
+      <Expander title="카드 JSON 미리보기">
+        {t.card !== undefined ? <pre className="code">{JSON.stringify(t.card, null, 2)}</pre> : <Generic value={t} />}
+      </Expander>
+      <h3 style={{ margin: "16px 0 8px" }}>Teams 발송 기록</h3>
+      <RunLogTable kind="teams" limit={20} />
+    </div>
+  );
+}
+
+function ContactsTab() {
+  const { data, error } = useLoad(() => A.get<unknown>("contacts"), []);
+  const rows = asArray(data, "contacts", "items");
+  return (
+    <div>
+      {error && <Alert kind="err">{error}</Alert>}
+      <DataTable rows={rows} cols={rows.length ? ["created_at", "name", "email", "company", "message"].filter((c) => c in rows[0]) : undefined} />
+    </div>
+  );
+}
+
+export default function Subscribers() {
+  const [sec, setSec] = useRemembered("sec", SECTIONS[0]);
+  return (
+    <div>
+      <AdminHead title="구독·발송" />
+      <Tabs items={SECTIONS} value={sec} onChange={setSec} />
+      {sec === "구독자" && <SubscribersTab />}
+      {sec === "뉴스레터" && <NewsletterTab />}
+      {sec === "월 구독" && <MembersTab />}
+      {sec === "Teams" && <TeamsTab />}
+      {sec === "문의" && <ContactsTab />}
+    </div>
+  );
+}

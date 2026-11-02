@@ -1,0 +1,158 @@
+/* 관리 화면 전용 스타일 — 사이드바 + 본문, 작업 로그 터미널, 작은 표/막대 */
+.adm{display:grid;grid-template-columns:200px 1fr;gap:22px;align-items:start;padding-top:18px;padding-bottom:40px}
+.adm-side{position:sticky;top:72px;max-height:calc(100vh - 88px);overflow-y:auto;overscroll-behavior:contain;display:flex;flex-direction:column;gap:2px;border:1px solid var(--line);border-radius:14px;padding:8px;background:var(--surface)}  /* 화면보다 길면 메뉴 안에서만 스크롤 (2026-10-30: 아래 항목이 안 보였다) */
+.adm-side::-webkit-scrollbar{width:6px}.adm-side::-webkit-scrollbar-thumb{background:var(--line);border-radius:3px}
+.adm-side a{text-decoration:none;color:var(--ink-2);padding:7px 10px;border-radius:8px;font-size:.95rem;white-space:nowrap}
+.adm-side a.on,.adm-side a:hover{color:var(--ink);background:rgba(245,184,0,.14)}
+/* 메뉴 접기 — 그룹 머리글은 버튼, 전체 접기 버튼은 맨 위 (2026-10-30: 메뉴 16개가 길어 좁은 화면에서 본문이 밀렸다) */
+.adm-side .grp{all:unset;cursor:pointer;display:flex;align-items:center;gap:8px;font-size:.92rem;font-weight:700;color:var(--ink);padding:9px 10px 6px;border-radius:8px}
+.adm-side .grp:hover{background:rgba(245,184,0,.08)}.adm-side .grp i{font-style:normal;width:1em;font-size:.8rem;color:var(--accent-2)}
+.adm-side .grp small{margin-left:auto;font-size:.76rem;font-weight:600;color:var(--muted);background:var(--surface-2);border-radius:999px;padding:1px 8px}
+.adm-side .nav-grp + .nav-grp{border-top:1px solid var(--line);margin-top:4px;padding-top:2px}
+.adm-side .nav-grp a{margin-left:14px;font-size:.95rem}
+.adm-side .nav-grp{display:flex;flex-direction:column;gap:2px}
+.adm-side .nav-tg{all:unset;cursor:pointer;display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:8px;color:var(--ink);font-size:.95rem;border:1px solid var(--line);margin-bottom:4px}
+.adm-side .nav-tg:hover{border-color:var(--accent)}.adm-side .nav-tg i{font-style:normal;margin-left:auto;font-size:.78rem;color:var(--accent-2)}
+.adm-side.collapsed{padding:6px}.adm-side.collapsed .nav-tg{margin:0}
+.adm.has-collapsed{grid-template-columns:auto 1fr}
+.adm-main{min-width:0}
+.adm-head{margin-bottom:14px}
+.adm-head .sec-h{font-size:1.5rem;margin:.2rem 0 .3rem}
+.adm-head .caption{display:block}
+@media (max-width:860px){.adm{grid-template-columns:1fr}.adm-side{position:static;max-height:none}
+  .adm-side .nav-grp{flex-direction:row;flex-wrap:wrap;gap:4px}.adm-side .nav-grp .grp{width:100%}.adm-side a{padding:6px 10px;font-size:.9rem}}
+/* 웹훅 줄: 주소 전체를 한 줄에 (넘치면 말줄임, 마우스를 올리면 전체) */
+.hook-url{min-width:0}.hook-url code{display:block;font-size:.8rem;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%}
+.list-row.hook-edit{align-items:flex-end;flex-wrap:wrap}.list-row.hook-edit .field{margin-bottom:0}.list-row.hook-edit .field:not(.narrow){flex:1 1 320px}
+
+/* 토큰 입력 */
+.adm-token{max-width:460px;margin:40px auto}
+
+/* 작업 로그 (터미널 스타일 — 최신 줄이 아래, 스크롤이 항상 바닥) */
+.joblog{background:var(--code-bg);border:1px solid var(--line);border-radius:12px;padding:10px 12px;max-height:300px;overflow:auto;
+  display:flex;flex-direction:column-reverse;font:12px/1.65 var(--f-body);margin:4px 0 8px}
+.joblog .ln{display:grid;grid-template-columns:auto auto 1fr;gap:10px;white-space:pre-wrap;word-break:break-all}
+.joblog .tm{color:var(--muted)} .joblog .lv{font-weight:600;color:var(--accent-2)}
+.joblog .WARNING .lv,.joblog .WARNING .msg{color:var(--warn-ink)} .joblog .ERROR .lv,.joblog .ERROR .msg{color:var(--danger)}
+.joblog .msg{color:var(--ink-2)} .joblog .empty{color:var(--muted)}
+.joblog .cursor{display:inline-block;width:7px;height:13px;background:var(--accent-2);vertical-align:-2px;animation:blink 1s steps(1) infinite}
+@keyframes blink{50%{opacity:0}}
+
+/* 작업 버튼 격자 */
+.jobs-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;margin:10px 0 18px}
+.jobs-grid .caption{margin-top:6px;line-height:1.4}
+
+/* 배지 */
+.badge{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;font-size:.9rem;border:1px solid var(--line);background:var(--surface)}
+.badge.green{border-color:rgba(12,163,12,.6);color:var(--ok-ink)}
+.badge.red{border-color:rgba(255,80,80,.6);color:var(--err-ink)}
+.badge.orange{border-color:rgba(250,178,25,.6);color:var(--orange-ink)}
+.badge.blue{border-color:rgba(245,184,0,.6);color:var(--accent-2)}
+.badges{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0 14px}
+
+/* 표 보조 */
+.table td.num{text-align:right;font-variant-numeric:tabular-nums}
+.table tr.sel td{background:rgba(245,184,0,.12)}
+.table tr.click{cursor:pointer}
+.table .trunc{max-width:420px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:block}
+.table input[type=text],.table input[type=number],.table select{padding:4px 8px;font-size:.92rem;min-width:70px}
+.table-wrap.tall{max-height:560px}
+.kv{display:grid;grid-template-columns:max-content 1fr;gap:4px 14px;font-size:.95rem}
+.kv .k{color:var(--muted)}
+.json-sec{margin:8px 0}
+.json-sec h4{font-size:.98rem;margin:10px 0 4px;color:var(--accent-2)}
+pre.code{background:var(--code-bg);border:1px solid var(--line);border-radius:10px;padding:10px 12px;font:12px/1.6 var(--f-mono);overflow:auto;white-space:pre-wrap;word-break:break-all;color:var(--ink-2)}
+
+/* 폼 보조 */
+.row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+.row4{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+@media (max-width:760px){.row3,.row4{grid-template-columns:1fr 1fr}}
+.inline{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap}
+.inline .field{margin-bottom:0;flex:1;min-width:160px}
+.inline .field.narrow{flex:0 0 auto;min-width:0}
+.box.sm{padding:12px 14px;margin:8px 0}
+.box .title{font-weight:700;margin-bottom:2px}
+.list-row{display:flex;gap:12px;align-items:center;flex-wrap:wrap;border:1px solid var(--line);border-radius:12px;padding:10px 14px;margin:6px 0}
+.list-row .grow{flex:1;min-width:200px}
+.list-row code{font-family:var(--f-mono);font-size:.9rem;color:var(--muted)}
+.chk{display:inline-flex;gap:6px;align-items:center;font-size:.95rem;color:var(--ink-2);cursor:pointer}
+.pills{display:flex;gap:6px;flex-wrap:wrap}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.seg button{all:unset;cursor:pointer;padding:7px 12px;font-size:.92rem;color:var(--muted)}
+.seg button.on{background:var(--btn-bg);color:var(--btn-ink)}
+.multi{display:flex;flex-wrap:wrap;gap:6px;border:1px solid var(--line);border-radius:10px;padding:8px;max-height:200px;overflow:auto}
+.multi label{display:flex;gap:6px;align-items:center;font-size:.92rem;padding:3px 8px;border-radius:999px;border:1px solid var(--line);cursor:pointer}
+.multi label.on{border-color:var(--accent);background:rgba(217,161,0,.18)}
+.progress{height:8px;background:var(--line);border-radius:4px;overflow:hidden;min-width:60px}
+.progress i{display:block;height:100%;background:var(--accent)}
+.score{display:flex;align-items:center;gap:6px;font-size:.92rem}
+
+/* 막대 차트 (라이브러리 없음) */
+.bars{display:flex;align-items:flex-end;gap:4px;height:240px;border-bottom:1px solid var(--line);padding:0 4px;overflow-x:auto}
+.bars .grp{display:flex;align-items:flex-end;gap:2px;flex:1;min-width:26px;height:100%;position:relative}
+.bars .grp i{flex:1;display:block;border-radius:3px 3px 0 0;min-height:1px}
+.bars .grp .lbl{position:absolute;bottom:-20px;left:0;right:0;text-align:center;font-size:.64rem;color:var(--muted);white-space:nowrap}
+.bars-legend{display:flex;gap:12px;margin:26px 0 10px;font-size:.9rem;color:var(--ink-2)}
+.bars-legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:4px;vertical-align:-1px}
+.hbars{display:grid;grid-template-columns:max-content 1fr max-content;gap:5px 10px;align-items:center;font-size:.92rem}
+.hbars .bar{height:14px;background:var(--line);border-radius:3px;overflow:hidden}
+.hbars .bar i{display:block;height:100%;background:var(--accent)}
+.hbars .n{color:var(--muted);font-variant-numeric:tabular-nums}
+
+/* 토스트 */
+.toasts{position:fixed;right:18px;bottom:18px;z-index:200;display:flex;flex-direction:column;gap:8px}
+.toast{padding:10px 14px;border-radius:12px;background:var(--surface-2);border:1px solid var(--accent);font-size:.95rem;box-shadow:0 10px 30px var(--shadow);max-width:360px}
+.toast.err{border-color:var(--danger)}
+.toast.ok{border-color:var(--ok)}
+
+/* iframe */
+.adm-frame{width:100%;border:1px solid var(--line);border-radius:12px;background:#fff}
+.code-block{font-family:var(--f-mono);font-size:1.1rem;padding:10px 14px;border:1px dashed var(--accent);border-radius:10px;letter-spacing:.08em;user-select:all}
+/* 방문 패턴 — 요일 × 시간 표 (참여 분석) */
+.heat{border-collapse:collapse;font-size:.78rem}
+.heat th,.heat td{border:1px solid var(--line);padding:3px 0;min-width:26px;text-align:center}
+.heat tbody th{padding:3px 8px}
+
+/* 실행 기록 게시판 (JobRunner.RunLogTable) — 필터 줄·쪽 넘김, 시각·작업·트리거·결과 칸은 줄바꿈하지 않는다 */
+.runlog .rl-filters{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:4px 0 6px}
+.runlog .rl-filters select,.runlog .rl-filters input{width:auto;padding:7px 10px;font-size:.9rem}
+.runlog .rl-filters .rl-q{min-width:180px;flex:1 1 180px;max-width:320px}
+.runlog .rl-sp{flex:1}
+.runlog .rl-count{margin:0 0 6px}
+.runlog .table td:nth-child(-n+4),.runlog .table th:nth-child(-n+4){white-space:nowrap}
+.runlog .rl-pager{display:flex;flex-wrap:wrap;gap:4px;align-items:center;justify-content:center;margin:10px 0}
+@media (max-width:640px){.runlog .rl-filters select,.runlog .rl-filters input{flex:1 1 140px}.runlog .rl-sp{display:none}}
+
+/* 공용 게시판 (common.usePaged · 노트 검토 등) */
+.board-bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:6px 0}
+.board-bar select,.board-bar input{width:auto;padding:7px 10px;font-size:.9rem}
+.board-bar .bq{min-width:180px;flex:1 1 200px;max-width:340px}
+.board-bar .sp{flex:1}
+.pg-nav{display:flex;flex-wrap:wrap;gap:4px;align-items:center;justify-content:center;margin:10px 0}
+.board-row{cursor:pointer}.board-row:hover td{background:rgba(245,184,0,.06)}.board-row.on td{background:rgba(245,184,0,.14)}
+.board-edit{border:1px solid var(--accent);border-radius:14px;padding:14px 16px;margin:10px 0;background:var(--surface)}
+.board-edit-h{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px}
+@media (max-width:640px){.board-bar select,.board-bar input{flex:1 1 140px}.board-bar .sp{display:none}}
+.board-edit-h .grow{flex:1;min-width:200px}
+/* 노트 편집 팝업 — 게시·저장·반려 버튼은 스크롤해도 아래에 붙어 있게 */
+.dlg.xl .note-actions{position:sticky;bottom:-22px;background:var(--surface);padding:12px 0 14px;margin-bottom:-14px;border-top:1px solid var(--line);z-index:1}
+
+/* 전역 실행 로그 독 — 작업이 돌면 어느 관리 화면이든 아래에 고정 (2026-10-30). 펼침 높이는 화면의 40% 까지, 로그는 독 안에서만 스크롤 */
+.log-dock{position:fixed;left:0;right:0;bottom:0;z-index:150;margin:0 auto;max-width:calc(var(--max) - 40px);background:var(--surface);border:1px solid var(--line);border-bottom:none;border-radius:14px 14px 0 0;box-shadow:0 -10px 30px var(--shadow);padding:8px 12px 4px;max-height:40vh;display:flex;flex-direction:column}
+.log-dock.live{border-top:2px solid var(--accent)}
+.log-dock .ld-head{display:flex;align-items:center;gap:8px;flex-wrap:wrap;min-width:0}
+.log-dock .ld-title{cursor:pointer;font-size:.95rem;white-space:nowrap}
+.log-dock .ld-sp{flex:1}
+.log-dock .ld-peek{flex:1 1 120px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:.85rem;color:var(--muted)}
+.log-dock.collapsed .ld-peek + .ld-sp{display:none}
+.log-dock .ld-tabs{display:flex;gap:4px;flex-wrap:wrap}
+.log-dock .ld-tabs button{all:unset;cursor:pointer;font-size:.85rem;padding:3px 10px;border-radius:999px;border:1px solid var(--line);color:var(--ink-2)}
+.log-dock .ld-tabs button.on{border-color:var(--accent);color:var(--ink);font-weight:600}
+.log-dock .joblog{flex:1 1 auto;min-height:0;max-height:none;margin:6px 0 4px}
+.log-dock.collapsed{padding-bottom:8px}
+@media (max-width:860px){.log-dock{max-width:none;border-radius:12px 12px 0 0;padding:6px 10px 4px}.log-dock .ld-title{white-space:normal}}
+
+/* 수집 테스트 — 그룹별 소스 고르기 */
+.pick-grp{margin:6px 0}
+.pick-grp .btn-row{margin-bottom:4px}
+.pick-grp .multi{max-height:none}

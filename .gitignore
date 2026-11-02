@@ -1,0 +1,22 @@
+# 비밀값·로컬 데이터 — 절대 커밋하지 않는다
+.env
+backend/.env
+backend/data/
+*.db
+*.db-wal
+*.db-shm
+llm_keys.json
+
+# 가상환경·빌드 산출물
+backend/venv/
+venv/
+frontend/node_modules/
+frontend/dist/
+.vite/
+**/__pycache__/
+*.pyc
+
+# 로그·임시
+*.log
+.DS_Store
+Thumbs.db

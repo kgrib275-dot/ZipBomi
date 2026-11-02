@@ -1,0 +1,83 @@
+# config/sources_candidates.yaml — 부동산 수집처 후보 (2026-11-02 작성).
+# 그대로 sources.yaml에 넣지 말고 먼저 `venv\Scripts\python tools\check_feeds.py` 로 응답·최신 글을 확인한 뒤,
+# 출력되는 "valid" 블록만 sources.yaml의 sources: 아래에 붙여 넣는다. (관리 > 수집 설정에서 on/off는 그 다음)
+# sure: 주소 확신도 — high(실측으로 응답 확인, 일부러 뺀 것) / mid(관례적 경로, 확인 필요) / low(추정)
+# note: 2026-11-02 실측 결과와 sources.yaml에서 뺀 이유.
+
+sources:
+  # ── 응답은 되지만 일부러 뺀 피드 (넣으려면 keywords 필터가 충분히 거르는지 수집 테스트로 먼저 확인) ──
+  - {name: 머니투데이 전체, group: "종합·경제 뉴스", type: rss, published_within_hours: 24, sure: high,
+     note: "응답 OK·100건. 부동산 섹션 RSS가 없어 전체 기사라 잡음이 많음 — 지금은 Google 뉴스(머니투데이 부동산)로 대신",
+     site: "https://news.mt.co.kr/", url: "https://rss.mt.co.kr/mt_news.xml"}
+  - {name: 한국경제 경제, group: "종합·경제 뉴스", type: rss, published_within_hours: 24, sure: high,
+     note: "응답 OK·50건. 한국경제 부동산 피드와 겹침",
+     site: "https://www.hankyung.com/economy", url: "https://www.hankyung.com/feed/economy"}
+  - {name: 경향신문 경제, group: "종합·경제 뉴스", type: rss, published_within_hours: 24, sure: high,
+     note: "응답 OK·50건. 부동산 비중 낮음",
+     site: "https://www.khan.co.kr/economy", url: "https://www.khan.co.kr/rss/rssdata/economy_news.xml"}
+  - {name: MBN 경제, group: "종합·경제 뉴스", type: rss, published_within_hours: 24, sure: high,
+     note: "응답 OK·30건. 부동산 비중 낮음",
+     site: "https://www.mbn.co.kr/", url: "https://www.mbn.co.kr/rss/economy/"}
+  - {name: SBS 경제, group: "종합·경제 뉴스", type: rss, published_within_hours: 24, sure: high,
+     note: "응답 OK·29건. 부동산 비중 낮음",
+     site: "https://news.sbs.co.kr/", url: "https://news.sbs.co.kr/news/SectionRssFeed.do?sectionId=02"}
+  - {name: 연합뉴스TV 경제, group: "종합·경제 뉴스", type: rss, published_within_hours: 24, sure: high,
+     note: "응답 OK·11건. 연합뉴스 경제와 겹침",
+     site: "https://www.yonhapnewstv.co.kr/", url: "https://www.yonhapnewstv.co.kr/category/news/economy/feed/"}
+  - {name: 헤럴드경제 경제, group: "종합·경제 뉴스", type: rss, published_within_hours: 24, sure: high,
+     note: "응답 OK·38건. 헤럴드경제 부동산 피드와 겹침",
+     site: "https://biz.heraldcorp.com/", url: "https://biz.heraldcorp.com/rss/google/economy"}
+
+  # ── 실측 실패 (주소를 새로 찾으면 다시 점검) ──────────────────
+  - {name: 파이낸셜뉴스 부동산, group: "경제지 부동산", type: rss, published_within_hours: 24, sure: high,
+     note: "응답 OK·15건이지만 글에 날짜가 없어 rss 수집기가 전부 버림",
+     site: "https://www.fnnews.com/section/002003000", url: "https://www.fnnews.com/rss/r20/fn_realnews_realestate.xml"}
+  - {name: 한겨레 경제, group: "종합·경제 뉴스", type: rss, published_within_hours: 24, sure: high,
+     note: "응답 OK·30건이지만 날짜 없음",
+     site: "https://www.hani.co.kr/arti/economy", url: "https://www.hani.co.kr/rss/economy/"}
+  - {name: 머니투데이 부동산, group: "경제지 부동산", type: rss, published_within_hours: 24, sure: low,
+     note: "404 (news.mt.co.kr/rss/estate.xml 은 410)",
+     site: "https://news.mt.co.kr/", url: "https://rss.mt.co.kr/mt_news_estate.xml"}
+  - {name: 조선일보 부동산(땅집고), group: "경제지 부동산", type: rss, published_within_hours: 24, sure: low,
+     note: "404 (real_estate·real-estate 둘 다, realty.chosun.com RSS도 404)",
+     site: "https://realty.chosun.com/", url: "https://www.chosun.com/arc/outboundfeeds/rss/category/economy/real_estate/?outputType=xml"}
+  - {name: 연합뉴스 부동산, group: "경제지 부동산", type: rss, published_within_hours: 24, sure: low,
+     note: "404 — 경제 피드로 대신",
+     site: "https://www.yna.co.kr/economy/real-estate", url: "https://www.yna.co.kr/rss/realestate.xml"}
+  - {name: 이데일리 부동산, group: "경제지 부동산", type: rss, published_within_hours: 24, sure: low,
+     note: "https 접속 오류, http 경로 404 — 전체 피드(http)로 대신",
+     site: "https://www.edaily.co.kr/", url: "http://rss.edaily.co.kr/estate_news.xml"}
+  - {name: 뉴시스 부동산, group: "경제지 부동산", type: rss, published_within_hours: 24, sure: low,
+     note: "200이지만 HTML(RSS 아님)", site: "https://www.newsis.com/", url: "https://www.newsis.com/RSS/estate.xml"}
+  - {name: 뉴스1 부동산, group: "경제지 부동산", type: rss, published_within_hours: 24, sure: low,
+     note: "200이지만 HTML", site: "https://www.news1.kr/", url: "https://www.news1.kr/rss/realestate"}
+  - {name: 아주경제 부동산, group: "경제지 부동산", type: rss, published_within_hours: 24, sure: low,
+     note: "200이지만 HTML", site: "https://www.ajunews.com/", url: "https://www.ajunews.com/rss/realestate.xml"}
+  - {name: 이투데이 부동산, group: "경제지 부동산", type: rss, published_within_hours: 24, sure: low,
+     note: "404", site: "https://www.etoday.co.kr/", url: "https://www.etoday.co.kr/rss/section.xml?sc=SECTION_REALESTATE"}
+  - {name: 뉴스핌 부동산, group: "경제지 부동산", type: rss, published_within_hours: 24, sure: low,
+     note: "404", site: "https://www.newspim.com/", url: "https://www.newspim.com/rss/realestate"}
+  - {name: 디지털타임스 부동산, group: "경제지 부동산", type: rss, published_within_hours: 24, sure: low,
+     note: "404", site: "https://www.dt.co.kr/", url: "https://www.dt.co.kr/rss/realestate.xml"}
+  - {name: 대한경제, group: "부동산 전문지", type: rss, published_within_hours: 24, sure: low,
+     note: "404", site: "https://www.dnews.co.kr/", url: "https://www.dnews.co.kr/rss/allArticle.xml"}
+  - {name: 데일리주택, group: "부동산 전문지", type: rss, published_within_hours: 48, sure: mid,
+     note: "500 서버 오류", site: "https://www.dailyhousing.co.kr/", url: "https://www.dailyhousing.co.kr/rss/allArticle.xml"}
+  - {name: 중앙일보 경제, group: "종합·경제 뉴스", type: rss, published_within_hours: 24, sure: low,
+     note: "404 (rss.joins.com 은 접속 시간 초과)", site: "https://www.joongang.co.kr/money", url: "https://www.joongang.co.kr/rss/economy"}
+  - {name: YTN 경제, group: "종합·경제 뉴스", type: rss, published_within_hours: 24, sure: low,
+     note: "404", site: "https://www.ytn.co.kr/", url: "https://www.ytn.co.kr/_rss/economy.xml"}
+  - {name: JTBC 경제, group: "종합·경제 뉴스", type: rss, published_within_hours: 24, sure: high,
+     note: "응답 OK지만 마지막 글이 2024-11 — 갱신 중단", site: "https://news.jtbc.co.kr/", url: "https://fs.jtbc.co.kr/RSS/economy.xml"}
+
+  # ── 정부·공공 (공개 RSS 없음) ─────────────────────────────────
+  - {name: 국토교통부 보도자료, group: "정부·공공", type: rss, published_within_hours: 168, sure: low,
+     note: "200이지만 빈 응답. 국토교통부는 RSS를 제공하지 않음 — 공식 블로그 RSS + Google 뉴스로 대신. 목록 HTML 파서(html_pages.py)를 새로 만들면 수집 가능",
+     site: "https://www.molit.go.kr/USR/NEWS/m_71/lst.jsp", url: "https://www.molit.go.kr/USR/NEWS/m_71/rss.jsp"}
+  - {name: 한국부동산원 보도자료, group: "정부·공공", type: rss, published_within_hours: 168, sure: low,
+     note: "404 — RSS 없음. 블로그(rebstory·kab_story) RSS도 빈 피드",
+     site: "https://www.reb.or.kr/", url: "https://www.reb.or.kr/reb/rss.do"}
+  - {name: 정책브리핑 국토교통부, group: "정부·공공", type: rss, published_within_hours: 168, sure: low,
+     note: "404 — korea.kr RSS 서비스 중단 공지", site: "https://www.korea.kr/", url: "https://www.korea.kr/rss/dept_molit.xml"}
+  - {name: LH 블로그, group: "정부·공공", type: rss, published_within_hours: 168, sure: high,
+     note: "응답 OK지만 마지막 글이 2019-03", site: "https://www.lh.or.kr/", url: "https://rss.blog.naver.com/lhblog.xml"}
