@@ -40,7 +40,7 @@ export default function MePage() {
   const [dirty, setDirty] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
 
-  useEffect(() => { document.title = "내 프로필 — ZipGenie"; }, []);
+  useEffect(() => { document.title = "내 프로필 — 집보미"; }, []);
   // 서버 값이 늦게 도착하면 (아직 고치지 않았을 때만) 폼에 반영
   useEffect(() => { if (!dirty) setF(pickForm(profile)); }, [profile, dirty]);
 

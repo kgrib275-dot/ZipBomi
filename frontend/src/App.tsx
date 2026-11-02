@@ -28,7 +28,9 @@ const Deals = L(() => import("./pages/Deals"));  // 실거래가 (부동산)
 const Calc = L(() => import("./pages/Calc"));  // 내 집 계산기 (대출·세금·청약 가점)
 const MapPage = L(() => import("./pages/Map"));  // 지도 (분양·매물·시세)
 const MePage = L(() => import("./pages/Me"));  // 내 프로필 (개인화 기준값)
-const MyHomes = L(() => import("./pages/MyHomes"));  // 관심 단지 대시보드 (Phase 2)
+const MyHomes = L(() => import("./pages/MyHomes"));
+const MySpace = L(() => import("./pages/MySpace"));  // 내 공간 (2026-11-02)
+const LoginPage = L(() => import("./pages/Login"));  // 관심 단지 대시보드 (Phase 2)
 const Now = L(() => import("./pages/Now"));  // 현행 수치 (Phase 3)
 const CalendarPage = L(() => import("./pages/Calendar"));  // 분양 일정·당첨 가점 (Phase 4)
 
@@ -68,6 +70,8 @@ export default function App() {
             <Route path="/map" element={<MapPage />} />
             <Route path="/me" element={<MePage />} />
             <Route path="/my-homes" element={<MyHomes />} />
+            <Route path="/my" element={<MySpace />} />
+            <Route path="/login" element={<LoginPage />} />
             <Route path="/now" element={<Now />} />
             <Route path="/calendar" element={<CalendarPage />} />
             <Route path="/admin/*" element={<Admin />} />

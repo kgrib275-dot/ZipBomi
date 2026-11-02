@@ -202,3 +202,99 @@ tr.re-cancel td:last-child{text-decoration:none}
   .cal-item{flex-wrap:wrap}
   .cal-act{flex-direction:row;width:100%}
 }
+/* 그래프 값 말풍선 (reShared ChartTip) — 실거래가 추이·지역 흐름 공용 */
+.re-trend .hit{fill:transparent;cursor:crosshair}
+.ctip line{stroke:var(--accent);stroke-width:1;stroke-dasharray:3 3;opacity:.7}
+.ctip circle{fill:var(--accent);stroke:var(--surface);stroke-width:2}
+.ctip-wrap{position:relative}
+.re-chart-wrap{position:relative}
+.ctip-box{position:absolute;transform:translate(-50%,calc(-100% - 14px));background:var(--surface);border:1px solid var(--accent);border-radius:9px;
+  padding:6px 10px;font-size:12.5px;line-height:1.45;color:var(--ink-2);white-space:nowrap;pointer-events:none;box-shadow:0 6px 18px rgba(0,0,0,.28);z-index:2}
+.ctip-box.r{transform:translate(calc(-100% + 18px),calc(-100% - 14px))}
+.ctip-box.l{transform:translate(-18px,calc(-100% - 14px))}
+.ctip-box .b{color:var(--ink);font-weight:700}
+
+/* 표시 개수 고르기 (Pager) */
+.re-size{display:inline-flex;align-items:center;gap:8px;margin-left:8px}
+.re-size select{padding:5px 8px;border-radius:9px;font-size:.85rem}
+.re-table td.apt .re-star{margin-right:4px}
+
+/* ---------- 분양 일정 — 달력(왼쪽, 고정)·일정 목록(오른쪽, 안에서 스크롤) (2026-11-02) ---------- */
+.cal-layout{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:18px;align-items:start}
+.cal-left{position:sticky;top:76px}
+.cal-cell{min-height:64px}
+.cal-list{max-height:calc(100vh - 120px);overflow:auto;padding-right:4px;gap:4px;scrollbar-width:thin}
+.cal-list-h{position:sticky;top:0;z-index:1;display:flex;align-items:center;gap:8px;padding:6px 0 8px;background:var(--bg)}
+.cal-list .cal-date{margin:8px 0 4px;font-size:.9rem;color:var(--muted)}
+.cal-item{padding:8px 10px;gap:8px;align-items:center;margin-bottom:5px}
+.cal-title{display:flex;align-items:center;gap:6px;min-width:0}
+.cal-title b{font-size:.93rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.cal-title .cal-ev{flex:none}
+.cal-chips{display:flex;flex-wrap:wrap;gap:4px;margin-top:4px}
+.cal-chips span{font-size:.72rem;padding:1px 7px;border-radius:999px;border:1px solid var(--line);color:var(--ink-2)}
+.cal-chips span.d{border:0;padding:1px 2px;color:var(--muted)}
+.cal-act{flex-direction:row;gap:4px}
+.cal-ico{all:unset;cursor:pointer;display:grid;place-items:center;width:34px;height:34px;border-radius:10px;border:1px solid var(--line);font-size:.95rem;color:var(--ink-2);
+  filter:grayscale(1);opacity:.75;transition:all .15s}
+.cal-ico:hover{opacity:1;border-color:var(--accent-2)}
+.cal-ico.on{filter:none;opacity:1;border-color:var(--accent);background:rgba(245,184,0,.14)}
+@media (max-width:1000px){.cal-layout{grid-template-columns:minmax(0,1fr)}.cal-left{position:static}.cal-list{max-height:none;overflow:visible}}
+@media (max-width:640px){.cal-act{width:auto}.cal-item{flex-wrap:nowrap}}
+
+/* 표시 개수 (SizeSel) — 목록 위쪽 건수 옆 */
+.size-sel{padding:5px 8px;border-radius:9px;font-size:.85rem;white-space:nowrap;width:auto}
+.re-list-h{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:6px}
+.re-list-h h3{margin:0}
+
+/* ---------- 청약 공고 — 왼쪽 목록·오른쪽 상세 (2026-11-02) ---------- */
+.ap-split{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:16px;align-items:start}
+.ap-cards{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+.ap-card{display:flex;gap:8px;align-items:flex-start;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:var(--surface-2);cursor:pointer;transition:border-color .15s,transform .15s}
+.ap-card:hover{border-color:var(--accent-2)}
+.ap-cards li.on .ap-card{border-color:var(--accent);background:rgba(245,184,0,.1)}
+.ap-card-b{min-width:0;flex:1}
+.ap-card-t{font-weight:700;font-size:.93rem;line-height:1.4;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.ap-card-m{display:flex;flex-wrap:wrap;gap:4px;align-items:center;margin-top:5px}
+.ap-chip{font-size:.72rem;padding:1px 8px;border-radius:999px;border:1px solid var(--line);color:var(--ink-2);background:var(--surface)}
+.ap-chip.k{border-color:var(--tint-line);color:var(--accent-2);font-weight:700}
+.ap-dd{font-size:.72rem;font-weight:800;padding:1px 7px;border-radius:999px;background:var(--surface);border:1px solid var(--accent);color:var(--accent-2)}
+.ap-dd.hot{background:var(--accent);color:#1A1405}
+.ap-when{font-size:.75rem;color:var(--muted)}
+.ap-side{position:sticky;top:76px;max-height:calc(100vh - 100px);overflow:auto;border:1px solid var(--line);border-radius:14px;padding:16px;background:var(--surface)}
+.ap-side-in h4{margin:0 0 10px;font-size:1.05rem;line-height:1.4}
+.ap-dl{display:grid;grid-template-columns:4.5em 1fr;gap:4px 10px;margin:0 0 12px;font-size:.9rem}
+.ap-dl dt{color:var(--muted)}
+.ap-dl dd{margin:0}
+.ap-btns{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
+.ap-inline{display:none}
+@media (max-width:900px){.ap-split{grid-template-columns:minmax(0,1fr)}.ap-side{display:none}.ap-inline{display:block;border:1px solid var(--line);border-top:0;border-radius:0 0 12px 12px;padding:12px;margin-top:-6px;background:var(--surface)}}
+/* 아직 받지 못한 달 (TrendChart) */
+.re-chart .miss{fill:var(--muted);opacity:.08}
+.cal-sido{width:auto;padding:7px 10px;border-radius:999px;font-size:.9rem}
+
+/* ---------- 청약 공고 — 왼쪽 달력·오른쪽 목록·상세 팝업 (2026-11-02) ---------- */
+.ap-split.cal{grid-template-columns:minmax(280px,.8fr) minmax(0,1.2fr)}
+.mcal{position:sticky;top:76px;border:1px solid var(--line);border-radius:14px;padding:12px;background:var(--surface)}
+.mcal-h{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.mcal-g{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px}
+.mcal-w{text-align:center;font-size:.75rem;color:var(--muted);padding:2px 0}.mcal-w.sun{color:var(--err-ink)}
+.mcal-d{all:unset;box-sizing:border-box;cursor:default;display:flex;flex-direction:column;align-items:center;gap:2px;padding:5px 0 4px;border-radius:9px;border:1px solid transparent;min-height:46px}
+.mcal-d .n{font-size:.85rem;font-weight:700}
+.mcal-d.has{cursor:pointer;border-color:var(--line);background:var(--surface-2)}
+.mcal-d.has:hover{border-color:var(--accent-2)}
+.mcal-d.on{border-color:var(--accent);background:rgba(245,184,0,.16)}
+.mcal-d.today .n{background:var(--accent);color:#1A1405;border-radius:999px;padding:0 6px}
+.mcal-d:disabled{opacity:.55}
+.dots{display:flex;gap:2px;flex-wrap:wrap;justify-content:center}
+.dots i,.mcal-lg i{font-style:normal;font-size:.62rem;font-weight:800;line-height:1;padding:2px 4px;border-radius:6px}
+.dots i.open,.mcal-lg i.open{background:rgba(34,197,94,.18);color:var(--ok-ink)}
+.dots i.end,.mcal-lg i.end{background:var(--accent);color:#1A1405}
+.dots i.win,.mcal-lg i.win{background:var(--surface);border:1px solid var(--line);color:var(--ink-2)}
+.mcal-lg{display:flex;gap:6px;align-items:center;font-size:.72rem;color:var(--muted);margin-top:8px;flex-wrap:wrap}
+.mcal-lg i{display:inline-block;width:10px;height:10px;padding:0}
+.ap-day-h{display:flex;gap:8px;align-items:center;font-size:.9rem;margin:0 0 8px;flex-wrap:wrap}
+.ap-go{margin-left:auto;align-self:center;color:var(--muted);font-size:1.3rem}
+@media (max-width:900px){.ap-split.cal{grid-template-columns:minmax(0,1fr)}.mcal{position:static}}
+.ap-rchips{display:flex;flex-wrap:wrap;gap:5px;align-items:center;justify-content:flex-end}
+.ap-rchips small{color:var(--muted);font-size:.7rem}
+a.ap-card-t{color:var(--ink);text-decoration:none}

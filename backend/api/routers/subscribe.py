@@ -36,17 +36,32 @@ CONFIRM_MAIL_GAP_MIN = 10   # 같은 주소로 확인 메일은 10분에 한 번
 CONFIRM_MAIL_PER_DAY = 3    # 하루 3번까지 — 남의 주소로 신청을 반복해 메일 폭탄을 보내지 못하게
 
 
-MAIL_ACTIONS = ("confirm_mail", "ask_link_mail")  # 방문자가 남의 주소로 일으킬 수 있는 메일 — 하루 상한은 이 합계로 센다
+MAIL_DAILY_CAP = 300  # 하루 전체 확인·연결 메일 상한 (Gmail 개인 계정 하루 한도 500 안쪽)
+MAIL_ACTIONS = ("confirm_mail", "ask_link_mail", "login_mail")  # 방문자가 남의 주소로 일으킬 수 있는 메일 — 하루 상한은 이 합계로 센다
 log = logging.getLogger("zipgenie.subscribe")
 
 
-def _may_mail(email: str, action: str = "confirm_mail", page: str = "구독 확인 메일") -> bool:
+def _may_mail(email: str, action: str = "confirm_mail", page: str = "구독 확인 메일", gap_min: int | None = None,
+              per_day: int | None = None, own_day: bool = False) -> bool:
     """같은 주소로 보내는 메일 제한 (확인 메일, 질문하기 연결 메일 — api/routers/ask.py 도 action 을 달리해 쓴다).
     간격(10분)은 종류별, 하루 상한(3통)은 종류 합계 — 예전엔 종류별로 따로 세어 한 주소에 하루 6통까지 갔다 (2026-10-30)."""
     key = hashlib.sha256(email.lower().encode()).hexdigest()[:24]  # 주소 자체는 접속 기록에 남기지 않는다
-    if db.access_count_detail_since(action, key, CONFIRM_MAIL_GAP_MIN):
+    if db.access_count_detail_since(action, key, CONFIRM_MAIL_GAP_MIN if gap_min is None else gap_min):
         return False
-    if sum(db.access_count_detail_since(a, key, 24 * 60) for a in MAIL_ACTIONS) >= CONFIRM_MAIL_PER_DAY:
+    # own_day: 로그인 메일처럼 여러 기기에서 연달아 받을 수 있는 메일은 자기 종류만 따로 센다 (api/routers/auth.py)
+    acts = (action,) if own_day else MAIL_ACTIONS
+    if sum(db.access_count_detail_since(a, key, 24 * 60) for a in acts) >= (CONFIRM_MAIL_PER_DAY if per_day is None else per_day):
+        return False
+    # 하루 전체 상한 — 서로 다른 주소 수천 개로 신청해 우리 SMTP 한도를 소진시키거나 스팸 신고를 유도하지 못하게 (2026-11-02)
+    total = sum(db.access_count_action_since(a, 24 * 60) for a in MAIL_ACTIONS)
+    if total >= MAIL_DAILY_CAP:
+        if total == MAIL_DAILY_CAP:
+            try:
+                from pipeline import alerts
+                alerts.notify("메일 상한", f"오늘 확인·연결 메일이 {MAIL_DAILY_CAP}통에 닿아 더 보내지 않습니다. 비정상 신청인지 확인하세요.")
+            except Exception:  # noqa: BLE001
+                log.exception("메일 상한 경보 실패")
+            db.record_access(None, page, action, "cap")
         return False
     db.record_access(None, page, action, key)
     return True
@@ -167,7 +182,7 @@ def refer(k: str = Query(""), c: Caller = CallerDep) -> dict:
             pdfs.append({"name": f.name, "label": label, "url": None, "locked": True, "latest": False})
     return {"email": info["email"], "code": info["code"], "count": info["count"], "unlocked": info["unlocked"],
             "reward_at": referral.REWARD_AT, "link": f"{mailer.site_url()}/?ref={info['code']}", "pdfs": pdfs,
-            "share": {"title": "ZipGenie 집지니 — 부동산 노트를 매주 메일로",
+            "share": {"title": "집보미 ZIPBOMI — 부동산 노트를 매주 메일로",
                       "text": "시세·정책·청약 소식을 매주 한 번 정리해 보내 주는 부동산 뉴스레터인데, 내 집 마련 준비에 꽤 도움이 됩니다. 구독은 무료예요."}}
 
 

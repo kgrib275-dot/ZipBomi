@@ -119,5 +119,5 @@ CallerDep = Depends(caller)
 
 def throttle(kind: str, c: Caller, per_visitor: int = 3, per_ip: int = 10, minutes: int = 60) -> None:
     """남용 제한 — 방문자 기준 + IP 기준 (engage.attempt). 넘으면 429."""
-    if not engage.attempt(kind, c.visitor, c.ip, per_visitor, per_ip, minutes):
+    if not engage.attempt(kind, c.visitor, settings_store.rate_key(c.ip), per_visitor, per_ip, minutes):
         raise HTTPException(status_code=429, detail="잠시 후 다시 시도해 주세요.")

@@ -1,4 +1,4 @@
-"""ZipGenie의 단일 SQLite 저장소.
+"""집보미의 단일 SQLite 저장소.
 
 AI_NEWS의 수집 테이블(articles, keywords, run_logs, access_logs)과 사이트 테이블(notes,
 issues, subscribers, contacts, newsletters)을 한 DB에 둔다. 연결은 호출마다 열고 닫는다 —
@@ -20,8 +20,10 @@ import yaml
 from .models import Item, KeywordRule
 
 ROOT = Path(__file__).resolve().parent.parent
-# ZIPGENIE_DB: 부하 테스트 등에서 복사본 DB를 쓰게 한다 (비우면 data/zipgenie.db).
-DB_PATH = Path(os.environ["ZIPGENIE_DB"]) if os.environ.get("ZIPGENIE_DB") else ROOT / "data" / "zipgenie.db"
+# ZIPGENIE_DB: 부하 테스트 등에서 복사본 DB를 쓰게 한다 (비우면 data/zipbomi.db — 2026-11-02 이름 변경 전 zipgenie.db).
+DB_PATH = Path(os.environ["ZIPGENIE_DB"]) if os.environ.get("ZIPGENIE_DB") else ROOT / "data" / "zipbomi.db"
+if not os.environ.get("ZIPGENIE_DB") and not DB_PATH.exists() and (ROOT / "data" / "zipgenie.db").exists():
+    DB_PATH = ROOT / "data" / "zipgenie.db"  # 파일 이름을 아직 바꾸지 않았으면 옛 파일 그대로 (빈 DB 를 새로 만들지 않게)
 KEYWORDS_SEED = ROOT / "config" / "keywords.yaml"
 EMAIL_RE = re.compile(r"^[A-Za-z0-9._%+'-]{1,64}@[A-Za-z0-9.-]{1,185}\.[A-Za-z]{2,24}$")  # 길이 제한 + 수식 문자(=,+로 시작) 차단
 
@@ -528,6 +530,21 @@ def subscriber_by_token(token: str) -> dict | None:
     return rows[0] if rows else None
 
 
+def set_subscriber_visitor(email: str, visitor: str) -> bool:
+    """로그인한 계정 브라우저를 같은 주소의 확인된 구독자와 잇는다 (계정 로그인, api/routers/auth.py) — 한 방문자는 한 구독자만."""
+    conn = connect()
+    try:
+        row = conn.execute("SELECT email FROM subscribers WHERE email = ? AND active = 1 AND confirmed_at IS NOT NULL", (email,)).fetchone()
+        if not row:
+            return False
+        conn.execute("UPDATE subscribers SET visitor = NULL WHERE visitor = ? AND email != ?", (visitor, email))
+        conn.execute("UPDATE subscribers SET visitor = ? WHERE email = ?", (visitor, email))
+        conn.commit()
+        return True
+    finally:
+        conn.close()
+
+
 def link_subscriber_visitor(visitor: str, token: str | None = None, email: str | None = None) -> bool:
     """구독자 ↔ 브라우저 방문자 값을 잇는다. 이미 다른 값이 있으면 그대로 둔다 (남의 메일 링크를 열어도 주인의 연결이 바뀌지 않게).
     쿠키 방문자(c:)만 — IP 해시(i:)는 공용 IP 로 여러 사람이 묶여 남의 기록이 내 메일에 실릴 수 있다."""
@@ -863,6 +880,11 @@ def access_count_since(ip: str | None, action: str, minutes: int) -> int:
         conn.close()
 
 
+def access_count_action_since(action: str, minutes: int) -> int:
+    since = (datetime.now() - timedelta(minutes=minutes)).isoformat(timespec="seconds")
+    return _rows("SELECT COUNT(*) n FROM access_logs WHERE action = ? AND created_at >= ?", (action, since))[0]["n"]
+
+
 def access_count_detail_since(action: str, detail: str, minutes: int) -> int:
     since = (datetime.now() - timedelta(minutes=minutes)).isoformat(timespec="seconds")
     return _rows("SELECT COUNT(*) n FROM access_logs WHERE action = ? AND created_at >= ? AND detail = ?",
@@ -1057,7 +1079,7 @@ def backup(keep: int = 14, force: bool = False) -> Path | None:
     if os.environ.get("ZIPGENIE_DB") and not force:
         return None
     BACKUP_DIR.mkdir(parents=True, exist_ok=True)
-    dest = BACKUP_DIR / f"zipgenie-{datetime.now():%Y%m%d}.db"
+    dest = BACKUP_DIR / f"zipbomi-{datetime.now():%Y%m%d}.db"
     if dest.exists() and not force:
         return None
     tmp = dest.with_suffix(".tmp")
@@ -1072,13 +1094,13 @@ def backup(keep: int = 14, force: bool = False) -> Path | None:
         tmp.replace(dest.with_suffix(".bad"))
         raise RuntimeError(f"백업 무결성 검사 실패: {check}")
     tmp.replace(dest)
-    for old in sorted(BACKUP_DIR.glob("zipgenie-*.db"))[:-keep]:
+    for old in sorted(BACKUP_DIR.glob("zip*-*.db"), key=lambda p: p.stem.split("-")[-1])[:-keep]:  # 옛 이름(zipgenie-) 백업도 함께 돌려 지운다
         old.unlink(missing_ok=True)
     return dest
 
 
 def last_backup() -> tuple[str, int] | None:
-    files = sorted(BACKUP_DIR.glob("zipgenie-*.db")) if BACKUP_DIR.exists() else []
+    files = sorted(BACKUP_DIR.glob("zip*-*.db"), key=lambda p: p.stem.split("-")[-1]) if BACKUP_DIR.exists() else []
     if not files:
         return None
     f = files[-1]

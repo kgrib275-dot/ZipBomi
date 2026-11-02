@@ -213,3 +213,106 @@ a.try-tile:hover{border-color:var(--accent);transform:translateY(-2px)}
 @media (max-width:560px){.afford-in{grid-template-columns:1fr}.mkt-big b{font-size:1.15rem}}
 .afford-in label span{white-space:nowrap}
 .afford-in input{flex:1}
+
+/* ---------- 히어로 두 칸 (2026-11-02) — 한 화면에 담기게, 오른쪽에 계산 카드 ---------- */
+.hero.hero2{display:grid;grid-template-columns:minmax(0,1.08fr) minmax(0,.92fr);gap:40px;align-items:center;padding:52px 52px 48px}
+.hero2 .hero-kicker{font-family:var(--f-display);font-weight:800;letter-spacing:.14em;font-size:.82rem;color:var(--muted);margin-bottom:14px}
+.hero2 .hero-h1{font-family:inherit;font-stretch:100%;font-size:clamp(2.1rem,4.2vw,3.5rem);line-height:1.15;letter-spacing:-.03em;margin:0 0 16px;font-weight:900;color:var(--ink)}
+.hero2 .hero-sub{font-size:1.05rem;max-width:520px;margin:0}
+.hero2 .hero-stats{margin:22px 0 4px;gap:26px}
+.hero2 .hero-stats b{font-size:1.8rem}
+.hero2 .afford{margin:0;max-width:none;padding:22px 22px 20px;gap:12px;border-radius:22px;
+  background:linear-gradient(160deg,rgba(255,213,74,.16),rgba(255,213,74,.04) 60%),var(--surface);
+  border:1px solid var(--tint-line);box-shadow:0 18px 50px rgba(0,0,0,.28)}
+.hero2 .afford-q{font-size:1.15rem}
+.afford-tag{display:block;font-size:.8rem;font-weight:700;color:var(--muted);letter-spacing:.02em;margin-bottom:2px}
+.hero2 .afford-out b{font-size:clamp(2rem,3.4vw,2.7rem);line-height:1.15;letter-spacing:-.02em}
+.afford-out.ex b{opacity:.55}
+.afford-out.ex small{color:var(--muted)}
+@media (max-width:900px){
+  .hero.hero2{grid-template-columns:1fr;gap:24px;padding:32px 22px 26px}
+  .hero2 .hero-h1{font-size:clamp(1.9rem,8vw,2.6rem)}
+  .hero2 .hero-btns{flex-wrap:nowrap}
+  .hero2 .hero-btns .btn{width:auto;flex:1 1 0;padding:11px 10px;font-size:.92rem;text-align:center}
+  .hero2 .hero-stats{gap:16px;margin-top:16px}
+  .hero2 .hero-stats b{font-size:1.4rem}
+}
+
+/* ---------- 히어로 v3 (2026-11-02) — 한 칸 + 주제 칩 + 돌아가는 단어 + 마우스 빛 ---------- */
+.hero.hero2{display:block;padding:60px 56px 52px}
+.hero2 .hero-main{max-width:720px;position:relative}
+.hero2 .hero-h1{font-size:clamp(2.2rem,4.6vw,3.7rem)}
+.rot{display:inline-block;position:relative;vertical-align:bottom}
+.rot-w{display:inline-block;animation:rotIn .55s cubic-bezier(.2,.8,.2,1)}
+@keyframes rotIn{from{opacity:0;transform:translateY(.45em) rotateX(60deg);filter:blur(4px)}to{opacity:1;transform:none;filter:none}}
+.hero-glow{position:absolute;inset:0;z-index:-1;pointer-events:none;opacity:0;transition:opacity .4s;
+  background:radial-gradient(420px circle at var(--mx,70%) var(--my,40%),rgba(255,213,74,.16),transparent 70%)}
+.hero2:hover .hero-glow{opacity:1}
+.hero-topics{display:flex;flex-wrap:wrap;gap:8px;margin:20px 0 4px}
+.hero-topic{display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border-radius:999px;border:1px solid var(--tint-line);
+  background:rgba(255,213,74,.07);color:var(--ink);font-weight:700;font-size:.92rem;text-decoration:none;
+  transition:transform .18s cubic-bezier(.2,.8,.2,1),background .18s,border-color .18s,box-shadow .18s}
+.hero-topic i{font-style:normal}
+.hero-topic:hover{transform:translateY(-2px);background:rgba(255,213,74,.18);border-color:var(--accent);box-shadow:0 8px 22px rgba(245,184,0,.18)}
+.hero2 .hero-btns .btn{transition:transform .18s,box-shadow .18s}
+.hero2 .hero-btns .btn.primary:hover{transform:translateY(-2px);box-shadow:0 10px 26px rgba(245,184,0,.35)}
+@media (prefers-reduced-motion:reduce){.rot-w{animation:none}.hero-glow{display:none}.hero-topic,.hero2 .hero-btns .btn{transition:none}}
+@media (max-width:900px){.hero.hero2{padding:34px 22px 28px}}
+
+/* ---------- 바로 계산 구역 — 입력(왼쪽)·결과(오른쪽) ---------- */
+.afford-sec{margin:8px 0 34px}
+.afford-sec .afford{margin-top:14px;max-width:none;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.1fr);gap:18px 28px;align-items:center;
+  padding:24px 26px;border-radius:22px;background:linear-gradient(135deg,rgba(255,213,74,.14),rgba(255,213,74,.03) 55%),var(--surface);
+  border:1px solid var(--tint-line);box-shadow:0 14px 40px var(--shadow)}
+.afford-sec .afford-q{display:none}
+.afford-sec .afford-in{grid-template-columns:1fr;gap:12px}
+.afford-sec .afford-in input{font-size:1.25rem;padding:12px 14px}
+.afford-sec .afford-out{border-left:1px solid var(--line);padding-left:28px}
+.afford-sec .afford-out b{font-size:clamp(2.1rem,4vw,3rem);line-height:1.12;letter-spacing:-.02em;color:var(--accent-2)}
+.afford-sec .afford-out.ex b{opacity:.5}
+@media (max-width:760px){.afford-sec .afford{grid-template-columns:1fr;padding:18px}.afford-sec .afford-out{border-left:0;padding-left:0;border-top:1px solid var(--line);padding-top:14px}}
+
+/* ---------- 앞으로 2주 청약 일정 — 날짜 블록 + D-day + 칩 ---------- */
+.ap-list{list-style:none;margin:0 0 10px;padding:0;display:flex;flex-direction:column;gap:8px}
+.ap-row{display:flex;gap:12px;align-items:center;padding:9px 10px;border-radius:12px;border:1px solid var(--line);background:var(--surface-2);
+  text-decoration:none;color:var(--ink);transition:border-color .15s,transform .15s}
+a.ap-row:hover{border-color:var(--accent);transform:translateX(2px)}
+.ap-date{flex:none;width:58px;display:flex;flex-direction:column;align-items:center;justify-content:center;border-radius:10px;padding:5px 0;
+  background:var(--surface);border:1px solid var(--line);line-height:1.1}
+.ap-date .m{font-size:.7rem;color:var(--muted)}
+.ap-date b{font-family:var(--f-display);font-size:1.35rem;color:var(--ink)}
+.ap-date .dd{font-size:.68rem;font-weight:800;color:var(--accent-2)}
+.ap-date.hot{border-color:var(--accent);background:rgba(245,184,0,.12)}
+.ap-body{min-width:0;display:flex;flex-direction:column;gap:5px}
+.ap-title{font-weight:700;font-size:.93rem;line-height:1.4;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.ap-meta{display:flex;flex-wrap:wrap;gap:5px}
+.ap-chip{font-size:.72rem;padding:2px 8px;border-radius:999px;border:1px solid var(--line);color:var(--ink-2);background:var(--surface)}
+.ap-chip.k{border-color:var(--tint-line);color:var(--accent-2);font-weight:700}
+.ap-chip.t{color:var(--muted)}
+
+/* ---------- 가장 비싼 거래 10건 (TopDeals) ---------- */
+.top-filters{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 10px}
+.seg.sm{display:inline-flex;gap:2px;border:1px solid var(--line);border-radius:10px;padding:2px;background:var(--surface-2)}
+.seg.sm button{all:unset;cursor:pointer;padding:5px 10px;border-radius:8px;font-size:.8rem;color:var(--ink-2);white-space:nowrap}
+.seg.sm button.on{background:rgba(217,161,0,.28);color:var(--ink);font-weight:700}
+.top-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
+.top-list li{display:grid;grid-template-columns:22px minmax(0,1fr) auto;gap:0 8px;align-items:baseline;padding:6px 0;border-bottom:1px dashed var(--line)}
+.top-list li:last-child{border-bottom:0}
+.top-list .rk{font-family:var(--f-display);font-weight:800;color:var(--muted);font-size:.85rem;text-align:center}
+.top-list li.top3 .rk{color:var(--accent-2)}
+.top-list .nm{color:var(--ink);font-weight:700;font-size:.92rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-decoration:none}
+.top-list .nm:hover{text-decoration:underline}
+.top-list .amt{font-family:var(--f-display);font-size:.95rem;color:var(--accent-2);white-space:nowrap}
+.top-list .meta{grid-column:2 / 4;font-size:.76rem;color:var(--muted)}
+/* 출처 — 묶음 탭 + 칩 (2026-11-02) */
+.src-box{border:1px solid var(--line);border-radius:18px;background:var(--surface);padding:14px;box-shadow:var(--card-shadow)}
+.src-tabs{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
+.src-tab{all:unset;cursor:pointer;display:inline-flex;align-items:center;gap:6px;padding:7px 12px;border-radius:999px;border:1px solid var(--line);font-size:.88rem;font-weight:700;color:var(--ink-2);transition:all .15s}
+.src-tab b{font-size:.75rem;padding:1px 7px;border-radius:999px;background:var(--surface-2);color:var(--muted)}
+.src-tab:hover{border-color:var(--accent-2)}
+.src-tab.on{border-color:var(--accent);background:rgba(245,184,0,.14);color:var(--ink)}
+.src-tab.on b{background:var(--accent);color:#1A1405}
+.src-chips{display:flex;flex-wrap:wrap;gap:6px;max-height:260px;overflow:auto;padding:2px}
+.src-chip{display:inline-flex;align-items:center;gap:4px;padding:5px 11px;border-radius:10px;background:var(--surface-2);border:1px solid var(--line);color:var(--ink);font-size:.85rem;text-decoration:none;transition:border-color .15s,transform .15s}
+.src-chip span{color:var(--muted);font-size:.75rem}
+.src-chip:hover{border-color:var(--accent);transform:translateY(-1px)}

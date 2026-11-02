@@ -87,9 +87,17 @@ def _ticker() -> dict | None:
     out = []
     for r in rows[:12]:
         n = _rep_note(r["keyword"], r["aliases"], notes, score)
+        # 지난주 건수가 적으면 증감률이 수천 %로 튄다(출처를 바꾼 첫 주: '▲ 16400%') — 그때는 이번 주 건수를, 3배 넘게 늘면 'N배'로
+        few = r["growth"] is None or (r["prev"] or 0) < 10
+        if few:
+            label = f"이번 주 {r['cur']}건"
+        elif r["growth"] > 200:
+            label = f"▲ {r['cur'] / r['prev']:.1f}배"
+        else:
+            label = f"{'▲' if r['growth'] > 0 else '▼' if r['growth'] < 0 else '–'} {abs(r['growth'])}%"
         out.append({"keyword": r["keyword"], "category": r["category"], "cur": r["cur"], "prev": r["prev"],
-                    "growth": r["growth"], "is_new": r["growth"] is None, "rising": r["growth"] is None or r["growth"] > 0,
-                    "label": "신규" if r["growth"] is None else f"{'▲' if r['growth'] > 0 else '▼' if r['growth'] < 0 else '–'} {abs(r['growth'])}%",
+                    "growth": r["growth"], "is_new": few, "rising": r["growth"] is None or r["growth"] > 0,
+                    "label": label, "few": few,
                     "href": f"/notes?id={n['id']}" if n else f"/notes?q={quote(r['keyword'].split('·')[0])}",
                     "note_title": n["title"] if n else None})
     return {"head": "급상승 키워드 · 지난주 대비", "basis": "최근 7일과 그 전 7일의 기사 수 비교", "rows": out}

@@ -12,7 +12,7 @@ from urllib.parse import urljoin, urlsplit
 
 import httpx
 
-UA = {"User-Agent": "Mozilla/5.0 (compatible; ZipGenieBot/1.0)"}
+UA = {"User-Agent": "Mozilla/5.0 (compatible; ZipBomiBot/1.0)"}
 
 
 class BlockedURL(httpx.HTTPError):

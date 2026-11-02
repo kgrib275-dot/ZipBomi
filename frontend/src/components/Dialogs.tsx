@@ -5,6 +5,7 @@ import { Link } from "react-router-dom";
 import { ApiError, post, track } from "../api";
 import { useMe } from "../me";
 import { Alert, Dialog } from "./ui";
+import LoginDialog from "./LoginDialog";
 
 export const INDUSTRIES = ["서울", "경기", "인천", "부산·울산·경남", "대구·경북", "대전·세종·충청", "광주·전라", "강원·제주"];
 const BENEFITS: [string, string, string][] = [
@@ -13,14 +14,16 @@ const BENEFITS: [string, string, string][] = [
   ["📎", "주간 PDF 리포트", "저장해 두고 다시 보기 좋은 카드형 요약 리포트"],
 ];
 
-type Ctx = { openSubscribe: (source: string) => void; openContact: () => void; openMembership: () => void };
-const DlgCtx = createContext<Ctx>({ openSubscribe: () => undefined, openContact: () => undefined, openMembership: () => undefined });
+type Ctx = { openSubscribe: (source: string) => void; openContact: () => void; openMembership: () => void; openLogin: () => void };
+const DlgCtx = createContext<Ctx>({ openSubscribe: () => undefined, openContact: () => undefined, openMembership: () => undefined, openLogin: () => undefined });
 export const useDialogs = () => useContext(DlgCtx);
 
 export function DialogProvider({ children }: { children: React.ReactNode }) {
   const [sub, setSub] = useState<string | null>(null);
   const [contact, setContact] = useState(false);
   const [member, setMember] = useState(false);
+  const [login, setLogin] = useState(false);
+  const openLogin = useCallback(() => { track("login_open"); setLogin(true); }, []);
   const openSubscribe = useCallback((source: string) => {
     track("subscribe_open", source);
     setSub(source);
@@ -31,11 +34,12 @@ export function DialogProvider({ children }: { children: React.ReactNode }) {
     setMember(true);
   }, []);
   return (
-    <DlgCtx.Provider value={{ openSubscribe, openContact, openMembership }}>
+    <DlgCtx.Provider value={{ openSubscribe, openContact, openMembership, openLogin }}>
       {children}
       {sub && <SubscribeDialog source={sub} onClose={() => setSub(null)} />}
       {contact && <ContactDialog onClose={() => setContact(false)} />}
       {member && <MembershipDialog onClose={() => setMember(false)} />}
+      {login && <LoginDialog onClose={() => setLogin(false)} />}
     </DlgCtx.Provider>
   );
 }
@@ -80,10 +84,10 @@ function SubscribeDialog({ source, onClose }: { source: string; onClose: () => v
           <div className="sub-done-ic">📬</div>
           <p className="sub-done-mail"><b>{email.trim()}</b></p>
           <ol>
-            <li>메일함에서 <b>"[ZipGenie] 구독 신청을 확인해 주세요"</b>를 엽니다.</li>
+            <li>메일함에서 <b>"[집보미] 구독 신청을 확인해 주세요"</b>를 엽니다.</li>
             <li>메일 안의 <b>"구독 확인하기"</b> 버튼을 누르면 구독이 완료됩니다.</li>
           </ol>
-          <p className="caption">메일이 안 보이면 스팸함·프로모션함도 확인해 주세요. 보낸 사람은 ZipGenie 입니다.</p>
+          <p className="caption">메일이 안 보이면 스팸함·프로모션함도 확인해 주세요. 보낸 사람은 집보미 입니다.</p>
           <button type="button" className="btn primary block" style={{ marginTop: 14 }} onClick={onClose}>확인</button>
         </div>
       </Dialog>
@@ -141,7 +145,7 @@ function ContactDialog({ onClose }: { onClose: () => void }) {
     }
   };
   return (
-    <Dialog title="집지니에 문의하기" onClose={onClose} wide>
+    <Dialog title="집보미에 문의하기" onClose={onClose} wide>
       <p className="caption">서비스 이용, 제휴, 잘못된 정보 제보 등 무엇이든 남겨 주세요. 확인 후 답장 드릴게요.</p>
       <form onSubmit={submit}>
         <div className="row2">

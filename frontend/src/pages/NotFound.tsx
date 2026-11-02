@@ -5,7 +5,7 @@ import { Link } from "react-router-dom";
 export default function NotFound() {
   useEffect(() => {
     const prev = document.title;
-    document.title = "페이지를 찾을 수 없습니다 — ZipGenie";
+    document.title = "페이지를 찾을 수 없습니다 — 집보미";
     return () => { document.title = prev; };
   }, []);
   return (

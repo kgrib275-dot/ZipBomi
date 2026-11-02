@@ -172,4 +172,4 @@ def start_scheduler_thread() -> None:
         if _started:
             return
         _started = True
-    threading.Thread(target=_loop, daemon=True, name="zipgenie-scheduler").start()
+    threading.Thread(target=_loop, daemon=True, name="zipbomi-scheduler").start()

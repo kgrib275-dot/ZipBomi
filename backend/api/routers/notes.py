@@ -7,6 +7,8 @@ Streamlit 판 app_pages/notes.py 를 옮겼다.
 """
 from __future__ import annotations
 
+from datetime import date
+
 import os
 import re
 import time
@@ -19,6 +21,7 @@ from pipeline import db, industry, knowledge, profile, vectorizer
 from pipeline import note_format, policy, regions_kr
 from pipeline.llm import CATEGORIES
 
+_VIEWED: set = set()  # (IP, 노트, 날짜) — 조회수 중복 거르기
 router = APIRouter(tags=["notes"])
 
 SEMANTIC_MAX_CHARS = 200
@@ -147,7 +150,13 @@ def note_detail(note_id: str, request: Request, c: Caller = CallerDep) -> dict:
     prev = nxt = None
     related: list[dict] = []
     if n["status"] == "published":
-        db.record_access(c.ip, "노트", "note_view", str(n["id"]))
+        # 같은 IP·노트는 하루 한 번만 센다 — 새로고침 반복으로 '인기순'을 조작하거나 접속 기록을 불리지 못하게 (2026-11-02)
+        seen_key = (c.ip, n["id"], date.today().isoformat())
+        if seen_key not in _VIEWED:
+            if len(_VIEWED) > 50_000:
+                _VIEWED.clear()
+            _VIEWED.add(seen_key)
+            db.record_access(c.ip, "노트", "note_view", str(n["id"]))
         order = db.notes()
         pos = next((i for i, x in enumerate(order) if x["id"] == n["id"]), None)
         if pos is not None:  # 이전(더 오래된)·다음(더 새로운) 노트 — 게시일 순

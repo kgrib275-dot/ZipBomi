@@ -1,4 +1,4 @@
-"""Gemini 호출. 키 로테이션(GeminiKeyPool)은 AI_NEWS 그대로이고, 프롬프트는 ZipGenie용이다."""
+"""Gemini 호출. 키 로테이션(GeminiKeyPool)은 AI_NEWS 그대로이고, 프롬프트는 집보미용이다."""
 from __future__ import annotations
 
 import json
@@ -179,7 +179,7 @@ def score_items(items, pool: GeminiKeyPool, model: str, batch_size: int = 150, s
 
 # ───────────────────────── 2) 노트 초안 작성 ─────────────────────────
 
-NOTE_PROMPT = """너는 ZipGenie(집지니)의 에디터다. 아래 원문을 깊게 읽고, 내 집 마련을 준비하는 실수요자와
+NOTE_PROMPT = """너는 집보미(ZIPBOMI)의 에디터다. 아래 원문을 깊게 읽고, 내 집 마련을 준비하는 실수요자와
 부동산 투자자를 위한 노트를 한국어로 쓴다. 원문에 없는 수치·사실·인용을 만들어 내지 말 것. 원문 정보가 부족하면 부족한
 대로 짧게 쓰고, 추정은 '~로 보입니다'처럼 구분한다. 존댓말(~습니다)로 쓴다.
 
@@ -236,7 +236,7 @@ def write_note(article: dict, text: str, pool: GeminiKeyPool, model: str) -> dic
 
 # ───────────────────────── 3) 주간 부동산 흐름 ─────────────────────────
 
-WEEKLY_PROMPT = """너는 ZipGenie의 편집장이다. 이번 주({range}) 게시된 노트들을 읽고
+WEEKLY_PROMPT = """너는 집보미의 편집장이다. 이번 주({range}) 게시된 노트들을 읽고
 '이번 주 부동산 흐름'을 쓴다. 노트 목록에 없는 사실을 만들지 말 것. 존댓말(~습니다)로 쓴다.
 {prev}
 JSON 객체 하나로만 답하라:

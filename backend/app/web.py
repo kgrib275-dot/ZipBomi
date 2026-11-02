@@ -98,14 +98,14 @@ def _page(title: str, desc: str, canonical: str, body: str, og_image: str, extra
     return HTMLResponse(f"""<!doctype html><html lang="ko"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1"><title>{t}</title>
 <meta name="description" content="{d}"><link rel="canonical" href="{escape(canonical)}">
-<meta property="og:type" content="article"><meta property="og:site_name" content="ZipGenie"><meta property="og:locale" content="ko_KR">
+<meta property="og:type" content="article"><meta property="og:site_name" content="집보미"><meta property="og:locale" content="ko_KR">
 <meta property="og:title" content="{t}"><meta property="og:description" content="{d}"><meta property="og:url" content="{escape(canonical)}">
 <meta property="og:image" content="{escape(og_image)}"><meta property="og:image:width" content="1200"><meta property="og:image:height" content="630">
 <meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="{t}"><meta name="twitter:description" content="{d}">
 <meta name="twitter:image" content="{escape(og_image)}">{extra_head}
 <style>{_STYLE}</style></head><body>
-<header><a class="logo" href="/">ZIP<b>GENIE</b></a><a class="btn" href="/letter">뉴스레터 미리 보기</a></header>
-<main>{body}</main><footer>© {datetime.now():%Y} ZipGenie 집지니 · 내 집 마련과 부동산 결정을 위해 읽은 자료를 정리한 노트입니다.</footer></body></html>""",
+<header><a class="logo" href="/">ZIP<b>BOMI</b></a><a class="btn" href="/letter">뉴스레터 미리 보기</a></header>
+<main>{body}</main><footer>© {datetime.now():%Y} 집보미 ZIPBOMI · 내 집 마련과 부동산 결정을 위해 읽은 자료를 정리한 노트입니다.</footer></body></html>""",
                         headers={"Cache-Control": "public, max-age=300"})
 
 
@@ -119,7 +119,7 @@ def note_page(request: Request) -> Response:
     site = _site(request)
     url = f"{site}/n/{n['id']}"
     ld = ('{"@context":"https://schema.org","@type":"Article","headline":%s,"datePublished":"%s","inLanguage":"ko",'
-          '"publisher":{"@type":"Organization","name":"ZipGenie"},"mainEntityOfPage":"%s"}') % (
+          '"publisher":{"@type":"Organization","name":"집보미"},"mainEntityOfPage":"%s"}') % (
         _json_str(n["title"]), escape(n["published"]), escape(url))
     tags = " · ".join(t for t in (n.get("tags") or "").split(",") if t)
     body = f"""<div class="meta">{escape(n['category'])} · {escape(n['kind'])} · {escape(n['published'])}</div>
@@ -127,8 +127,8 @@ def note_page(request: Request) -> Response:
 {md_html(n['body'])}
 <div class="src">원문: <a href="{escape(n['url'])}" rel="nofollow noopener" target="_blank">{escape(n['source'] or n['url'])}</a>
 {f'<br>태그: {escape(tags)}' if tags else ''}</div>
-<p><a class="btn" href="/notes?id={n['id']}">ZipGenie에서 이어 보기 →</a> &nbsp; <a href="/n/">전체 노트</a></p>"""
-    return _page(f"{n['title']} | ZipGenie", n["summary"][:150], url, body, _note_og(site, n),
+<p><a class="btn" href="/notes?id={n['id']}">집보미에서 이어 보기 →</a> &nbsp; <a href="/n/">전체 노트</a></p>"""
+    return _page(f"{n['title']} | 집보미", n["summary"][:150], url, body, _note_og(site, n),
                  f'<script type="application/ld+json">{ld}</script>')
 
 
@@ -155,7 +155,7 @@ def note_index(request: Request) -> Response:
     items = "".join(f"<a href='/n/{n['id']}'>{escape(n['title'])}<small>{escape(n['category'])} · {escape(n['published'])}</small></a>"
                     for n in notes)
     body = f"<div class='meta'>NOTES · {len(notes)}</div><h1>부동산 노트 전체</h1><div class='list'>{items}</div>"
-    return _page("부동산 노트 전체 | ZipGenie", "시세·정책·청약 뉴스와 리포트를 요약·실수요자 체크리스트·투자자 관점까지 정리한 노트 목록",
+    return _page("부동산 노트 전체 | 집보미", "시세·정책·청약 뉴스와 리포트를 요약·실수요자 체크리스트·투자자 관점까지 정리한 노트 목록",
                  f"{site}/n/", body, f"{site}/app/static/og.png")
 
 

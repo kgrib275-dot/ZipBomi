@@ -4,7 +4,7 @@ import { Alert, Metric, useLoad } from "../../components/ui";
 import { A, AdminHead, Check, Expander, Field, Generic, Row, addDays, asArray, bool, isObj, num, pick, str, today, useAct } from "./common";
 
 const FIELDS: [keyof Settings, string, string?][] = [
-  ["operator", "개인정보처리자(운영자) 명칭 *", "예) OO팀 ZipGenie 운영"],
+  ["operator", "개인정보처리자(운영자) 명칭 *", "예) OO팀 집보미 운영"],
   ["officer_name", "개인정보 보호책임자 성명 또는 직책 *"], ["officer_dept", "보호책임자 부서"],
   ["officer_email", "보호책임자 이메일 *"], ["officer_phone", "보호책임자 전화 (선택)"],
   ["request_dept", "열람청구 접수·처리 부서 (비우면 보호책임자와 같음)"],

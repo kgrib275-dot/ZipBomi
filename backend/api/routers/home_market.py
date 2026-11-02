@@ -12,7 +12,7 @@ from __future__ import annotations
 from datetime import date, datetime, timedelta
 from statistics import median
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Query
 
 from api.common import cached
 from pipeline import db, policy, re_store, regions_kr
@@ -116,13 +116,121 @@ def _articles() -> list[dict]:
     return out
 
 
+def _series_kpi(series: str, label: str, mode: str, href: str = "/now") -> dict | None:
+    """ECOS 시계열 한 개 → 지표 칸. mode: idx(지수, 전월 대비 %) · pt(지수, 전월 대비 p) · pct(값이 %)."""
+    rs = _rows("SELECT period, value FROM re_econ_series WHERE series=? AND value IS NOT NULL ORDER BY period DESC LIMIT 2", (series,))
+    if len(rs) < 2:
+        return None
+    v, pv = rs[0]["value"], rs[1]["value"]
+    per = f"{rs[0]['period'][:4]}.{rs[0]['period'][4:]}"
+    if mode == "idx":
+        ch = round((v / pv - 1) * 100, 2) if pv else 0
+        return {"label": label, "value": f"{v:.1f}", "sub": f"전월 대비 {ch:+.2f}% · {per}", "dir": "up" if ch > 0 else "down" if ch < 0 else "", "href": href}
+    if mode == "pt":
+        ch = round(v - pv, 1)
+        return {"label": label, "value": f"{v:.1f}", "sub": f"전월 대비 {ch:+.1f}p · {per}", "dir": "up" if ch > 0 else "down" if ch < 0 else "", "href": href}
+    ch = round(v - pv, 2)
+    return {"label": label, "value": f"{v:+.2f}%", "sub": f"전월 {pv:+.2f}% · {per}", "dir": "up" if v > 0 else "down" if v < 0 else "", "href": href}
+
+
+def _cmpet_kpi() -> dict | None:
+    """전국 아파트 청약 경쟁률 (청약홈 통계, 최근 월)."""
+    try:
+        from pipeline import apply_stats
+        rows = apply_stats.load("cmpet_area", "")
+    except Exception:  # noqa: BLE001
+        return None
+    by: dict[str, list[float]] = {}
+    for r in rows:
+        try:
+            req, hh = float(r.get("SUPLY_REQ_CNT") or 0), float(r.get("SUPLY_HSHLDCO") or 0)
+        except (TypeError, ValueError):
+            continue
+        a = by.setdefault(r["ym"], [0.0, 0.0]); a[0] += req; a[1] += hh
+    ms = [m for m in sorted(by) if by[m][1] > 0]
+    if len(ms) < 2:
+        return None
+    cur, prev = by[ms[-1]][0] / by[ms[-1]][1], by[ms[-2]][0] / by[ms[-2]][1]
+    return {"label": "전국 아파트 청약 경쟁률", "value": f"{cur:.1f} : 1", "sub": f"전월 {prev:.1f} : 1 · {ms[-1][:4]}.{ms[-1][4:]}",
+            "dir": "up" if cur > prev else "down" if cur < prev else "", "href": "/calendar?tab=scores"}
+
+
+def _extra_kpis() -> list[dict]:
+    """지표 5칸 추가 (2026-11-02) — 집 살 사람·팔 사람·중개 실무자가 자주 보는 숫자."""
+    out = [_series_kpi("kb_sale_apt", "KB 전국 아파트 매매지수", "idx"), _series_kpi("kb_jeonse_apt", "KB 전국 아파트 전세지수", "idx"),
+           _series_kpi("consumer_csi", "소비자심리지수", "pt"), _series_kpi("land_chg_seoul", "서울 지가변동률", "pct"), _cmpet_kpi()]
+    return [x for x in out if x]
+
+
 def _market() -> dict:
     pm = policy.public_map()
     ind = [pm[k] for k in ("base_rate", "mortgage_rate", "house_outlook_csi", "housing_loan_balance") if k in pm]
-    return {"indicators": ind, "kb_seoul": _kb_seoul(), "trades": _trades(), "apply": _apply(), "articles": _articles(),
+    return {"indicators": ind, "kb_seoul": _kb_seoul(), "extra": _extra_kpis(), "trades": _trades(), "apply": _apply(), "articles": _articles(),
             "at": datetime.now(db.KST).isoformat(timespec="minutes")}
 
 
 @router.get("/home/market")
 def home_market() -> dict:
     return cached("home:market", _market, TTL)
+
+
+# ───────── 가장 비싼 거래 — 지역(전국·서울·경기·부산)·종류(아파트·오피스텔·상가) 고르기, 10건 (2026-11-02) ─────────
+_TOP_TABLES = {"apt": ("rtms_apt_trade", "아파트"), "offi": ("rtms_offi_trade", "오피스텔"), "nrg": ("rtms_nrg_trade", "상가·업무용")}
+_TOP_SIDO = {"all": "", "11": "11", "41": "41", "26": "26"}
+
+
+def _top(kind: str, sido: str, limit: int) -> dict:
+    table, label = _TOP_TABLES[kind]
+    today = date.today()
+    cur_ym = f"{today.year}{today.month:02d}"
+    pre = _TOP_SIDO[sido]
+    months = [r["deal_ymd"] for r in _rows(f"SELECT DISTINCT deal_ymd FROM {table} WHERE deal_ymd < ? ORDER BY deal_ymd DESC LIMIT 1", (cur_ym,))]
+    if not months:
+        return {"ym": None, "label": "", "kind": label, "rows": []}
+    m = months[0]
+    rows = _rows(f"SELECT lawd_cd, umd, name, kind, area, floor, amount, deal_date FROM {table} "
+                 "WHERE deal_ymd=? AND COALESCE(cancelled,0)=0 AND amount IS NOT NULL AND lawd_cd LIKE ? ORDER BY amount DESC LIMIT ?",
+                 (m, f"{pre}%", limit))
+    return {"ym": m, "label": _ym_label(m), "kind": label, "source": f"국토교통부 {label} 매매 실거래가 신고 자료",
+            "rows": [{"lawd": r["lawd_cd"], "region": regions_kr.NAMES.get(r["lawd_cd"], r["lawd_cd"]), "umd": r["umd"] or "",
+                      "name": r["name"] or (f"{r['kind']}용 건물" if r["kind"] else label), "area": r["area"], "floor": r["floor"],
+                      "amount": r["amount"], "date": r["deal_date"]} for r in rows]}
+
+
+@router.get("/home/top")
+def home_top(kind: str = Query("apt", pattern="^(apt|offi|nrg)$"), sido: str = Query("all", pattern="^(all|11|41|26)$"),
+             limit: int = Query(10, ge=1, le=20)) -> dict:
+    return cached(f"home:top:{kind}:{sido}:{limit}", lambda: _top(kind, sido, limit), 600)
+
+
+# ───────── 지난달 거래 요약 — 지역·종류 고르기, 거래 많은 지역 10곳 (2026-11-02) ─────────
+def _volume(kind: str, sido: str) -> dict:
+    table, label = _TOP_TABLES[kind]
+    pre = _TOP_SIDO[sido]
+    t = date.today()
+    cur = f"{t.year}{t.month:02d}"
+    months = [r["deal_ymd"] for r in _rows(f"SELECT DISTINCT deal_ymd FROM {table} WHERE deal_ymd < ? ORDER BY deal_ymd DESC LIMIT 2", (cur,))]
+    if not months:
+        return {"ym": None, "label": "", "kind": label, "count": 0, "regions": []}
+    m = months[0]
+    rows = _rows(f"SELECT lawd_cd, amount FROM {table} WHERE deal_ymd=? AND COALESCE(cancelled,0)=0 AND amount IS NOT NULL AND lawd_cd LIKE ?", (m, f"{pre}%"))
+    prev = None
+    if len(months) > 1:
+        pa = [r["amount"] for r in _rows(f"SELECT amount FROM {table} WHERE deal_ymd=? AND COALESCE(cancelled,0)=0 AND amount IS NOT NULL "
+                                         "AND lawd_cd LIKE ?", (months[1], f"{pre}%"))]
+        if pa:
+            prev = {"label": _ym_label(months[1]), "count": len(pa), "median": median(pa)}
+    by: dict[str, list[int]] = {}
+    for r in rows:
+        by.setdefault(r["lawd_cd"], []).append(r["amount"])
+    top = sorted(by.items(), key=lambda kv: len(kv[1]), reverse=True)[:10]
+    y, mo = int(m[:4]), int(m[4:])
+    month_end = date(y + (mo == 12), mo % 12 + 1, 1) - timedelta(days=1)
+    return {"ym": m, "label": _ym_label(m), "kind": label, "count": len(rows), "median": median(r["amount"] for r in rows) if rows else None,
+            "prev": prev, "reporting": (t - month_end).days < 30, "source": f"국토교통부 {label} 매매 실거래가 신고 자료",
+            "regions": [{"lawd": k, "name": regions_kr.NAMES.get(k, k), "count": len(v), "median": median(v)} for k, v in top]}
+
+
+@router.get("/home/volume")
+def home_volume(kind: str = Query("apt", pattern="^(apt|offi|nrg)$"), sido: str = Query("all", pattern="^(all|11|41|26)$")) -> dict:
+    return cached(f"home:vol:{kind}:{sido}", lambda: _volume(kind, sido), 600)

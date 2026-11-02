@@ -7,7 +7,7 @@ import { Link, useSearchParams } from "react-router-dom";
 import { get } from "../api";
 import { Alert, useLoad } from "../components/ui";
 import { useMe } from "../me";
-import { type NoteBrief, type TrendRes, type Watch, SourceLine, Star, TrendChart, man, pctText, useWatch, ymLabel } from "./reShared";
+import { type NoteBrief, type TrendRes, type Watch, SourceLine, Star, TrendChart, man, pctText, useApplyFav, useWatch, ymLabel } from "./reShared";
 import "./RealEstate.css";
 
 type Ext = { amount: number; date: string; area: number; floor: number | null };
@@ -43,8 +43,10 @@ export default function MyHomes() {
       <div>
         <div className="eyebrow">관심 단지</div>
         <h2 className="sec-h">내 <span className="grad">관심 단지</span></h2>
-        <p className="sec-p">실거래가에서 ☆로 담은 단지의 최근 거래를 평형별로 모았습니다. 이 브라우저에만 저장되고, 맞춤 브리핑을 구독하면 월요일 메일에도 실립니다.</p>
+        <p className="sec-p">실거래가에서 ☆로 담은 단지의 최근 거래를 평형별로, 청약 공고에서 ☆로 담은 공고는 일정과 함께 모았습니다. 로그인하면 기기 사이에 이어지고, 맞춤 브리핑을 구독하면 월요일 메일에도 실립니다.</p>
       </div>
+
+      <FavNotices />
 
       {sel && <Detail sel={sel} watched={watch.some((w) => w.lawd === sel.lawd && w.apt === sel.apt)} onClose={() => setSp({})} />}
 
@@ -170,5 +172,45 @@ function Detail({ sel, watched, onClose }: { sel: { lawd: string; dong: string; 
         )
       )}
     </section>
+  );
+}
+
+type FavN = { notice_id: string; name: string; region: string; receipt_start: string | null; receipt_end: string | null; winner_date: string | null; url: string };
+
+/** 청약 공고에서 ☆로 담은 관심 공고 (방문자 상태 apply_fav — 2026-11-02) */
+function FavNotices() {
+  const { state } = useMe();
+  const fav = useApplyFav();
+  const ids = Array.isArray(state.apply_fav) ? (state.apply_fav as string[]) : [];
+  const { data } = useLoad(() => (ids.length ? get<{ apply: FavN[]; apply_fav: string[] }>("me/space") : Promise.resolve(null)), [ids.join(",")]);
+  const rows = (data?.apply || []).filter((n) => ids.includes(n.notice_id));
+  if (!ids.length) return null;
+  const dd = (s: string | null) => (s ? Math.ceil((new Date(s + "T00:00:00").getTime() - new Date(new Date().toDateString()).getTime()) / 86400000) : null);
+  const md = (s: string | null) => (s ? `${Number(s.slice(5, 7))}.${Number(s.slice(8, 10))}` : "-");
+  return (
+    <div className="re-box">
+      <div className="re-list-h"><h3>관심 청약 공고 {ids.length}</h3><Link to="/deals?tab=apply">청약 공고 →</Link></div>
+      <ul className="ap-cards">
+        {rows.map((n) => {
+          const d = dd(n.receipt_start || n.receipt_end);
+          return (
+            <li key={n.notice_id}>
+              <div className="ap-card">
+                <Star on={fav.has(n.notice_id)} label={`${n.name} 관심 공고 빼기`} onClick={() => fav.toggle(n.notice_id)} />
+                <div className="ap-card-b">
+                  <a className="ap-card-t" href={n.url || "#"} target="_blank" rel="noopener">{n.name}</a>
+                  <div className="ap-card-m">
+                    {d !== null && <span className={`ap-dd${d >= 0 && d <= 3 ? " hot" : ""}`}>{d < 0 ? "지남" : d === 0 ? "오늘" : `D-${d}`}</span>}
+                    <span className="ap-chip">{n.region}</span>
+                    <span className="ap-when">접수 {md(n.receipt_start)}~{md(n.receipt_end)}{n.winner_date ? ` · 발표 ${md(n.winner_date)}` : ""}</span>
+                  </div>
+                </div>
+              </div>
+            </li>
+          );
+        })}
+        {!rows.length && <li className="caption">불러오는 중…</li>}
+      </ul>
+    </div>
   );
 }

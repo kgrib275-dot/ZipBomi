@@ -6,10 +6,11 @@ import { get } from "../api";
 import { INDUSTRIES, SubscribeCTA } from "../components/Dialogs";
 import NoteCard, { FORMATS, NoteCardData, useBookmarks } from "../components/NoteCard";
 import ShareBar from "../components/ShareBar";
-import { Alert, Guide, useLoad } from "../components/ui";
+import { Alert, useLoad } from "../components/ui";
 import { useMe } from "../me";
 import { TYPE_LABEL, hasCore, regionShort, useProfile, useRegions } from "../profile";
 import { CATEGORIES, useShareVisit } from "./shared";
+import { Pager, SizeSel, usePageSize } from "./reShared";
 import { type Param, ParamCard, basisOf, useNow } from "../policy";
 import "./RealEstate.css";
 import "./Notes.css";
@@ -58,7 +59,7 @@ function NoteDetail({ id }: { id: string }) {
   const [more, setMore] = useState(false);
   const [pendingJump, setPendingJump] = useState<string | null>(null);
   const { profile } = useProfile();
-  useTitle(data?.note.title ? `${data.note.title} — ZipGenie` : undefined);
+  useTitle(data?.note.title ? `${data.note.title} — 집보미` : undefined);
 
   useEffect(() => { window.scrollTo(0, 0); setMore(false); }, [id]);
   useEffect(() => {
@@ -197,7 +198,7 @@ function NoteList() {
   const [params] = useSearchParams();
   const [bm, toggleBm] = useBookmarks();
   const [only, setOnly] = useState(false);
-  useTitle("부동산 노트 — ZipGenie");
+  useTitle("부동산 노트 — 집보미");
 
   // 필터 값: 방문자 상태 → 없으면 기본값. 업종 기본값은 구독할 때 고른 업종(pref_inds).
   const q = typeof state.q === "string" ? state.q : "";
@@ -266,7 +267,20 @@ function NoteList() {
     setState({ [key]: cur.includes(v) ? cur.filter((x) => x !== v) : [...cur, v] });
 
   const hits = data?.notes || [];
-  const shown = only ? hits.filter((n) => bm.has(n.id)) : hits;
+  const filtered = only ? hits.filter((n) => bm.has(n.id)) : hits;
+  // 표시 개수·쪽 (2026-11-02) — 개수는 이 브라우저에 기억, 필터가 바뀌면 첫 쪽으로
+  const [size, setSize] = usePageSize("notes", 12);
+  const [page, setPage] = useState(0);
+  const pages = Math.max(1, Math.ceil(filtered.length / size));
+  const pageNow = Math.min(page, pages - 1);
+  const shown = filtered.slice(pageNow * size, pageNow * size + size);
+  const goPage = (p: number) => { setPage(p); document.querySelector(".nf-result")?.scrollIntoView({ behavior: "smooth", block: "center" }); };
+  useEffect(() => setPage(0), [q, semantic, cats.join(","), kinds.join(","), formats.join(","), inds.join(","), sort, mineOn, only]); // eslint-disable-line react-hooks/exhaustive-deps
+  const extraCount = kinds.length + formats.length + inds.length;
+  const [moreOpen, setMoreOpen] = useState(false);
+  const moreOn = moreOpen;
+  const anyFilter = !!q || cats.length > 0 || extraCount > 0 || mineOn || only;
+  const clearAll = () => { setQLocal(""); setState({ q: "", cats: [], kinds: [], formats: [], inds: [], notes_mine: false }); setOnly(false); };
   const semanticOn = !!q && semantic && hits.length > 0 && hits.some((n) => n.similarity !== undefined);
   const tail = semanticOn ? " · 뜻이 가까운 순" : sort === "popular" ? " · 조회 많은 순" : "";
 
@@ -274,81 +288,70 @@ function NoteList() {
     <>
       <div className="eyebrow">노트</div>
       <h2 className="sec-h">모든 <span className="grad">노트</span></h2>
-      <p className="sec-p" style={{ marginBottom: 12 }}>노트 {meta?.total ?? hits.length}편. 카테고리·유형·키워드로 찾아보세요.</p>
-      <Guide title="노트 보는 법" items={[
-        ["검색·필터", "단어로 찾거나 '의미 검색'을 켜면 문장으로 물어도 뜻이 가까운 노트를 찾습니다."],
-        ["☆ 북마크", "카드 오른쪽 위 ☆로 저장하고 '북마크만 보기'로 모아 봅니다."],
-        ["카드 열기", "노트마다 요약 → 핵심 포인트 → 나에게 미치는 영향 순서로 읽으면 돼요."],
-      ]} />
+      <p className="sec-p" style={{ marginBottom: 12 }}>노트 {meta?.total ?? hits.length}편. 검색하거나 분야를 고르면 바로 걸러져요. ☆로 저장한 노트는 '저장한 노트'에서 모아 봅니다.</p>
 
-      <div className="note-filters">
-        <div className="field f-q">
-          <label htmlFor="note-q">검색</label>
-          <input id="note-q" type="text" value={qLocal} onChange={(e) => setQLocal(e.target.value)} maxLength={200}
-            placeholder="제목·요약·태그 검색, 또는 '의미 검색'으로 문장 질문" />
+      {/* 2026-11-02 단순화: 검색·정렬·내 조건·저장한 노트를 한 줄에, 분야는 칩 한 줄, 나머지(유형·읽는 방식·지역)는 '필터 더 보기' 안에 */}
+      <div className="nf-bar">
+        <div className="nf-search">
+          <span className="nf-ico" aria-hidden="true">⌕</span>
+          <input id="note-q" type="search" value={qLocal} onChange={(e) => setQLocal(e.target.value)} maxLength={200} aria-label="노트 검색"
+            placeholder={semantic ? "문장으로 물어보세요 (예: 전세 만기 때 뭘 확인하지?)" : "제목·요약·태그 검색"} />
+          <button type="button" className={`nf-sem${semantic ? " on" : ""}`} aria-pressed={semantic} title="단어가 달라도 뜻이 가까운 노트를 찾습니다"
+            onClick={() => setState({ semantic: !semantic })}>뜻으로 찾기</button>
         </div>
-        <label className="check f-sem" title="단어가 달라도 뜻이 가까운 노트를 찾습니다 (Gemini 임베딩).">
-          <input type="checkbox" checked={semantic} onChange={(e) => setState({ semantic: e.target.checked })} /> 의미 검색
-        </label>
-        <div className="field">
-          <label>카테고리</label>
-          <div className="btn-row">
-            {CATEGORIES.map((c) => <button key={c} type="button" className={`pill ${cats.includes(c) ? "on" : ""}`} onClick={() => toggle("cats", cats, c)}>{c}</button>)}
-          </div>
-        </div>
-        <div className="field">
-          <label>유형</label>
-          <div className="btn-row">
-            {(meta?.kinds || []).map((k) => <button key={k} type="button" className={`pill ${kinds.includes(k) ? "on" : ""}`} onClick={() => toggle("kinds", kinds, k)}>{k}</button>)}
-          </div>
-        </div>
-        <div className="field">
-          <label>읽는 방식</label>
-          <div className="btn-row">
-            {Object.entries(FORMATS).map(([k, l]) => <button key={k} type="button" className={`pill ${formats.includes(k) ? "on" : ""}`} onClick={() => toggle("formats", formats, k)}>{l}</button>)}
-          </div>
-        </div>
-        <div className="field">
-          <label title="노트 제목·태그·요약·본문에 나온 시·구 이름으로 분류합니다.">지역</label>
-          <div className="btn-row">
-            {(meta?.industries || INDUSTRIES).map((k) => <button key={k} type="button" className={`pill ${inds.includes(k) ? "on" : ""}`} onClick={() => toggle("inds", inds, k)}>{k}</button>)}
-          </div>
-        </div>
-        <div className="field">
-          <label>정렬</label>
-          <div className="seg">
-            {SORTS.map(([v, l]) => <button key={v} type="button" className={sort === v ? "on" : ""} onClick={() => setState({ sort: v })}>{l}</button>)}
-          </div>
+        <div className="seg nf-sort" role="group" aria-label="정렬">
+          {SORTS.map(([v, l]) => <button key={v} type="button" className={sort === v ? "on" : ""} onClick={() => setState({ sort: v })}>{l}</button>)}
         </div>
       </div>
 
-      <div className="mine-toggle">
+      <div className="nf-chips">
+        <button type="button" className={`pill ${!cats.length ? "on" : ""}`} onClick={() => setState({ cats: [] })}>전체</button>
+        {CATEGORIES.map((c) => <button key={c} type="button" className={`pill ${cats.includes(c) ? "on" : ""}`} onClick={() => toggle("cats", cats, c)}>{c}</button>)}
+        <span className="nf-sep" aria-hidden="true" />
         <button type="button" className={`pill ${mineOn ? "on" : ""}`} aria-pressed={mineOn} disabled={!canMine}
-          onClick={() => setState({ notes_mine: !mineOn })}>{mineOn ? "✓ " : ""}내 조건에 맞는 노트만</button>
-        {canMine ? (
-          <span className="caption">
-            {[profile?.type ? TYPE_LABEL[profile.type] : "", ...(profile?.regions || []).map((c) => regionShort(byCode, c))].filter(Boolean).join(" · ") || "내 프로필"} 기준
-            {mineOn ? " · 관심 지역(같은 시·도 포함)과 전국 단위 노트를 함께 보여 줘요" : ""} · <Link to="/me">프로필 고치기</Link>
-          </span>
-        ) : (
-          <span className="caption"><Link to="/me">내 프로필</Link>에서 유형·관심 지역을 정하면 쓸 수 있어요.</span>
-        )}
+          title={canMine ? "내 프로필(유형·관심 지역) 기준" : "내 프로필에서 유형·관심 지역을 정하면 쓸 수 있어요"}
+          onClick={() => setState({ notes_mine: !mineOn })}>{mineOn ? "✓ " : ""}내 조건만</button>
+        <button type="button" className={`pill ${only ? "on" : ""}`} aria-pressed={only} onClick={() => setOnly((o) => !o)}>
+          {only ? "★" : "☆"} 저장한 노트{bm.size ? ` ${bm.size}` : ""}
+        </button>
+        <button type="button" className={`pill nf-more${moreOn ? " open" : ""}`} aria-expanded={moreOn} onClick={() => setMoreOpen(!moreOn)}>
+          필터 더 보기{extraCount ? <b>{extraCount}</b> : null} <span aria-hidden="true">{moreOn ? "▴" : "▾"}</span>
+        </button>
       </div>
+
+      {moreOn && (
+        <div className="nf-more-box">
+          <div className="nf-row"><span className="nf-k">유형</span>
+            {(meta?.kinds || []).map((k) => <button key={k} type="button" className={`pill sm ${kinds.includes(k) ? "on" : ""}`} onClick={() => toggle("kinds", kinds, k)}>{k}</button>)}
+          </div>
+          <div className="nf-row"><span className="nf-k">읽는 방식</span>
+            {Object.entries(FORMATS).map(([k, l]) => <button key={k} type="button" className={`pill sm ${formats.includes(k) ? "on" : ""}`} onClick={() => toggle("formats", formats, k)}>{l}</button>)}
+          </div>
+          <div className="nf-row"><span className="nf-k" title="노트에 나온 시·구 이름으로 분류합니다.">지역</span>
+            {(meta?.industries || INDUSTRIES).map((k) => <button key={k} type="button" className={`pill sm ${inds.includes(k) ? "on" : ""}`} onClick={() => toggle("inds", inds, k)}>{k}</button>)}
+          </div>
+        </div>
+      )}
 
       {data?.semantic_note && <p className="caption">{data.semantic_note}</p>}
       {error && <Alert kind="err">{error}</Alert>}
-      <p className="caption">{loading && !data ? "찾는 중…" : `${hits.length}편${tail}`}</p>
-
-      {/* 북마크만 보기 (note_ui.bookmarks) */}
-      <div className="bm-bar">
-        <button type="button" className={only ? "on" : ""} onClick={() => setOnly((o) => !o)}>{only ? "★ 북마크만 보는 중" : "☆ 북마크만 보기"}</button>
-        <span>{bm.size ? `북마크 ${bm.size}편 (이 브라우저에 저장)` : "카드의 ☆를 눌러 북마크하세요"}</span>
+      <div className="nf-result">
+        <span>{loading && !data ? "찾는 중…" : `${filtered.length}편${tail}`}
+          {mineOn && canMine && <> · {[profile?.type ? TYPE_LABEL[profile.type] : "", ...(profile?.regions || []).map((c) => regionShort(byCode, c))].filter(Boolean).join(" · ")} 기준 <Link to="/me">바꾸기</Link></>}
+        </span>
+        <span className="nf-right">
+          {anyFilter && <button type="button" className="nf-clear" onClick={clearAll}>필터 모두 지우기 ✕</button>}
+          <SizeSel size={size} setSize={setSize} setPage={setPage} />
+        </span>
       </div>
 
       {shown.length > 0 ? (
-        <div className="grid" style={{ marginTop: 12 }}>
-          {shown.map((n) => <NoteCard key={n.id} n={n} bookmarked={bm.has(n.id)} onBookmark={toggleBm} />)}
-        </div>
+        <>
+          <div className="grid" style={{ marginTop: 12 }}>
+            {shown.map((n) => <NoteCard key={n.id} n={n} bookmarked={bm.has(n.id)} onBookmark={toggleBm} />)}
+          </div>
+          <Pager page={pageNow} pages={pages} setPage={goPage} />
+        </>
       ) : only ? (
         <div className="bm-empty">북마크한 노트가 없습니다. 카드 오른쪽 위 ☆를 눌러 저장하세요.</div>
       ) : data ? (

@@ -243,13 +243,19 @@ def _region_trend(lawd: str, dong: str, apt: str, months: int, markers: str, ban
     by: dict[str, list[dict]] = {}
     for r in rows:
         by.setdefault(r["ymd"], []).append(r)
+    # 이 시군구에서 아직 받지 못한 달 — 거래 0건이 아니라 '자료 없음'으로 표시하고 거래량 급감 표시도 하지 않는다 (2026-11-02)
+    c = db.connect()
+    try:
+        have = {r[0] for r in c.execute("SELECT DISTINCT deal_ymd FROM rtms_apt_trade WHERE lawd_cd=? AND deal_ymd>=?", (lawd, ms[0]))}
+    finally:
+        c.close()
     points = []
     for m in ms:
         rs = by.get(m, [])
         pps = [p for p in (_pp(r) for r in rs) if p]
         points.append({"ymd": m, "count": len(rs), "avg_pyeong": round(statistics.fmean(pps)) if pps else None,
                        "median": _median(r["amount"] for r in rs),
-                       "partial": m >= re_store.shift_ymd(ms[-1], -1)})  # 신고 기한 안 — 건수가 더 늘 수 있음
+                       "partial": m >= re_store.shift_ymd(ms[-1], -1), "missing": m not in have})  # 신고 기한 안 — 건수가 더 늘 수 있음
     # 아래 단계 목록 (최근 12개월 건수 순)
     recent = [r for r in rows if r["ymd"] >= ms[-12]]
     children: list[dict] = []
@@ -272,6 +278,8 @@ def _region_trend(lawd: str, dong: str, apt: str, months: int, markers: str, ban
         settled = re_store.shift_ymd(ms[-1], -1)  # 이번 달·지난달은 신고 기한(계약 후 30일) 안이라 건수가 덜 찼다 — 표시 대상에서 뺀다
         for i in range(1, len(points)):
             if points[i]["ymd"] >= settled:
+                continue
+            if points[i]["missing"] or points[i - 1]["missing"]:
                 continue
             prev, cur = points[i - 1]["count"], points[i]["count"]
             if prev >= MIN_PREV and abs(cur - prev) / prev >= VOLUME_SWING:

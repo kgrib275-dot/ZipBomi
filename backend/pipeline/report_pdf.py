@@ -86,7 +86,7 @@ def build_deck_html(issue: dict | None, notes: list[dict], stats: dict) -> str:
     h1_size = 58 if head_len <= 32 else 48 if head_len <= 50 else 40
     pages = [f"""
 <section class="page cover" style="--h1:{h1_size}px">
-  <div class="brand">ZIP<span>GENIE</span><small>주간 부동산 리포트</small></div>
+  <div class="brand">ZIP<span>BOMI</span><small>주간 부동산 리포트</small></div>
   <div class="eyebrow" style="margin-top:46px">This Week · {week}</div>
   <h1>{title}</h1>
   <div class="body">{_bold(issue['body']) if issue else ''}</div>
@@ -105,7 +105,7 @@ def build_deck_html(issue: dict | None, notes: list[dict], stats: dict) -> str:
   <div class="top"><div><span class="badge">{escape(n['category'])}</span><span class="badge">{escape(n['kind'])}</span></div>
     <div class="rank">{i:02d}</div></div>
   <h2>{escape(n['title'])}</h2>
-  <div class="src">{escape(n['source'])} · {n['published'].replace('-', '.')}</div>
+  <div class="src">{escape(n['source'])} · {escape(str(n['published'])).replace('-', '.')}</div>
   <div class="summary">{escape(n['summary'])}</div>
   {f'<ul class="points">{points}</ul>' if points else ''}
   <div class="aud">{aud}</div>
@@ -114,11 +114,11 @@ def build_deck_html(issue: dict | None, notes: list[dict], stats: dict) -> str:
     checklist = "".join(f"<li>{escape(c)}</li>" for c in _CHECKLIST)
     pages.append(f"""
 <section class="page end">
-  <div class="brand">ZIP<span>GENIE</span></div>
+  <div class="brand">ZIP<span>BOMI</span></div>
   <div class="eyebrow" style="margin-top:46px">Checklist</div>
   <h2>이번 주 점검 질문</h2>
   <ol>{checklist}</ol>
-  <div class="foot">© ZipGenie · 노트 원문과 전체 목록은 사이트에서 볼 수 있습니다.</div>
+  <div class="foot">© 집보미 · 노트 원문과 전체 목록은 사이트에서 볼 수 있습니다.</div>
   <div class="pageno">{total} / {total}</div>
 </section>""")
     return f"<div class='deck'>{''.join(pages)}</div>"

@@ -52,7 +52,7 @@ def type_html(code: str) -> str:
     emoji, name, line, *_ = ax_types.TYPES[code]
     return _page(f"""<div class="wrap"><div class="k">REAL ESTATE TYPE</div><h1>{escape(name)}</h1>
 <div class="code">{escape(code)}</div><div class="line">{escape(line)}</div></div><div class="emo">{emoji}</div>
-<div class="foot"><span class="cta">나의 부동산 성향은? 12문항 테스트 →</span><span class="brand">ZIP<b>GENIE</b></span></div>""")
+<div class="foot"><span class="cta">나의 부동산 성향은? 12문항 테스트 →</span><span class="brand">ZIP<b>BOMI</b></span></div>""")
 
 
 def diag_html(i: int) -> str:
@@ -60,20 +60,20 @@ def diag_html(i: int) -> str:
     return _page(f"""<div class="wrap"><div class="k">MY HOME READINESS CHECK</div>
 <div class="lv" style="color:{color};margin-top:34px">● {escape(name)} 단계</div><h1 style="margin-top:12px">나의 내 집 마련 준비도</h1>
 <div class="line">{escape(line)}</div></div>
-<div class="foot"><span class="cta">12문항 · 3분 자가진단 →</span><span class="brand">ZIP<b>GENIE</b></span></div>""")
+<div class="foot"><span class="cta">12문항 · 3분 자가진단 →</span><span class="brand">ZIP<b>BOMI</b></span></div>""")
 
 
 def note_html(note: dict) -> str:
-    """노트 공유 카드 — 제목(최대 3줄 말줄임)·분류 칩·ZipGenie."""
+    """노트 공유 카드 — 제목(최대 3줄 말줄임)·분류 칩·집보미."""
     title = str(note.get("title") or "")
     cat = str(note.get("category") or "")
     kind = str(note.get("kind") or "")
     chips = "".join(f'<span class="chip">{escape(c)}</span>' for c in (cat, kind) if c)
-    return _page(f"""<div class="wrap"><div class="k">ZIPGENIE NOTE</div>
+    return _page(f"""<div class="wrap"><div class="k">ZIPBOMI NOTE</div>
 <div class="chips" style="margin-top:28px;display:flex;gap:12px">{chips}</div>
 <h1 class="nt" style="font-size:66px;margin-top:22px;max-width:1040px;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden">{escape(title)}</h1></div>
 <style>.chip{{font-size:24px;font-weight:700;padding:8px 20px;border-radius:999px;border:1px solid rgba(255,213,74,.45);color:#FFE89A;background:rgba(217,161,0,.18)}}</style>
-<div class="foot"><span class="cta">요약 · 체크리스트 · 투자자 관점까지 3분 →</span><span class="brand">ZIP<b>GENIE</b></span></div>""")
+<div class="foot"><span class="cta">요약 · 체크리스트 · 투자자 관점까지 3분 →</span><span class="brand">ZIP<b>BOMI</b></span></div>""")
 
 
 def note_path(note_id: int) -> Path:

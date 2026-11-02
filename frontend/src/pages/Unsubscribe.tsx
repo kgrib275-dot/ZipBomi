@@ -49,7 +49,7 @@ export default function UnsubscribePage() {
       ) : (
         <>
           <p className="sec-p" style={{ margin: "8px 0 14px" }}>
-            아래 버튼을 누르면 ZipGenie 뉴스레터 구독이 해지됩니다.{data?.email_masked ? <> ({data.email_masked})</> : null}
+            아래 버튼을 누르면 집보미 뉴스레터 구독이 해지됩니다.{data?.email_masked ? <> ({data.email_masked})</> : null}
           </p>
           <button className="btn primary" onClick={run} disabled={busy}>구독 해지하기</button>
           {err && <Alert kind="err">{err}</Alert>}

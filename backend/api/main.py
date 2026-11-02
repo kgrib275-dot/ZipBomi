@@ -1,4 +1,4 @@
-"""ZipGenie API + 정적 화면 서버 (FastAPI).
+"""집보미 API + 정적 화면 서버 (FastAPI).
 
 한 프로세스가 맡는 것:
 1. /api/…            React 화면이 쓰는 JSON API (api/routers/*)
@@ -41,7 +41,7 @@ def _log_file() -> None:
     log_dir = ROOT / "data" / "logs"
     log_dir.mkdir(parents=True, exist_ok=True)
     port = os.environ.get("ZIPGENIE_PORT", "5030")
-    h = RotatingFileHandler(log_dir / f"zipgenie-{port}.log", maxBytes=5_000_000, backupCount=5, encoding="utf-8")
+    h = RotatingFileHandler(log_dir / f"zipbomi-{port}.log", maxBytes=5_000_000, backupCount=5, encoding="utf-8")
     h.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(name)s: %(message)s"))
     logging.getLogger().addHandler(h)
 
@@ -69,11 +69,11 @@ async def lifespan(app: FastAPI):
         log.info("노트 형식 채움: %s", fm)
     from pipeline.scheduler import start_scheduler_thread
     start_scheduler_thread()
-    log.info("ZipGenie API 시작 · DB %s · 프론트 빌드 %s", db.DB_PATH, "있음" if DIST.exists() else "없음(npm run build 필요)")
+    log.info("집보미 API 시작 · DB %s · 프론트 빌드 %s", db.DB_PATH, "있음" if DIST.exists() else "없음(npm run build 필요)")
     yield
 
 
-app = FastAPI(title="ZipGenie API", docs_url="/api/docs" if os.environ.get("ZIPGENIE_DEBUG") else None,
+app = FastAPI(title="집보미 API", docs_url="/api/docs" if os.environ.get("ZIPGENIE_DEBUG") else None,
               redoc_url=None, openapi_url="/api/openapi.json" if os.environ.get("ZIPGENIE_DEBUG") else None, lifespan=lifespan)
 app.add_middleware(GZipMiddleware, minimum_size=1000, compresslevel=5)
 
@@ -131,7 +131,7 @@ async def _guard(request: Request, call_next):
         if not is_admin_path:
             raw = request.client.host if request.client else ""
             ip, _ = settings_store.client_ip(raw, dict(request.headers))
-            if _too_many_writes(ip or raw or "-"):
+            if _too_many_writes(settings_store.rate_key(ip) or raw or "-"):
                 return JSONResponse({"detail": "요청이 너무 잦습니다. 잠시 후 다시 시도해 주세요."}, status_code=429)
         site = request.headers.get("sec-fetch-site", "")
         if request.headers.get("x-requested-with") != "zipgenie" or site not in ("", "same-origin", "none"):
@@ -144,6 +144,15 @@ async def _guard(request: Request, call_next):
     if request.headers.get("x-forwarded-proto") == "https" or request.headers.get("tailscale-funnel-request"):
         response.headers.setdefault("Strict-Transport-Security", "max-age=31536000")
     return response
+
+
+from fastapi.exceptions import RequestValidationError  # noqa: E402
+
+
+@app.exception_handler(RequestValidationError)
+async def _bad_input(request: Request, exc: RequestValidationError) -> JSONResponse:
+    """형식이 틀린 요청 — 보낸 값(input)을 그대로 되돌려 주지 않고 위치·이유만 (2026-11-02 보안 점검)."""
+    return JSONResponse({"detail": [{"loc": e.get("loc"), "msg": e.get("msg")} for e in exc.errors()[:10]]}, status_code=422)
 
 
 @app.exception_handler(Exception)
@@ -201,7 +210,7 @@ async def spa(path: str):
         return FileResponse(file, headers={"Cache-Control": "public, max-age=86400"})  # 로고·파비콘 등
     html = _index_html()
     if html is None:
-        return HTMLResponse("<h1>ZipGenie</h1><p>프론트엔드를 아직 빌드하지 않았습니다: <code>cd frontend && npm run build</code></p>", status_code=503)
+        return HTMLResponse("<h1>집보미</h1><p>프론트엔드를 아직 빌드하지 않았습니다: <code>cd frontend && npm run build</code></p>", status_code=503)
     # 앱에 없는 경로는 index.html 을 그대로 주되 404 로 — React 가 '페이지 없음' 화면을 그리고 검색 엔진은 soft 404 로 세지 않는다
     status = 200 if path.split("/", 1)[0] in _APP_ROUTES else 404
     return HTMLResponse(og_meta.render(html, path), status_code=status, headers={"Cache-Control": "no-cache"})
@@ -210,7 +219,7 @@ async def spa(path: str):
 # App.tsx 가 선언한 라우트의 첫 경로 조각 ("" = 홈). og_meta.PAGES 에 있는 것은 자동으로 들어간다.
 _APP_ROUTES = {p.strip("/") for p in og_meta.PAGES} | {
     "", "home", "notes", "today", "lab", "ask", "about", "type", "terms", "diagnosis", "habit", "career",
-    "letter", "refer", "confirm", "unsubscribe", "privacy", "admin", "deals", "calc", "map", "me", "my-homes", "now", "calendar"}
+    "letter", "refer", "confirm", "unsubscribe", "privacy", "admin", "deals", "calc", "map", "me", "my-homes", "now", "calendar", "my", "login"}
 
 
 _index: dict = {}

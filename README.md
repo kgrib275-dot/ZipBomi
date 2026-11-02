@@ -1,10 +1,13 @@
-# ZipGenie (집지니) — 내 집 마련과 부동산 결정을 위한 프라이빗 리서치
+# 집보미 (ZIPBOMI) — 집을 봐 주는 비서
+
+> 2026-11-02 이름을 ZipGenie(집지니)에서 **집보미(ZIPBOMI)**로 바꿨습니다. 프로젝트 폴더 `ZipBomi`, 실행 파일 `start-zipbomi.bat`, DB `backend/data/zipbomi.db`, 공개 주소 `zipbomi.tail6bd481.ts.net`.
+> 이미 쓰는 사람의 로그인·저장값이 끊기지 않도록 내부 식별자(환경 변수 `ZIPGENIE_*`, 쿠키 `zgv`, 요청 헤더 `X-Requested-With: zipgenie`, 브라우저 저장 키 `zipgenie-*`)는 옛 이름 그대로 둡니다.
 
 부동산 뉴스·정책·실거래가·청약·금리 자료를 모아 **노트(해설)**, **실거래가 조회**, **분양 일정·알림**, **대출·세금·청약 계산기**,
 **현행 수치**, **질문하기**로 보여 주는 웹 서비스입니다. 백엔드는 FastAPI + SQLite, 화면은 React(Vite)이며 한 프로세스가 API 와 화면을 함께 내보냅니다.
 
 - 저장소: https://github.com/kgrib275-dot/ZipGenine
-- 설계 기준 `docs/ZIPGENIE_SPEC.md` · 단계별 계획 `docs/ROADMAP_PHASES.md` · API 메모 `docs/API.md`, `docs/API-notes-backend-public.md`
+- 설계 기준 `docs/ZIPBOMI_SPEC.md` · 단계별 계획 `docs/ROADMAP_PHASES.md` · API 메모 `docs/API.md`, `docs/API-notes-backend-public.md`
 - 최종 갱신 2026-11-02
 
 ---
@@ -69,12 +72,12 @@ cd ..
 
 ### 실행
 ```bat
-start-zipgenie.bat
+start-zipbomi.bat
 ```
 - http://localhost:5030 — 사이트, http://localhost:5030/admin — 관리 화면 (이 PC 에서 열면 관리자로 인식)
 - 배치 스케줄러가 켜진 채로 뜨고, 서버가 멈추면 5초 뒤 저절로 다시 시작합니다. 창을 닫으면 종료.
 - `frontend/dist` 가 없으면 처음 한 번 화면을 빌드합니다.
-- DB(`backend/data/zipgenie.db`)와 설정 파일은 첫 실행 때 자동으로 만들어집니다.
+- DB(`backend/data/zipbomi.db`)와 설정 파일은 첫 실행 때 자동으로 만들어집니다.
 
 ### 개발 모드
 ```bat
@@ -125,7 +128,7 @@ ZIPGENIE_PORT=5030 ZIPGENIE_SCHEDULER=1 venv/bin/python serve.py
 | `KAKAO_JS_KEY` | 선택 | 카카오 공유 |
 | `REDDIT_CLIENT_ID`, `REDDIT_CLIENT_SECRET` | 선택 | Reddit 출처 |
 
-서버 실행 옵션 (보통 `start-zipgenie.bat` 이 정함):
+서버 실행 옵션 (보통 `start-zipbomi.bat` 이 정함):
 
 | 변수 | 기본 | 뜻 |
 |---|---|---|
@@ -134,7 +137,7 @@ ZIPGENIE_PORT=5030 ZIPGENIE_SCHEDULER=1 venv/bin/python serve.py
 | `ZIPGENIE_SCHEDULER` | (없음) | `1` 이면 배치 스케줄러 실행 |
 | `ZIPGENIE_NO_SCHEDULER` | (없음) | `1` 이면 어떤 경우에도 스케줄러 끔 |
 | `ZIPGENIE_WORKERS` | 1 | uvicorn 프로세스 수 (최대 8). 늘리면 관리 화면 작업 로그가 프로세스마다 따로 보임 |
-| `ZIPGENIE_DB` | `backend/data/zipgenie.db` | 다른 DB 파일 사용 (시험용 사본 등 — 이때 자동 백업은 건너뜀) |
+| `ZIPGENIE_DB` | `backend/data/zipbomi.db` | 다른 DB 파일 사용 (시험용 사본 등 — 이때 자동 백업은 건너뜀) |
 | `ZIPGENIE_DEBUG` | (없음) | `1` 이면 `/api/openapi.json` 공개 |
 
 ---
@@ -224,7 +227,7 @@ Docker(Dockerfile 없음), 별도 벡터 DB, Redis, 외부 큐 — 모두 단일
 ## 7. 폴더 구조
 ```
 ZipGenine/
-├─ start-zipgenie.bat        운영 실행 (스케줄러 켜짐, 자동 재시작)
+├─ start-zipbomi.bat        운영 실행 (스케줄러 켜짐, 자동 재시작)
 ├─ start-dev.bat             개발 실행 (백엔드 --reload + Vite)
 ├─ docs/                     설계·로드맵·API 메모
 ├─ backend/
@@ -274,7 +277,7 @@ ZipGenine/
                     └─ /*            frontend/dist (SPA) + /og, /static
                          │
                          ▼
-                 SQLite backend/data/zipgenie.db (WAL)
+                 SQLite backend/data/zipbomi.db (WAL)
                          ▲
 배치 스케줄러(같은 프로세스, ZIPGENIE_SCHEDULER=1)
    ├─ 뉴스 수집 → 키워드 필터 → 중복 제거 → LLM 채점
@@ -336,6 +339,27 @@ ZipGenine/
 - 쓰는 곳: 노트 검색(단어 검색과 결합), 질문하기 근거(노트 4 + 기사 4), 관리 > 의미 검색.
 - 키가 없거나 호출이 실패하면 단어 검색만 동작합니다. Gemini 호출이라 토큰 비용이 듭니다 — 배치에서 끌 수 있습니다.
 
+## 11-1. 계정 · 내 공간 · 알림 (2026-11-02)
+- **메일 링크 로그인** (`api/routers/auth.py`, `pipeline/accounts.py`): 비밀번호 없음. `POST /api/auth/request` → 메일의 `/login?t=…` → 화면 버튼으로
+  `POST /api/auth/verify` (30분·한 번만, 토큰은 sha256 해시로 저장). 계정은 방문자 쿠키 원값(raw) 하나를 가지며, 로그인하면 브라우저 쿠키를 그 값으로
+  바꿔 심어 프로필·관심 단지·알림·필터·계산 입력(visitor_state)이 기기와 상관없이 이어진다. 로그인 전 브라우저에 쌓인 값은 계정 쪽에 합친다(목록은 합집합).
+  같은 주소의 확인된 구독자와 자동으로 이어진다. `POST /api/auth/logout`, '내 기록 지우기'(`DELETE /api/me`)는 계정까지 삭제.
+  로그인 메일은 주소당 1분 간격·하루 10통, 확인·연결·로그인 메일 합계 하루 300통 상한.
+- **내 공간** `/my` (`GET /api/me/space`, `pipeline/my_space.py`): 관심 단지 최근 6개월 거래·3.3㎡당 변동, 관심·알림 청약(D-day), 저장한 노트(`note_bm`),
+  저장한 계산(`calc_saves`, 계산기 '이 계산 저장'), 메모(`my_memo`), 관심 공고(`apply_fav`).
+- **내 자료로 질문하기**: `/api/ask` 가 `mine`(기본 켬)이면 `my_space.context_text()` 의 '내 상황' 글을 근거에 붙인다 (Gemini 로 전송 — 처리방침 국외 이전 항목에 명시).
+- **로그인 보안 3중**: ① 1회용 링크(128비트·해시 저장·30분·버튼 확정) ② 요청한 브라우저(nonce 쿠키 `zgl`)가 아니면 메일의 6자리 코드 필요, 5번 틀리면 무효
+  ③ 로그인마다 알림 메일 + '모든 기기에서 로그아웃'(`POST /api/auth/revoke`·`/api/auth/logout-all` — 계정 raw 교체로 다른 기기 쿠키 무효). 요청·확인 횟수 제한.
+- **내 일정 달력·항목 메모**: `/my` 통합 달력(관심·알림 공고 일정, 전세 만기, 항목 알림 `my_items`, 직접 넣은 일정 `my_events`). 항목마다 메모·알림 날짜.
+- **상단 🔔** (`layout/AlertBell.tsx`, `GET /api/me/alerts`): 켠 청약·전세 만기 알림과 상태(D-day·메일 예정·보냄·지남), 내 공간 알림·일정(3일 전부터).
+- **원격 관리**: `.env` `ADMIN_TOKEN` 설정 → 공개 주소 `/admin` 에서 토큰 입력(5회 틀리면 잠시 차단). 이 PC 는 브라우저 요청(Sec-Fetch-Site)일 때만 토큰 없이 관리자.
+
+## 11-2. 데이터 랩 · 청약 통계 (2026-11-02)
+- `/lab` 위쪽 시장 놀이터 (`GET /api/lab/market`, 1시간 캐시): 2년 월별 거래량·3.3㎡ 중위 + 금리·심리·KB 지수, 예산 슬라이더, 시군구 순위, 3곳 비교.
+- 청약 신청·당첨자 통계 (`pipeline/apply_stats.py`, 공공데이터 15110812 ApplyhomeStatSvc 6종 → `re_apply_stat`, 매일 re_data 끝에) →
+  `GET /api/re/apply-stats` → `/calendar?tab=scores` 위쪽 (지역 가점 당첨선 추이·지역 경쟁률·연령대별 당첨). 15126242(경쟁률·가점 파일)는 활용신청 승인 필요.
+- 출처 326곳 (`config/sources.yaml`): 정부·공공·경제지·종합·전문지·Google 뉴스·유튜브 78·블로그·커뮤니티·해외 언론·해외 연구. 영어 기사용 키워드 규칙 `housing market (EN)`.
+
 ## 12. Databricks 적재
 - `pipeline/warehouse.py` — 운영 DB 는 로컬 SQLite 로 두고, 바뀐 행만 `<catalog>.<schema>`(기본 `workspace.zipgenie`) Delta 테이블로 MERGE.
 - 행 내용 해시를 로컬 `warehouse_sync` 에 기억해 변경분만 보내고, 로컬에서 지운 행은 Databricks 에서도 지웁니다.
@@ -354,7 +378,7 @@ ZipGenine/
 | `reminders` | 켜짐 | 08:10 | 청약 D-3, 전세 만기 D-90·D-30 메일 |
 | `weekly`, `newsletter`, `teams` | 설정값 | — | 주간 흐름·뉴스레터·Teams 알림 |
 
-DB 백업도 스케줄러가 돌 때만 실행됩니다 → 운영은 반드시 `ZIPGENIE_SCHEDULER=1`(= `start-zipgenie.bat`).
+DB 백업도 스케줄러가 돌 때만 실행됩니다 → 운영은 반드시 `ZIPGENIE_SCHEDULER=1`(= `start-zipbomi.bat`).
 
 ## 14. DB 테이블
 - 콘텐츠: `notes`(status draft/published/rejected, format, policy_params, embedding), `articles`, `article_archives`, `issues`, `keywords`, `newsletters`
@@ -376,7 +400,20 @@ DB 백업도 스케줄러가 돌 때만 실행됩니다 → 운영은 반드시 
 ## 16. 운영 (백업 · 처리량 · 공개)
 - **백업**: 스케줄러가 `backend/data/backups/` 에 매일 DB 사본을 남깁니다(DB 크기 × 보관 개수만큼 디스크 필요).
 - **처리량**: 단건 응답 2~37ms, 프로세스 1개 기준 초당 약 60~100건. 더 필요하면 `ZIPGENIE_WORKERS` 를 2~4 로 올리거나 리버스 프록시 캐시를 둡니다.
-- **공개**: 기본은 127.0.0.1 바인드. 외부 공개 시 리버스 프록시(Caddy·Nginx) 또는 Tailscale Funnel 뒤에 두고, `SITE_URL` 을 그 주소로 바꿉니다.
+- **공개**: 서버는 127.0.0.1 에만 바인드하고, 공개는 **별도 Tailscale 기기 `zipgenie`** 의 Funnel(443)로 합니다 → https://zipbomi.tail6bd481.ts.net
+  (같은 PC 의 다른 프로젝트가 기본 기기의 Funnel 443·8443·10000 을 쓰고 있어 겹치지 않게 두 번째 tailscaled 를 사용자 공간 모드로 띄움).
+  - 상태·인증서·로그: `backend/data/tailscale/` (git 제외). `start-zipbomi.bat` 이 꺼져 있으면 자동으로 띄우고 Funnel 설정은 유지됩니다.
+  - 처음 한 번 설정 (새 PC):
+    ```bat
+    set TS="C:\Program Files\Tailscale\tailscale.exe"
+    set SOCK=\\.\pipe\zipgenie-tailscaled
+    start "" /min "C:\Program Files\Tailscale\tailscaled.exe" --windows-mode=dev --tun=userspace-networking --statedir="%CD%\backend\data\tailscale" --socket=%SOCK% --port=41642
+    %TS% --socket=%SOCK% up --hostname=zipgenie --accept-dns=false --unattended   & rem 출력된 로그인 링크를 승인
+    %TS% --socket=%SOCK% funnel --bg --https=443 http://127.0.0.1:5030
+    %TS% --socket=%SOCK% funnel status
+    ```
+  - 끄기: `%TS% --socket=%SOCK% funnel --https=443 off` (기본 기기의 Funnel 은 영향 없음).
+  - `.env` 의 `SITE_URL` 을 공개 주소로 맞춰야 메일 링크·사이트맵·공유 주소가 맞습니다. Caddy·Nginx 등 다른 리버스 프록시로 옮길 때도 같습니다.
 - **로그**: 관리 화면 실행 로그 독, `backend/data/logs/`.
 
 ## 17. 테스트 결과
@@ -394,13 +431,15 @@ DB 백업도 스케줄러가 돌 때만 실행됩니다 → 운영은 반드시 
 | 공공데이터 API "등록되지 않은 인증키" / 관리 화면 "활용신청 필요" | 해당 API 활용신청 안 됨 또는 승인 직후 동기화 대기(1~2시간) |
 | 상태 변경 요청이 428 | `X-Requested-With: zipgenie` 헤더 누락 (화면 밖에서 API 를 부를 때) |
 | 메일 속 링크가 안 열림 | `SITE_URL` 이 localhost |
+| `start-zipbomi.bat` 이 "이미 집보미 가 실행 중입니다" 하고 끝남 | 다른 창에서 이미 실행 중 — 그 창을 쓰거나 닫고 다시 실행 |
+| 공개 주소가 안 열림 | `tailscale --socket=\\.\pipe\zipgenie-tailscaled status` 로 기기 상태 확인, 꺼져 있으면 bat 재실행. 첫 접속은 인증서 발급으로 수십 초 걸릴 수 있음 |
 | 수집·백업·알림이 안 돎 | 스케줄러 꺼진 채 실행 — `ZIPGENIE_SCHEDULER=1` |
 | OG 카드·PDF 생성 실패 | Edge 없음 → `python -m playwright install chromium` |
 | PowerShell 스크립트 한글 깨짐 | Windows PowerShell 5.1 은 UTF-8 BOM 필요 |
 | `pandas` 설치 오류 (사내 PC) | 앱 제어 정책으로 3.1 DLL 차단 — requirements 의 `<3.1` 유지 |
 
 ## 19. 실서비스 전에 남은 것
-1. 도메인·HTTPS 호스팅 결정 후 `SITE_URL` 변경.
+1. 지금은 PC + Tailscale Funnel 공개(https://zipbomi.tail6bd481.ts.net) — 상시 서비스는 전용 도메인·호스팅 결정 후 `SITE_URL` 변경.
 2. 공공데이터포털 활용신청 승인 확인(청약홈 2종·연립 매매·분양권·토지).
 3. 현행 수치 "확인 대기" 8개(DSR·스트레스 DSR·LTV·생애최초 LTV·주담대 한도·다주택 중과세율) 원문 확인 후 게시.
 4. 개인정보 처리방침 새 버전 공지(알림 설정·발송 기록 항목 추가분).

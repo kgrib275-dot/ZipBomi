@@ -68,7 +68,7 @@ def add_credits(request: Request, body: dict[str, Any]) -> dict:
     mailed = False
     if mailer.is_configured():
         try:
-            mailed = mailer.send([(email, "")], f"[ZipGenie] 질문 {n}회가 충전되었습니다", lambda _t: mailer.ask_credits_html(n))[0] == 1
+            mailed = mailer.send([(email, "")], f"[집보미] 질문 {n}회가 충전되었습니다", lambda _t: mailer.ask_credits_html(n))[0] == 1
         except Exception:  # noqa: BLE001 - 안내 메일 실패가 충전을 되돌리지 않게
             mailed = False
     s = db.subscriber_ask(email) or {}

@@ -23,7 +23,7 @@ from fastapi import APIRouter, Body, HTTPException
 from api.deps import Caller, CallerDep, throttle
 from api.routers import me as me_state
 from api.routers.subscribe import _email, _mask, _may_mail, send_later
-from pipeline import agent_chat, alerts, db, engage, mailer, membership, settings_store
+from pipeline import agent_chat, alerts, db, engage, mailer, membership, my_space, settings_store
 
 router = APIRouter(tags=["ask"])
 log = logging.getLogger("zipgenie.ask")
@@ -159,6 +159,9 @@ def ask(payload: dict = Body(...), c: Caller = CallerDep) -> dict:
     try:
         notes, articles = agent_chat.retrieve(question)
         context = agent_chat.build_context(notes, articles, site) if (notes or articles) else ""
+        mine = my_space.context_text(me_state.load_state(c.visitor)) if payload.get("mine", True) else ""  # 내 공간 자료 (2026-11-02)
+        if mine:
+            context = f"{mine}\n\n{context}" if context else mine
         answer = agent_chat.clean_answer(agent_chat.ask(history, question, context))
         ok = not agent_chat.is_failure(answer)  # Gemini 한도 소진 등은 LLM 실패 — 횟수를 돌려준다
     finally:
@@ -211,7 +214,7 @@ def ask_link(payload: dict = Body(...), c: Caller = CallerDep) -> dict:
         token = db.issue_link_token(email)  # 활성·확인된 구독자가 아니면 None
         if token:
             # 백그라운드 — 동기로 보내면 응답 시간 차이로 구독 여부가 샌다. 오류도 응답에 드러내지 않는다 (서버 로그에만)
-            send_later(mailer.send, [(email, "")], "[ZipGenie] 질문하기 연결", lambda _t, tk=token: mailer.ask_link_html(tk))
+            send_later(mailer.send, [(email, "")], "[집보미] 질문하기 연결", lambda _t, tk=token: mailer.ask_link_html(tk))
     engage.record("ask_link_mail", visitor=c.visitor)
     return {"ok": True, "message": "구독 중인 주소라면 연결 메일을 보냈습니다. 메일의 '질문하기 연결하기'를 눌러 주세요 (1시간 안에)."}
 

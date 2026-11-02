@@ -232,7 +232,7 @@ export default function Calc() {
     <div className="re-page">
       <div>
         <div className="eyebrow">내 집 계산기</div>
-        <h2 className="sec-h">숫자로 보는 <span className="grad">내 집 마련</span></h2>
+        <h2 className="sec-h">숫자로 보는 <span className="grad">집 계산</span></h2>
         <p className="sec-p">대출 한도·취득세·청약 가점·전세가율을 바로 계산합니다. 입력값은 나만 볼 수 있게 저장돼요. <Link className="re-link" to="/deals">실거래가 보기 →</Link></p>
         {fromLink && <p className="caption" style={{ margin: "6px 0 0" }}>{fromLink} 대출 한도·취득세·전세가율 탭에 같은 가격이 들어가 있어요.</p>}
         {prefilled && <p className="caption" style={{ margin: "6px 0 0" }}>연소득·부채·청약 항목을 <Link to="/me">내 프로필</Link> 값으로 채웠어요. 여기서 고쳐도 프로필은 바뀌지 않아요.</p>}
@@ -328,6 +328,8 @@ function LoanTab({ v, tax, on }: { v: Loan; tax: Tax; on: (p: Partial<Loan>) => 
         <p className="calc-note">실제 규제 비율은 지역·주택 수·생애최초 여부·정책에 따라 다르고 스트레스 DSR 가산 금리도 붙을 수 있으니 은행에서 꼭 확인하세요.</p>
       </div>
       <div className="re-box calc-res">
+        <SaveCalc label={`대출 한도 · ${man(v.price)}`} summary={`최대 대출 ${man(r.maxLoan)} (${r.binding} 기준)${v.cash ? ` · ${vd.ok ? "살 수 있음" : `${man(-vd.gap)} 부족`}` : ""}`}
+          params={{ tab: "loan", price: v.price, income: v.income, rate: v.rate, ltv: v.ltv, dsr: v.dsr, cash: v.cash }} />
         <Verdict v={v} d={vd} />
         <div className="caption">최대 대출 (LTV·DSR 중 작은 쪽, {r.binding} 기준)</div>
         <div className="calc-big">{man(r.maxLoan)}</div>
@@ -360,6 +362,19 @@ function LoanTab({ v, tax, on }: { v: Loan; tax: Tax; on: (p: Partial<Loan>) => 
       </div>
     </div>
   );
+}
+
+/** 지금 계산을 내 공간(calc_saves)에 저장 — 주소 매개변수로 다시 열 수 있게 */
+function SaveCalc({ label, summary, params }: { label: string; summary: string; params: Record<string, number | string | undefined> }) {
+  const { state, setState } = useMe();
+  const [done, setDone] = useState(false);
+  const save = () => {
+    const q = new URLSearchParams(Object.entries(params).filter(([, x]) => x !== undefined && x !== 0 && x !== "").map(([k, x]) => [k, String(x)]));
+    const list = Array.isArray(state.calc_saves) ? (state.calc_saves as unknown[]) : [];
+    setState({ calc_saves: [{ label, summary, url: `/calc?${q}`, at: new Date().toISOString().slice(0, 16) }, ...list].slice(0, 30) });
+    setDone(true); window.setTimeout(() => setDone(false), 2500);
+  };
+  return <button type="button" className="btn sm ghost calc-save" onClick={save}>{done ? "✓ 내 공간에 저장했어요" : "☆ 이 계산 저장"}</button>;
 }
 
 function Verdict({ v, d }: { v: Loan; d: ReturnType<typeof verdict> }) {

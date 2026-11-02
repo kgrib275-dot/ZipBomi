@@ -1,8 +1,8 @@
-# ZipGenie 고도화 — Phase별 계획 (2026-11-02, 지시서 기준)
+# 집보미 고도화 — Phase별 계획 (2026-11-02, 지시서 기준)
 
 ## 현재 구조 (파악 결과)
 - 라우트: `/` `/notes` `/deals` `/calc` `/map`(작업 중) `/today` `/ask` `/lab` `/about` `/type` `/career` `/habit` `/diagnosis` `/terms` `/letter` `/privacy` `/admin/*`
-- DB(SQLite `backend/data/zipgenie.db`): `articles`(383건, 채점 4점↑ 72건) · `notes`(id,title,source,url,category,kind,audiences,tags,summary,body,published,status,article_hash,created_at,embedding) · `issues`(주간 흐름) · `subscribers`(+visitor 연결·질문 횟수) · `visitor_state`(방문자별 JSON) · `engagements`(이벤트) · `newsletters`
+- DB(SQLite `backend/data/zipbomi.db`): `articles`(383건, 채점 4점↑ 72건) · `notes`(id,title,source,url,category,kind,audiences,tags,summary,body,published,status,article_hash,created_at,embedding) · `issues`(주간 흐름) · `subscribers`(+visitor 연결·질문 횟수) · `visitor_state`(방문자별 JSON) · `engagements`(이벤트) · `newsletters`
 - 노트 파이프라인: `pipeline/jobs.py` draft()/weekly() → `pipeline/llm.py` 프롬프트 → 관리 > 노트 검토(draft → published)
 - 메일: `pipeline/mailer.py` prepare()/render()(수신자별 개인 블록) · 발송 jobs.newsletter()
 - 개인 상태: 방문자 쿠키(zgv) + `visitor_state` 서버 저장 + localStorage. 구독자는 `subscribers.visitor`로 브라우저와 연결됨

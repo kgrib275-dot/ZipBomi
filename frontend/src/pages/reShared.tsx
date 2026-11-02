@@ -1,13 +1,13 @@
 // 관심 단지·지역 드릴다운 공용 조각 (Phase 2) — 관심 목록 저장(re_watch), 금액 표기, 월별 추이 차트(가격 선 + 거래량 막대 + 노트 표시).
 // 차트는 축을 하나만 쓴다: 위 칸 = 가격(선), 아래 칸 = 거래량(막대), 가로축(월)만 같이 쓴다.
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useMe } from "../me";
 
 export type Watch = { lawd: string; region: string; dong?: string; apt: string; jibun?: string; area_band?: string; note: string; added: string };
 export type NoteBrief = { id: number; title: string; summary: string; category: string; kind: string; published: string; scope: "region" | "national" };
 export type Marker = { ymd: string; kind: "volume" | "policy"; change_pct?: number; note: NoteBrief | null };
-export type TrendPoint = { ymd: string; count: number; avg_pyeong: number | null; median: number | null; partial?: boolean };
+export type TrendPoint = { ymd: string; count: number; avg_pyeong: number | null; median: number | null; partial?: boolean; missing?: boolean };
 export type TrendRes = {
   lawd: string; region: string; dong: string; apt: string; level: "sigungu" | "dong" | "apt";
   points: TrendPoint[]; children: { name: string; count: number; avg_pyeong: number | null; dong: string; jibun: string }[];
@@ -59,11 +59,85 @@ export function useWatch() {
   return { watch, has, toggle, update, remove };
 }
 
+const SIZES = [10, 20, 50, 100];
+const lsGet = (k: string) => { try { return localStorage.getItem(k); } catch { return null; } };
+const lsSet = (k: string, v: string) => { try { localStorage.setItem(k, v); } catch { /* 저장 못 해도 동작 */ } };
+
+/** 목록 표시 개수 — 화면마다 따로, 이 브라우저에 기억 (2026-11-02) */
+export function usePageSize(key: string, def = 20): [number, (n: number) => void] {
+  const [n, setN] = useState<number>(() => { const v = Number(lsGet(`zg-size-${key}`)); return SIZES.includes(v) ? v : def; });
+  return [n, (v: number) => { setN(v); lsSet(`zg-size-${key}`, String(v)); }];
+}
+
+/** 목록 위쪽 — 건수 옆 표시 개수 고르기 */
+export function SizeSel({ size, setSize, setPage }: { size: number; setSize: (n: number) => void; setPage: (p: number) => void }) {
+  return (
+    <select className="size-sel" value={size} onChange={(e) => { setSize(Number(e.target.value)); setPage(0); }} aria-label="한 쪽에 보일 개수">
+      {SIZES.map((n) => <option key={n} value={n}>{n}개씩</option>)}
+    </select>
+  );
+}
+
+/** 목록 아래쪽 — 쪽 넘기기 (한 쪽뿐이면 그리지 않는다) */
+export function Pager({ page, pages, setPage }: { page: number; pages: number; setPage: (p: number) => void }) {
+  if (pages <= 1) return null;
+  return (
+    <div className="re-pager">
+      {<>
+        <button type="button" className="btn sm" disabled={page === 0} onClick={() => setPage(0)} aria-label="처음">«</button>
+        <button type="button" className="btn sm" disabled={page === 0} onClick={() => setPage(page - 1)}>이전</button>
+        <span className="caption">{page + 1} / {pages}</span>
+        <button type="button" className="btn sm" disabled={page >= pages - 1} onClick={() => setPage(page + 1)}>다음</button>
+        <button type="button" className="btn sm" disabled={page >= pages - 1} onClick={() => setPage(pages - 1)} aria-label="끝">»</button>
+      </>}
+    </div>
+  );
+}
+
+/** 관심 공고 — 방문자 상태 apply_fav (로그인하면 기기 사이 공유). 예전 브라우저 저장분은 처음 한 번 옮긴다 */
+export function useApplyFav(): { has: (id: string) => boolean; toggle: (id: string) => void; size: number } {
+  const { me, state, setState } = useMe();
+  const ids = useMemo(() => (Array.isArray(state.apply_fav) ? (state.apply_fav as unknown[]).filter((x): x is string => typeof x === "string") : []), [state.apply_fav]);
+  useEffect(() => {
+    if (!me) return;
+    try {
+      const old = JSON.parse(lsGet("zg-apply-fav") || "[]");
+      if (Array.isArray(old) && old.length) { setState({ apply_fav: [...new Set([...ids, ...old.filter((x) => typeof x === "string")])].slice(0, 100) }); localStorage.removeItem("zg-apply-fav"); }
+    } catch { /* 무시 */ }
+  }, [me]); // eslint-disable-line react-hooks/exhaustive-deps
+  return {
+    has: (id) => ids.includes(id),
+    toggle: (id) => setState({ apply_fav: ids.includes(id) ? ids.filter((x) => x !== id) : [id, ...ids].slice(0, 100) }),
+    size: ids.length,
+  };
+}
+
 export function Star({ on, label, onClick }: { on: boolean; label: string; onClick: () => void }) {
   return (
     <button type="button" className={`re-star ${on ? "on" : ""}`} aria-label={label} aria-pressed={on} title={on ? "관심 목록에서 빼기" : "관심 목록에 저장"} onClick={onClick}>
       {on ? "★" : "☆"}
     </button>
+  );
+}
+
+/** 그래프 위 값 표시 — SVG 안에는 세로선·점만, 글자 상자(TipBox)는 HTML 로 띄워 휴대폰에서 그래프가 줄어도 글자 크기가 그대로다. */
+export function ChartTip({ x, y, top, bottom }: { x: number; y: number | null; top: number; bottom: number }) {
+  return (
+    <g className="ctip" pointerEvents="none">
+      <line x1={x} x2={x} y1={top} y2={bottom} />
+      {y !== null && <circle cx={x} cy={y} r={6} />}
+    </g>
+  );
+}
+
+/** ChartTip 의 글자 상자 — 그래프를 감싼 position:relative 상자 안에서 SVG 좌표(x/W, y/H)를 % 로 바꿔 둔다. */
+export function TipBox({ x, y, W, H, lines }: { x: number; y: number | null; W: number; H: number; lines: string[] }) {
+  const left = (x / W) * 100;
+  const top = ((y ?? H * 0.3) / H) * 100;
+  return (
+    <div className={`ctip-box${left > 60 ? " r" : left < 40 ? " l" : ""}`} style={{ left: `${left}%`, top: `${top}%` }} aria-hidden="true">
+      {lines.map((l, i) => <div key={i} className={i ? "" : "b"}>{l}</div>)}
+    </div>
   );
 }
 
@@ -123,6 +197,8 @@ export function TrendChart({ points, markers, value, valueLabel, title }: {
             const x = cx(idxOf(m.ymd));
             return <line key={"ml" + m.ymd} className="mk-line" x1={x} x2={x} y1={T} y2={vy0} />;
           })}
+          {/* 아직 받지 못한 달 — 옅은 띠로 '자료 없음' 표시 (거래 0건과 구분) */}
+          {points.map((p, i) => p.missing && <rect key={"m" + p.ymd} className="miss" x={L + step * i} width={step} y={T} height={vy0 - T} />)}
           {points.map((p, i) => (
             <rect key={"b" + p.ymd} className={`bar${p.partial ? " partial" : ""}${hover === i ? " on" : ""}`} x={cx(i) - Math.min(step * 0.32, 12)} width={Math.min(step * 0.64, 24)}
               y={vy0 - bh(p.count)} height={Math.max(bh(p.count), p.count ? 2 : 0)} rx={3} />
@@ -135,10 +211,13 @@ export function TrendChart({ points, markers, value, valueLabel, title }: {
           {/* 달마다 넓은 투명 칸 — 마우스·터치 대상이 막대보다 크게 */}
           {points.map((p, i) => (
             <rect key={"h" + p.ymd} className="hit" x={L + step * i} width={step} y={T} height={vy0 - T}
-              onMouseEnter={() => setHover(i)} onMouseLeave={() => setHover(null)} onClick={() => setHover(i)}>
+              onMouseEnter={() => setHover(i)} onMouseLeave={() => setHover(null)} onClick={() => setHover(i)} onTouchStart={() => setHover(i)}>
               <title>{`${ymLabel(p.ymd)} ${valueLabel} ${man(p[value])} · 거래 ${p.count}건`}</title>
             </rect>
           ))}
+          {hp && hover !== null && (
+            <ChartTip x={cx(hover)} y={hp[value] !== null ? y(hp[value] as number) : null} top={T} bottom={vy0} />
+          )}
           {shown.map((m) => {
             const x = cx(idxOf(m.ymd));
             return (
@@ -151,6 +230,10 @@ export function TrendChart({ points, markers, value, valueLabel, title }: {
             );
           })}
         </svg>
+        {hp && hover !== null && (
+          <TipBox x={cx(hover)} y={hp[value] !== null ? y(hp[value] as number) : null} W={W} H={H}
+            lines={hp.missing ? [ymLabel(hp.ymd), "아직 받지 못한 달", "자료를 채우는 중이에요"] : [ymLabel(hp.ymd), `${valueLabel} ${man(hp[value])}`, `거래 ${hp.count}건${hp.partial ? " (신고 중)" : ""}`]} />
+        )}
         {openM && (
           <div className="re-pop" role="dialog" aria-label={`${ymLabel(openM.ymd)} 노트`}
             style={{ left: `${Math.min(Math.max((cx(idxOf(openM.ymd)) / W) * 100, 18), 82)}%` }}>

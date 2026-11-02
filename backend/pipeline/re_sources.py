@@ -19,7 +19,7 @@ import httpx
 from pipeline import re_store, rtms
 
 log = logging.getLogger("zipgenie.redata")
-UA = "Mozilla/5.0 (compatible; ZipGenieBot/1.0; +real-estate public data)"
+UA = "Mozilla/5.0 (compatible; ZipBomiBot/1.0; +real-estate public data)"
 ODCLOUD = "https://api.odcloud.kr/api"
 
 

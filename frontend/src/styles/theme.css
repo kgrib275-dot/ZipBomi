@@ -1,4 +1,4 @@
-/* ZipGenie 테마 — Streamlit 판 app/theme.py 의 색·글꼴·조각을 일반 DOM 용으로 옮김.
+/* 집보미 테마 — Streamlit 판 app/theme.py 의 색·글꼴·조각을 일반 DOM 용으로 옮김.
    페이지 전용 스타일은 각 페이지 파일 옆 *.css 에 둔다. */
 /* 글꼴은 index.html 의 <link>(preconnect + 필요한 굵기만)로 불러온다 — CSS @import 는 CSS 를 다 받은 뒤에야 글꼴 CSS 를 찾아 첫 화면을 늦췄다 */
 
@@ -304,3 +304,38 @@ main{min-height:100vh}
 .nav .dd:focus-within .menu{display:flex}
 .nav .dd > button.on{color:var(--ink);background:rgba(245,184,0,.12)}
 input[type="month"],input[type="date"]{font:inherit;padding:9px 12px;border-radius:10px;border:1px solid var(--line);background:var(--surface);color:var(--ink);min-height:42px}
+
+/* ---------- 상단 🔔 내 알림 (layout/AlertBell.tsx) ---------- */
+.bell{position:relative}
+.bell-btn{position:relative;padding-left:10px;padding-right:10px}
+.bell-btn.hot span{animation:bellShake 1.6s ease-in-out 2}
+@keyframes bellShake{0%,100%{transform:rotate(0)}10%,30%{transform:rotate(14deg)}20%,40%{transform:rotate(-12deg)}50%{transform:rotate(0)}}
+.bell-n{position:absolute;top:-5px;right:-5px;min-width:18px;height:18px;border-radius:9px;background:var(--accent);color:#1A1405;font-size:.7rem;display:grid;place-items:center;padding:0 5px}
+.bell-pop{position:absolute;right:0;top:calc(100% + 8px);width:min(360px,calc(100vw - 24px));max-height:70vh;overflow:auto;z-index:180;background:var(--surface);
+  border:1px solid var(--line);border-radius:14px;box-shadow:0 18px 44px rgba(0,0,0,.35);padding:10px}
+.bell-h{display:flex;justify-content:space-between;align-items:center;padding:2px 4px 8px}
+.bell-empty{font-size:.88rem;color:var(--ink-2);padding:8px 4px;line-height:1.6;margin:0}
+.bell-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:4px}
+.bell-list a,.bell-list li>div{display:grid;grid-template-columns:auto 1fr;gap:2px 8px;padding:8px;border-radius:10px;text-decoration:none;color:var(--ink)}
+.bell-list a:hover{background:var(--surface-2)}
+.bell-tag{grid-row:span 2;align-self:center;font-size:.72rem;font-weight:800;padding:3px 8px;border-radius:999px;border:1px solid var(--line);white-space:nowrap}
+.bell-tag.s-soon{background:var(--accent);color:#1A1405;border-color:var(--accent)}
+.bell-tag.s-wait{color:var(--accent-2);border-color:var(--tint-line)}
+.bell-tag.s-sent{color:var(--ok-ink);border-color:var(--ok-ink)}
+.bell-tag.s-past{color:var(--muted)}
+.bell-t{font-size:.88rem;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.bell-m{font-size:.76rem;color:var(--muted)}
+.bell-foot{font-size:.8rem;color:var(--muted);padding:8px 4px 2px;border-top:1px solid var(--line);margin-top:6px}
+.linkish{all:unset;cursor:pointer;color:var(--accent-2);text-decoration:underline}
+@media (prefers-reduced-motion:reduce){.bell-btn.hot span{animation:none}}
+/* 좁은 화면 상단 — 줄바꿈 없이 한 줄 (2026-11-02): 메뉴는 ☰만, 버튼 글자 숨김 */
+.burger{white-space:nowrap}
+.hdr-right .btn{white-space:nowrap}
+@media (max-width:480px){
+  .burger-lbl,.me-link .lbl{display:none}
+  .burger{padding:6px 10px;font-size:1.05rem}
+  .hdr-right{gap:5px}
+  .hdr-right .btn.sm{padding:5px 8px}
+  .bell-btn{padding:5px 8px}
+}
+@media (max-width:380px){.hdr-in{gap:6px}.hdr-right{gap:4px}.lang-btn{padding:4px 6px;font-size:.78rem}.hdr .logo{font-size:.95em}}

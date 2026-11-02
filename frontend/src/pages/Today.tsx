@@ -116,7 +116,7 @@ export default function Today() {
     <div className="today-page">
       <div className="eyebrow">오늘의 퀴즈{dayLabel && ` · ${dayLabel}`}</div>
       <h2 className="sec-h">오늘의 <span className="grad">부동산 퀴즈 · 예측</span></h2>
-      <p className="sec-p" style={{ maxWidth: 720 }}>매일 새 문제 3개와 '내일의 키워드' 예측 투표가 올라와요. 모든 문제는 집지니가 실제로 읽은 부동산 기사에서 나옵니다.</p>
+      <p className="sec-p" style={{ maxWidth: 720 }}>매일 새 문제 3개와 '내일의 키워드' 예측 투표가 올라와요. 모든 문제는 집보미가 실제로 읽은 부동산 기사에서 나옵니다.</p>
       <div className="today-stats">
         <div><b>🔥 {streak}일</b><span>연속 참여</span></div>
         <div><b>⏳ {left.h}시간 {left.m}분</b><span>다음 문제까지</span></div>

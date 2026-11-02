@@ -1,6 +1,7 @@
-// 노트 카드 — 목록·홈·추천에서 공용. ☆ 북마크는 브라우저(localStorage)에만 남는다.
-import { useEffect, useState } from "react";
+// 노트 카드 — 목록·홈·추천에서 공용. ☆ 저장은 방문자 상태 note_bm (로그인하면 어느 기기에서든, 2026-11-02).
+import { useEffect, useMemo } from "react";
 import { Link } from "react-router-dom";
+import { useMe } from "../me";
 
 export type NoteCardData = {
   id: number; title: string; category: string; kind: string; summary: string; published: string; source?: string;
@@ -17,9 +18,19 @@ export function saveBookmarks(s: Set<number>) {
   try { localStorage.setItem(KEY, JSON.stringify([...s])); } catch { /* 사생활 보호 모드 */ }
 }
 export function useBookmarks(): [Set<number>, (id: number) => void] {
-  const [bm, setBm] = useState<Set<number>>(() => loadBookmarks());
-  useEffect(() => saveBookmarks(bm), [bm]);
-  return [bm, (id) => setBm((s) => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n; })];
+  const { me, state, setState } = useMe();
+  const list = useMemo(() => (Array.isArray(state.note_bm) ? (state.note_bm as unknown[]).filter((x): x is number => typeof x === "number") : []), [state.note_bm]);
+  // 예전 브라우저 저장분 옮기기 (한 번)
+  useEffect(() => {
+    if (!me) return;
+    const old = loadBookmarks();
+    if (!old.size) return;
+    const merged = [...new Set([...list, ...old])].slice(0, 100);
+    setState({ note_bm: merged });
+    saveBookmarks(new Set());
+  }, [me]); // eslint-disable-line react-hooks/exhaustive-deps
+  const bm = useMemo(() => new Set(list), [list]);
+  return [bm, (id) => setState({ note_bm: bm.has(id) ? list.filter((x) => x !== id) : [id, ...list].slice(0, 100) })];
 }
 
 export default function NoteCard({ n, fresh, bookmarked, onBookmark }: { n: NoteCardData; fresh?: boolean; bookmarked?: boolean; onBookmark?: (id: number) => void }) {

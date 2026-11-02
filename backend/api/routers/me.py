@@ -17,7 +17,7 @@ from datetime import datetime
 from fastapi import APIRouter, Body, Request, Response
 
 from api.deps import COOKIE, COOKIE_MAX_AGE, Caller, CallerDep
-from pipeline import agent_chat, db, engage, membership, privacy, settings_store
+from pipeline import accounts, agent_chat, db, engage, membership, my_space, privacy, settings_store
 from pipeline import profile as profile_mod
 
 router = APIRouter(tags=["me"])
@@ -30,8 +30,11 @@ STATE_KEYS = {"axt_step", "axt_answers", "axt_recorded",  # 유형 테스트 진
               "car_picks", "hab_answers",  # AX 커리어 유형·AI 활용 습관 진단 진행 (다른 페이지에 다녀와도 이어서)
               "subscribed", "sub_pending", "pref_inds", "diag_weak",  # 구독 완료·확인 대기(신청한 주소)·고른 업종·자가진단 약한 영역 (개인화)
               "re_watch", "calc_inputs",  # 실거래가 관심 목록·내 집 계산기 입력 (이 방문자에게만 보이는 개인 메모)
-              "profile", "notes_mine"}  # 내 프로필(/me, pipeline/profile.clean 으로 정리)과 노트 목록의 '내 조건 노트만' 토글
-MAX_BYTES = 200_000
+              "profile", "notes_mine",
+              "apply_fav", "note_bm", "calc_saves", "my_memo",
+              "my_items", "my_events"}  # 항목별 메모·알림 날짜 {키: {memo, remind, remind_note}}, 직접 넣은 일정 [{id, date, title, memo}]  # 내 공간 (2026-11-02): 관심 공고·저장한 노트·저장한 계산·메모 — 로그인하면 기기 사이에 이어진다  # 내 프로필(/me, pipeline/profile.clean 으로 정리)과 노트 목록의 '내 조건 노트만' 토글
+MAX_BYTES = 32_000  # 방문자 한 명의 저장값 전체 (2026-11-02: 200KB → 32KB, 실제 최대 사용자는 수 KB)
+MAX_STR, MAX_LIST, MAX_DQ = 2_000, 100, 60  # 값 하나의 글자 수·목록 길이, 자가진단 문항(dq_*) 키 개수
 
 _SQL = "CREATE TABLE IF NOT EXISTS visitor_state (visitor TEXT PRIMARY KEY, data TEXT NOT NULL, updated_at TEXT NOT NULL)"
 _ready: list = []  # 테이블 확인은 프로세스당 한 번
@@ -84,6 +87,10 @@ def save_state(visitor: str, changes: dict) -> dict:
         for k, v in changes.items():
             if not kept(k):
                 continue
+            if isinstance(v, str) and len(v) > MAX_STR or isinstance(v, (list, dict)) and len(v) > MAX_LIST:
+                continue  # 비정상적으로 큰 값 — 화면은 이렇게 보내지 않는다
+            if k.startswith(WIDGET_PREFIXES) and k not in snap and sum(1 for x in snap if x.startswith(WIDGET_PREFIXES)) >= MAX_DQ:
+                continue
             if v is None:
                 snap.pop(k, None)
                 continue
@@ -134,16 +141,89 @@ def me(c: Caller = CallerDep) -> dict:
         # 쿠키 원값은 돌려주지 않는다 (HttpOnly 쿠키를 화면 스크립트로 읽을 수 있게 되므로) — 구분용 짧은 해시만
         "visitor": hashlib.sha256(c.visitor.encode()).hexdigest()[:12], "is_admin": c.is_admin, "member": member, "state": state,
         "privacy_active": privacy.active(),
-        "subscribed": bool(db.subscriber_by_visitor(c.visitor)),  # 알림 메일은 확인된 구독자 브라우저일 때만 실제로 간다 (Phase 4)
+        "subscribed": bool(db.subscriber_by_visitor(c.visitor)),
+        "account": _acct(c),  # 로그인한 계정 (가린 주소) — 없으면 None  # 알림 메일은 확인된 구독자 브라우저일 때만 실제로 간다 (Phase 4)
         "ask_enabled": bool(cfg["enabled"]) and agent_chat.has_api_keys(),
-        "kakao_key": os.environ.get("KAKAO_JS_KEY", ""),  # 카카오 JavaScript 키는 공개 키(도메인 등록으로 보호)
+        "kakao_key": os.environ.get("KAKAO_JS_KEY", ""),
+        # 지도 SDK 키 (2026-11-02) — 브라우저용 공개 키, 각 콘솔에서 사이트 주소 등록으로 보호
+        "map_keys": {"naver": os.environ.get("NAVER_MAP_CLIENT_ID", ""), "kakao": os.environ.get("KAKAO_JS_KEY", ""),
+                     "google": os.environ.get("GOOGLE_MAPS_KEY", "")},  # 카카오 JavaScript 키는 공개 키(도메인 등록으로 보호)
         "site_url": os.environ.get("SITE_URL", "").rstrip("/"),
     }
 
 
+def _acct(c: Caller) -> dict | None:
+    a = accounts.by_raw(c.raw) if c.visitor.startswith("c:") else None
+    if not a:
+        return None
+    local, _, domain = a["email"].partition("@")
+    return {"email": f"{local[:2]}***@{domain}", "since": a["created_at"][:10]}
+
+
+@router.get("/me/space")
+def my_space_summary(c: Caller = CallerDep) -> dict:
+    """내 공간 — 관심 단지 최근 거래·관심/알림 공고·저장한 노트·계산·메모를 한 번에 (pipeline/my_space.py)."""
+    return {**my_space.summary(load_state(c.visitor)), "account": _acct(c)}
+
+
+@router.get("/me/alerts")
+def my_alerts(c: Caller = CallerDep) -> dict:
+    """상단 🔔 — 내가 켠 청약·전세 만기 알림과 상태(메일 예정·보냄·지남). 2026-11-02.
+    메일은 확인된 구독자 브라우저에만 가므로 subscribed 도 함께 준다."""
+    from datetime import date, timedelta
+    from pipeline import reminders
+    prof = (load_state(c.visitor).get("profile") or {}) if c.visitor else {}
+    sub = db.subscriber_by_visitor(c.visitor)
+    sent = {(r["kind"], r["ref"]): r["sent_at"] for r in reminders.status_for(sub["email"])} if sub else {}
+    today = date.today()
+    items: list[dict] = []
+    ids = [i for i in (prof.get("alert_apply") or []) if isinstance(i, str)][:reminders.MAX_APPLY_ALERTS]
+    for nid, n in reminders._notices(ids).items():
+        due, what = reminders.apply_target(n)
+        left = (due - today).days if due else None
+        ref = f"{nid}:{due.isoformat()}" if due else ""
+        sent_at = sent.get(("apply", ref))
+        state = "sent" if sent_at else "past" if left is not None and left < 0 else "soon" if left is not None and left <= reminders.APPLY_DAYS else "wait"
+        items.append({"kind": "apply", "id": nid, "title": n.get("name") or nid, "region": n.get("region") or "", "what": what,
+                      "due": due.isoformat() if due else None, "left": left, "state": state, "sent_at": sent_at, "url": n.get("url") or "",
+                      "mail_on": (due - timedelta(days=reminders.APPLY_DAYS)).isoformat() if due else None})
+    lease = reminders._d(prof.get("lease_end"))
+    if prof.get("alert_lease") and lease:
+        left = (lease - today).days
+        nxt = next((d for d in sorted(reminders.LEASE_DAYS, reverse=True) if left > d), None)
+        was = [k for (k, ref), _ in sent.items() if k.startswith("lease") and ref == lease.isoformat()]
+        items.append({"kind": "lease", "id": "lease", "title": "전세 만기", "region": "", "what": "만기", "due": lease.isoformat(), "left": left,
+                      "state": "sent" if was else "past" if left < 0 else "soon" if left <= min(reminders.LEASE_DAYS) else "wait",
+                      "sent_at": None, "url": "/me", "mail_on": (lease - timedelta(days=nxt)).isoformat() if nxt else None})
+    # 내 공간에서 항목마다 정한 알림 날짜·직접 넣은 일정 (2026-11-02) — 사이트 🔔에만 뜬다 (메일 없음)
+    st = load_state(c.visitor) if c.visitor else {}
+    def _add_custom(key: str, title: str, when: str, note: str, url: str) -> None:
+        try:
+            d = date.fromisoformat(when[:10])
+        except (TypeError, ValueError):
+            return
+        left = (d - today).days
+        if left < -7:
+            return
+        items.append({"kind": "custom", "id": key, "title": title[:80], "region": "", "what": note[:60] or "내 알림", "due": d.isoformat(),
+                      "left": left, "state": "past" if left < 0 else "soon" if left <= 3 else "wait", "sent_at": None, "url": url, "mail_on": None})
+    for key, v in (st.get("my_items") or {}).items() if isinstance(st.get("my_items"), dict) else []:
+        if isinstance(v, dict) and v.get("remind"):
+            _add_custom(str(key), str(v.get("title") or "내 알림"), str(v["remind"]), str(v.get("remind_note") or v.get("memo") or ""), "/my")
+    for ev in st.get("my_events") or [] if isinstance(st.get("my_events"), list) else []:
+        if isinstance(ev, dict) and ev.get("date"):
+            _add_custom("ev:" + str(ev.get("id") or ""), str(ev.get("title") or "내 일정"), str(ev["date"]), str(ev.get("memo") or ""), "/my")
+    items.sort(key=lambda x: (x["left"] is None, x["left"] if x["left"] is not None and x["left"] >= 0 else 10_000))
+    return {"items": items, "subscribed": bool(sub), "urgent": sum(1 for x in items if x["state"] == "soon")}
+
+
 @router.put("/me/state")
 def put_state(changes: dict = Body(...), c: Caller = CallerDep) -> dict:
-    if not isinstance(changes, dict):
+    if not isinstance(changes, dict) or len(changes) > 40:
+        return {"ok": False}
+    if c.new_cookie:
+        # 쿠키 없이 온 저장 요청 — 화면은 /api/me 로 쿠키를 먼저 받으므로 정상 방문은 여기 오지 않는다.
+        # 쿠키 없이 반복 호출하면 요청마다 새 방문자 행이 생겨 DB 가 끝없이 커졌다 (2026-11-02 보안 점검).
         return {"ok": False}
     # member_id 를 화면이 직접 쓰면 번호만 바꿔 남의 월 구독(하루 30회)을 쓸 수 있었다 (2026-10-29 점검)
     changes = {k: v for k, v in changes.items() if k not in SERVER_ONLY}
@@ -165,6 +245,7 @@ def erase(request: Request, response: Response, c: Caller = CallerDep) -> dict:
     if sub:
         profile_mod.delete_for_subscriber(sub["email"])  # 구독자 프로필 사본도 함께 (구독 자체는 유지)
     n = engage.erase_visitor(c.visitor)
+    accounts.delete_by_raw(c.raw)  # 로그인 계정도 함께 지운다 (같은 주소로 다시 로그인하면 빈 계정으로 시작)
     fresh = engage.sign_cookie(uuid.uuid4().hex)
     response.set_cookie(COOKIE, fresh, max_age=COOKIE_MAX_AGE, samesite="lax", httponly=True,
                         secure=request.url.scheme == "https" or c.proxied, path="/")

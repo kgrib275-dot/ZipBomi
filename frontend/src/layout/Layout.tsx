@@ -5,6 +5,7 @@ import { track } from "../api";
 import { DialogProvider, useDialogs } from "../components/Dialogs";
 import { useMe } from "../me";
 import { hasCore, useProfile, useProfileSync } from "../profile";
+import AlertBell from "./AlertBell";
 import Nudge from "./Nudge";
 import { ThemeToggle } from "./Theme";
 import { LangToggle } from "./Translate";
@@ -60,8 +61,8 @@ function Shell({ children }: { children: React.ReactNode }) {
     <>
       <header className="hdr">
         <div className="container hdr-in">
-          <Link to="/" className="logo notranslate" translate="no" aria-label="ZipGenie"><img className="logo-dk" src="/logo.svg" alt="" height={26} /><img className="logo-lt" src="/logo-light.svg" alt="" height={26} /></Link>
-          <button className="btn sm burger" aria-label="메뉴" onClick={() => setOpen((o) => !o)}>☰ 메뉴</button>
+          <Link to="/" className="logo notranslate" translate="no" aria-label="집보미"><img className="logo-dk" src="/logo.svg" alt="" height={26} /><img className="logo-lt" src="/logo-light.svg" alt="" height={26} /></Link>
+          <button className="btn sm burger" aria-label="메뉴" onClick={() => setOpen((o) => !o)}><span aria-hidden="true">☰</span><span className="burger-lbl"> 메뉴</span></button>
           <nav className={`nav ${open ? "open" : ""}`}>
             {MENU.map((m) => {
               if (!m.items) return <NavLink key={m.label} to={m.to!} end={m.to === "/"} className={({ isActive }) => (isActive ? "on" : "")}>{m.label}</NavLink>;
@@ -77,8 +78,9 @@ function Shell({ children }: { children: React.ReactNode }) {
             {me?.is_admin && <NavLink to="/admin" className={() => (isAdminArea ? "on" : "")}>관리</NavLink>}
           </nav>
           <div className="hdr-right">
-            <NavLink to="/me" className={({ isActive }) => `btn sm ghost me-link${isActive ? " on" : ""}`} title="내 프로필 — 유형·관심 지역·자금·청약">
-              <span aria-hidden="true">{hasCore(profile) ? "◉" : "○"}</span> <span className="lbl">내 프로필</span>
+            <AlertBell />
+            <NavLink to="/my" className={({ isActive }) => `btn sm ghost me-link${isActive ? " on" : ""}`} title={me?.account ? `내 공간 — ${me.account.email}` : "내 공간 — 관심 단지·알림·저장한 노트·계산"}>
+              <span aria-hidden="true">{me?.account ? "●" : hasCore(profile) ? "◉" : "○"}</span> <span className="lbl">내 공간</span>
             </NavLink>
             <ThemeToggle />
             <LangToggle />
@@ -102,8 +104,8 @@ function Footer() {
   return (
     <footer className="container">
       <div className="site-foot">
-        <span>© 2026 <b>ZipGenie</b></span>
-        <span>집지니 · 내 집 마련과 부동산 결정을 위한 프라이빗 리서치</span>
+        <span>© 2026 <b>집보미</b></span>
+        <span>집보미 · 집에 관한 모든 것 — 시세·청약·대출·세금·정책을 한곳에서</span>
         <span>
           <Link to="/letter">뉴스레터 미리보기</Link>
           {me?.privacy_active !== false && <> · <Link to="/privacy" style={{ color: "var(--ink-hi)", fontWeight: 800 }}>개인정보 처리방침</Link></>}

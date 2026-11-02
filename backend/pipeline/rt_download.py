@@ -38,7 +38,7 @@ log = logging.getLogger("zipgenie.rt_download")
 
 BASE = "https://rt.molit.go.kr"
 PAGE = f"{BASE}/pt/xls/xls.do?mobileAt="
-UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; compatible; ZipGenie/1.0; real-estate batch, max 60 CSV/day)"
+UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; compatible; ZipBomi/1.0; real-estate batch, max 60 CSV/day)"
 MIN_GAP = 5.0                 # 요청 사이 최소 초
 HARD_CAP = 60                 # 하루 다운로드 상한 (설정으로 더 낮출 수만 있다)
 KEEP_DAYS = 30

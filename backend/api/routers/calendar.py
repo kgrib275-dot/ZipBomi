@@ -99,7 +99,7 @@ def scores(region: str = Query(""), months: int = Query(12, ge=1, le=36), limit:
     regions = [r.strip() for r in region.split(",") if r.strip()][:10]
     rows = _rows("SELECT s.notice_id, s.model_no, s.house_ty, s.reside, s.low, s.top, s.avg, n.name, n.region, n.winner_date, "
                  "n.notice_date, n.url FROM re_apply_score s JOIN re_apply_notice n ON n.notice_id = s.notice_id "
-                 "WHERE COALESCE(n.winner_date, n.notice_date, '') >= ? AND s.low IS NOT NULL "
+                 "WHERE COALESCE(n.winner_date, n.notice_date, '') >= ? AND s.low IS NOT NULL AND COALESCE(s.top, 0) > 0 "
                  "ORDER BY COALESCE(n.winner_date, n.notice_date) DESC LIMIT 2000", (since,))
     if regions:
         rows = [r for r in rows if any(x in (r.get("region") or "") or (r.get("region") or "") in x for x in regions)]
@@ -108,3 +108,48 @@ def scores(region: str = Query(""), months: int = Query(12, ge=1, le=36), limit:
     return {"rows": rows[:limit], "matched": len(rows), "stored": total, "configured": rtms.configured(),
             "status": (st.get("apply_cmpet") or {}).get("status") or ("no_key" if not rtms.configured() else "pending"),
             "source": "한국부동산원 청약홈 (공공데이터포털 APT 당첨가점)"}
+
+
+# ───────── 청약 통계 (청약홈 신청·당첨자 통계, pipeline/apply_stats.py) — 2026-11-02 ─────────
+def _num(v) -> float | None:
+    try:
+        return float(str(v).replace(",", "").replace("(", "").replace(")", "").replace("△", "-"))
+    except (TypeError, ValueError):
+        return None
+
+
+def _apply_stats() -> dict:
+    from pipeline import apply_stats
+    t = date.today()
+    since = f"{t.year - 2}{t.month:02d}"
+    score = [r for r in apply_stats.load("score_area", since) if r.get("reside") == "해당지역"]
+    by_area: dict[str, list] = {}
+    for r in score:
+        by_area.setdefault(r["area"], []).append({"ym": r["ym"], "low": _num(r.get("LWET_SCORE")), "med": _num(r.get("MED_SCORE")),
+                                                  "avg": _num(r.get("AVRG_SCORE")), "top": _num(r.get("TOP_SCORE"))})
+    cm = apply_stats.load("cmpet_area", since)
+    months = sorted({r["ym"] for r in cm})
+    last12 = set(months[-12:])
+    agg: dict[str, list[float]] = {}
+    nat: dict[str, list[float]] = {}
+    for r in cm:
+        req, hh = _num(r.get("SUPLY_REQ_CNT")) or 0, _num(r.get("SUPLY_HSHLDCO")) or 0
+        n = nat.setdefault(r["ym"], [0, 0]); n[0] += req; n[1] += hh
+        if r["ym"] in last12:
+            a = agg.setdefault(r["area"], [0, 0]); a[0] += req; a[1] += hh
+    cmpet_rank = sorted(({"area": k, "req": int(v[0]), "hh": int(v[1]), "rate": round(v[0] / v[1], 1)} for k, v in agg.items() if v[1] >= 50),
+                        key=lambda x: -x["rate"])
+    cmpet_month = [{"ym": k, "rate": round(v[0] / v[1], 1) if v[1] else None, "req": int(v[0]), "hh": int(v[1])} for k, v in sorted(nat.items())]
+    ages = {}
+    for kind in ("req_age", "win_age"):
+        rows = apply_stats.load(kind, since)
+        ages[kind] = [{"ym": r["ym"], "a30": r.get("AGE_30") or 0, "a40": r.get("AGE_40") or 0, "a50": r.get("AGE_50") or 0, "a60": r.get("AGE_60") or 0} for r in rows]
+    return {"score": by_area, "cmpet_rank": cmpet_rank, "cmpet_month": cmpet_month, "ages": ages,
+            "period": f"{months[-12][:4]}.{months[-12][4:]}~{months[-1][:4]}.{months[-1][4:]}" if len(months) >= 12 else "",
+            "source": "한국부동산원 청약홈 청약 신청·당첨자 정보 (공공데이터포털)"}
+
+
+@router.get("/re/apply-stats")
+def apply_stats_api() -> dict:
+    from api.common import cached
+    return cached("re:apply_stats", _apply_stats, 3600)

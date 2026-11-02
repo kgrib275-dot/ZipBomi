@@ -38,7 +38,7 @@ export default function ConfirmPage() {
         <Alert kind="info">✉ 확인 메일의 '구독 확인하기' 링크로 들어와 주세요.</Alert>
       ) : (
         <>
-          <p className="sec-p" style={{ margin: "8px 0 14px" }}>아래 버튼을 누르면 ZipGenie 주간 메일 구독이 완료됩니다.</p>
+          <p className="sec-p" style={{ margin: "8px 0 14px" }}>아래 버튼을 누르면 집보미 주간 메일 구독이 완료됩니다.</p>
           <button className="btn primary" onClick={confirm} disabled={busy}>✓ 구독 확인하기</button>
           {err && <Alert kind="err">{err}</Alert>}
         </>

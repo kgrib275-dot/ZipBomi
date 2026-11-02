@@ -55,3 +55,32 @@
 .field > .seg{display:inline-flex;gap:2px;border:1px solid var(--line);border-radius:12px;padding:3px;background:var(--surface);width:max-content}
 .field > .seg button{all:unset;cursor:pointer;padding:7px 14px;border-radius:9px;font-size:.95rem;color:var(--ink-2);white-space:nowrap}
 .field > .seg button.on{background:rgba(217,161,0,.25);color:var(--ink);font-weight:600}
+
+/* ---------- 노트 필터 단순화 (2026-11-02) ---------- */
+.nf-bar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:6px 0 10px}
+.nf-search{flex:1 1 320px;display:flex;align-items:center;gap:6px;border:1px solid var(--line);background:var(--surface);border-radius:14px;padding:4px 6px 4px 12px;
+  transition:border-color .15s,box-shadow .15s}
+.nf-search:focus-within{border-color:var(--accent);box-shadow:0 0 0 3px rgba(245,184,0,.15)}
+.nf-ico{color:var(--muted);font-size:1.1rem}
+.nf-search input{flex:1;min-width:0;border:0;background:transparent;color:var(--ink);font-size:1rem;padding:9px 4px;outline:none}
+.nf-sem{all:unset;cursor:pointer;white-space:nowrap;font-size:.82rem;font-weight:700;padding:7px 11px;border-radius:10px;border:1px solid var(--line);color:var(--ink-2)}
+.nf-sem.on{border-color:var(--accent);color:var(--accent-2);background:rgba(245,184,0,.12)}
+.nf-sort{flex:none}
+.nf-chips{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:0 0 8px}
+.nf-sep{width:1px;height:22px;background:var(--line);margin:0 4px}
+.nf-more b{display:inline-grid;place-items:center;min-width:18px;height:18px;border-radius:9px;background:var(--accent);color:#120F08;font-size:.72rem;margin-left:6px;padding:0 5px}
+.nf-more-box{border:1px solid var(--line);background:var(--surface);border-radius:14px;padding:12px 14px;display:flex;flex-direction:column;gap:8px;margin:0 0 10px}
+.nf-row{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.nf-k{font-size:.8rem;color:var(--muted);min-width:5.2em;font-weight:700}
+.pill.sm{padding:5px 11px;font-size:.84rem}
+.nf-result{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;color:var(--muted);font-size:.9rem;margin:2px 0 4px}
+.nf-clear{all:unset;cursor:pointer;font-size:.84rem;color:var(--accent-2);font-weight:700}
+@media (max-width:640px){.nf-sort{width:100%}.nf-sort button{flex:1}.nf-sep{display:none}}
+.nf-sort.seg{display:inline-flex;gap:2px;border:1px solid var(--line);border-radius:12px;padding:3px;background:var(--surface)}
+.nf-sort.seg button{all:unset;cursor:pointer;padding:8px 14px;border-radius:9px;font-size:.92rem;color:var(--ink-2);white-space:nowrap;text-align:center}
+.nf-sort.seg button.on{background:rgba(217,161,0,.25);color:var(--ink);font-weight:700}
+
+/* 표시 개수 (SizeSel) — 목록 위쪽 건수 옆 */
+.size-sel{padding:5px 8px;border-radius:9px;font-size:.85rem;white-space:nowrap;width:auto}
+.nf-right{display:inline-flex;align-items:center;gap:12px}
+.re-pager{display:flex;gap:8px;align-items:center;justify-content:center;margin-top:16px;flex-wrap:wrap}

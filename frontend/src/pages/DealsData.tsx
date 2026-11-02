@@ -3,8 +3,9 @@
 import { Fragment, useEffect, useMemo, useState } from "react";
 import { get } from "../api";
 import { Link } from "react-router-dom";
-import { Alert, useLoad } from "../components/ui";
+import { Alert, Dialog, useLoad } from "../components/ui";
 import { useMe } from "../me";
+import { Pager, SizeSel, Star, useApplyFav, usePageSize } from "./reShared";
 
 type DsInfo = { key: string; name: string; prop: string; deal: string; status: string; status_label: string; row_count: number; ymd_from?: string; ymd_to?: string };
 type DataRow = {
@@ -227,6 +228,82 @@ export function DatasetView({ ds, lawd, ymd, regionName, star }: { ds: string; l
 const fmtD = (s: string | null) => (s ? s.slice(5).replace("-", ".") : "-");
 const daysTo = (s: string | null) => (s ? Math.ceil((new Date(s + "T00:00:00").getTime() - new Date(new Date().toDateString()).getTime()) / 86400000) : null);
 
+/** 그날 공고에 해당하는지 — 접수 기간 안이거나 공고·발표일 */
+function onDay(n: Notice, d: string): boolean {
+  const st = n.receipt_start || n.receipt_end, en = n.receipt_end || n.receipt_start;
+  return (!!st && !!en && st <= d && d <= en) || n.notice_date === d || n.winner_date === d;
+}
+
+const DOW = ["일", "월", "화", "수", "목", "금", "토"];
+
+/** 왼쪽 달력 — 날마다 접수 중·발표 건수. 누르면 그날 공고만 */
+function MiniCal({ ym, setYm, day, setDay, rows }: { ym: string; setYm: (v: string) => void; day: string | null; setDay: (v: string | null) => void; rows: Notice[] }) {
+  const [y, m] = ym.split("-").map(Number);
+  const first = new Date(y, m - 1, 1).getDay(), days = new Date(y, m, 0).getDate();
+  const today = new Date().toISOString().slice(0, 10);
+  const shift = (k: number) => { const d = new Date(y, m - 1 + k, 1); setYm(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`); };
+  const cells: (string | null)[] = [...Array(first).fill(null), ...Array.from({ length: days }, (_, i) => `${ym}-${String(i + 1).padStart(2, "0")}`)];
+  while (cells.length % 7) cells.push(null);
+  const stat = (d: string) => {
+    let open = 0, end = 0, win = 0;
+    for (const n of rows) {
+      if (n.receipt_end === d) end++;
+      else if (onDay(n, d) && (n.receipt_start || n.receipt_end)) open++;
+      if (n.winner_date === d) win++;
+    }
+    return { open, end, win };
+  };
+  return (
+    <div className="mcal">
+      <div className="mcal-h">
+        <button type="button" className="btn sm ghost" onClick={() => shift(-1)} aria-label="이전 달">‹</button>
+        <b>{y}년 {m}월</b>
+        <button type="button" className="btn sm ghost" onClick={() => shift(1)} aria-label="다음 달">›</button>
+      </div>
+      <div className="mcal-g">
+        {DOW.map((w, i) => <span key={w} className={`mcal-w${i === 0 ? " sun" : ""}`}>{w}</span>)}
+        {cells.map((d, i) => {
+          if (!d) return <span key={i} />;
+          const s = stat(d), any = s.open + s.end + s.win;
+          return (
+            <button key={d} type="button" className={`mcal-d${d === today ? " today" : ""}${d === day ? " on" : ""}${any ? " has" : ""}`} disabled={!any}
+              onClick={() => setDay(d === day ? null : d)} aria-label={`${Number(d.slice(8))}일 접수 중 ${s.open} 마감 ${s.end} 발표 ${s.win}`}>
+              <span className="n">{Number(d.slice(8))}</span>
+              <span className="dots">
+                {s.end > 0 && <i className="end">{s.end}</i>}
+                {s.open > 0 && <i className="open">{s.open}</i>}
+                {s.win > 0 && <i className="win">{s.win}</i>}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+      <div className="mcal-lg"><i className="open" /> 접수 중 <i className="end" /> 마감 <i className="win" /> 발표</div>
+    </div>
+  );
+}
+
+/** 오른쪽 상세 — 공고 이름·일정·버튼 + 주택형·경쟁률·가점(NoticeDetail) */
+function ApplySide({ n, hideTitle }: { n: Notice; hideTitle?: boolean }) {
+  return (
+    <div className="ap-side-in">
+      {!hideTitle && <h4>{n.name}</h4>}
+      <dl className="ap-dl">
+        <dt>지역</dt><dd>{n.address || n.region || "-"}</dd>
+        <dt>유형</dt><dd>{n.house_type === "LH" ? (n.category || "LH") : n.house_type}{n.households != null ? ` · ${n.households.toLocaleString()}세대` : ""}</dd>
+        <dt>공고일</dt><dd>{fmtD(n.notice_date)}</dd>
+        <dt>접수</dt><dd>{n.receipt_start ? `${fmtD(n.receipt_start)} ~ ${fmtD(n.receipt_end)}` : n.receipt_end ? `~ ${fmtD(n.receipt_end)}` : "-"}</dd>
+        <dt>발표</dt><dd>{fmtD(n.winner_date)}</dd>
+      </dl>
+      <div className="ap-btns">
+        {n.url && <a className="btn sm primary" href={n.url} target="_blank" rel="noreferrer">공고문 보기 ↗</a>}
+        <Link className="btn sm ghost" to="/calendar">달력에서 보기 · 🔔 알림</Link>
+      </div>
+      <NoticeDetail id={n.notice_id} />
+    </div>
+  );
+}
+
 function NoticeDetail({ id }: { id: string }) {
   const r = useLoad<Detail>(() => get<Detail>(`re/apply/${encodeURIComponent(id)}`), [id]);
   if (r.loading && !r.data) return <div className="caption">불러오는 중…</div>;
@@ -265,18 +342,38 @@ export function ApplyTab() {
   const [q, setQ] = useState("");
   const [open, setOpen] = useState<string | null>(null);
   const [page, setPage] = useState(0);
+  const [size, setSize] = usePageSize("apply");
+  const fav = useApplyFav();
+  const [favOnly, setFavOnly] = useState(false);
+  // 왼쪽 달력 (2026-11-02) — 날짜를 고르면 그날 접수 중·시작·마감·발표인 공고만 오른쪽에
+  const [cym, setCym] = useState(() => new Date().toISOString().slice(0, 7));
+  const [day, setDay] = useState<string | null>(null);
   const r = useLoad<ApplyRes>(() => get<ApplyRes>(`re/apply?scope=${scope}${region ? `&region=${encodeURIComponent(region)}` : ""}&limit=300`), [scope, region]);
   const ind = useLoad<Indicators>(() => get<Indicators>("re/indicators"), []);
   const isAdmin = !!useMe().me?.is_admin;
-  useEffect(() => setPage(0), [scope, region, q]);
+  useEffect(() => setPage(0), [scope, region, q, favOnly, day]);
   const rows = useMemo(() => {
     const qq = q.trim().replace(/\s+/g, "");
-    const rs = r.data?.rows || [];
+    const rs = (r.data?.rows || []).filter((n) => !favOnly || fav.has(n.notice_id));
+    const byQ = qq ? rs.filter((n) => `${n.name}${n.address}${n.category || ""}`.replace(/\s+/g, "").includes(qq)) : rs;
+    return day ? byQ.filter((n) => onDay(n, day)) : byQ;
+  }, [r.data, q, favOnly, fav, day]);
+  const baseRows = useMemo(() => {
+    const qq = q.trim().replace(/\s+/g, "");
+    const rs = (r.data?.rows || []).filter((n) => !favOnly || fav.has(n.notice_id));
     return qq ? rs.filter((n) => `${n.name}${n.address}${n.category || ""}`.replace(/\s+/g, "").includes(qq)) : rs;
-  }, [r.data, q]);
+  }, [r.data, q, favOnly, fav]);
   const regions = useMemo(() => [...new Set((r.data?.rows || []).map((n) => n.region).filter(Boolean) as string[])].sort(), [r.data]);
-  const shown = rows.slice(page * PAGE, page * PAGE + PAGE);
-  const pages = Math.max(1, Math.ceil(rows.length / PAGE));
+  // 지역 칩 — 공고 많은 순 (지역을 고른 뒤에도 다른 지역으로 바로 옮길 수 있게 전체 목록 기준은 쓰지 않고 지금 받은 목록 기준)
+  const [regionCounts, setRegionCounts] = useState<[string, number][]>([]);
+  useEffect(() => {
+    if (region || !r.data) return;
+    const m = new Map<string, number>();
+    for (const n of r.data.rows) if (n.region) m.set(n.region, (m.get(n.region) || 0) + 1);
+    setRegionCounts([...m.entries()].sort((a, b) => b[1] - a[1]));
+  }, [r.data, region]);
+  const shown = rows.slice(page * size, page * size + size);
+  const pages = Math.max(1, Math.ceil(rows.length / size));
   const src = r.data?.sources || {};
   const base = ind.data?.base_rate?.[0];
   const mort = ind.data?.series.find((s) => s.id === "mortgage_new");
@@ -298,6 +395,7 @@ export function ApplyTab() {
           <div className="btn-row">
             <button type="button" className={`pill ${scope === "upcoming" ? "on" : ""}`} onClick={() => setScope("upcoming")}>접수 예정·진행</button>
             <button type="button" className={`pill ${scope === "all" ? "on" : ""}`} onClick={() => setScope("all")}>최근 공고 전체</button>
+            <button type="button" className={`pill ${favOnly ? "on" : ""}`} aria-pressed={favOnly} onClick={() => setFavOnly(!favOnly)}>{favOnly ? "★" : "☆"} 관심 공고{fav.size ? ` ${fav.size}` : ""}</button>
           </div>
           <div className="field narrow">
             <label htmlFor="ap-rg">지역</label>
@@ -317,42 +415,52 @@ export function ApplyTab() {
       )}
       {r.loading && !r.data ? <div className="page-loading">불러오는 중…</div>
         : r.error ? <Alert kind="err">{r.error}</Alert>
-        : !rows.length ? <div className="re-box re-empty">조건에 맞는 공고가 없습니다. 공고 목록은 매일 아침 새로 받습니다.</div>
+        : !rows.length ? <div className="re-box re-empty">{favOnly ? "저장한 관심 공고가 없습니다. 공고 이름 앞 ☆를 눌러 저장하세요." : "조건에 맞는 공고가 없습니다. 공고 목록은 매일 아침 새로 받습니다."}</div>
         : (
           <div className="re-box">
-            <h3>공고 {rows.length.toLocaleString()}건</h3>
-            <div className="table-wrap">
-              <table className="table re-table">
-                <thead><tr><th>공고</th><th>유형</th><th>지역</th><th className="num">세대</th><th>공고일</th><th>접수</th><th>발표</th><th /></tr></thead>
-                <tbody>
+            <div className="re-list-h"><h3>공고 {rows.length.toLocaleString()}건</h3>
+              <span className="ap-rchips">
+                <button type="button" className={`pill sm ${!region ? "on" : ""}`} onClick={() => setRegion("")}>전국</button>
+                {regionCounts.slice(0, 8).map(([x, c]) => <button key={x} type="button" className={`pill sm ${region === x ? "on" : ""}`} onClick={() => setRegion(region === x ? "" : x)}>{x} <small>{c}</small></button>)}
+                <SizeSel size={size} setSize={setSize} setPage={setPage} />
+              </span>
+            </div>
+            {/* 2026-11-02 좌우 화면 — 왼쪽 달력(날짜 고르기), 오른쪽 공고 목록. 목록을 누르면 상세 팝업 */}
+            <div className="ap-split cal">
+              <MiniCal ym={cym} setYm={(v) => { setCym(v); setDay(null); }} day={day} setDay={setDay} rows={baseRows} />
+              <div>
+                {day && <div className="ap-day-h"><b>{Number(day.slice(5, 7))}월 {Number(day.slice(8))}일</b> 접수·발표 공고 {rows.length}건 <button type="button" className="linkish" onClick={() => setDay(null)}>전체 보기</button></div>}
+                <ul className="ap-cards">
                   {shown.map((n) => {
                     const dd = daysTo(n.receipt_start || n.receipt_end);
                     return (
-                      <Fragment key={n.notice_id}>
-                        <tr className="click" onClick={() => setOpen(open === n.notice_id ? null : n.notice_id)}>
-                          <td className="apt">{n.name}{n.status && <span className="re-tag">{n.status}</span>}{dd !== null && dd >= 0 && dd <= 7 && <span className="re-tag warn">D-{dd}</span>}</td>
-                          <td>{n.house_type === "LH" ? (n.category || "LH") : n.house_type}</td>
-                          <td>{n.region || "-"}<div className="caption">{n.address && n.address !== n.region ? n.address.split(" ").slice(1, 3).filter((t) => t !== "외").join(" ") : ""}</div></td>
-                          <td className="num">{n.households ?? "-"}</td>
-                          <td>{fmtD(n.notice_date)}</td>
-                          <td>{n.receipt_start ? `${fmtD(n.receipt_start)}~${fmtD(n.receipt_end)}` : n.receipt_end ? `~${fmtD(n.receipt_end)}` : "-"}</td>
-                          <td>{fmtD(n.winner_date)}</td>
-                          <td>{n.url && <a className="re-link" href={n.url} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()}>공고</a>}</td>
-                        </tr>
-                        {open === n.notice_id && <tr><td colSpan={8}><NoticeDetail id={n.notice_id} /></td></tr>}
-                      </Fragment>
+                      <li key={n.notice_id}>
+                        <div className="ap-card" role="button" tabIndex={0}
+                          onClick={() => setOpen(n.notice_id)} onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && setOpen(n.notice_id)}>
+                          <span onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}><Star on={fav.has(n.notice_id)} label={`${n.name} 관심 공고 저장`} onClick={() => fav.toggle(n.notice_id)} /></span>
+                          <div className="ap-card-b">
+                            <div className="ap-card-t">{n.name}</div>
+                            <div className="ap-card-m">
+                              {dd !== null && dd >= 0 && dd <= 14 && <span className={`ap-dd${dd <= 3 ? " hot" : ""}`}>{dd === 0 ? "오늘" : `D-${dd}`}</span>}
+                              {n.status && <span className="ap-chip k">{n.status}</span>}
+                              <span className="ap-chip">{n.region || "-"}</span>
+                              <span className="ap-chip">{n.house_type === "LH" ? (n.category || "LH") : n.house_type}</span>
+                              {n.households != null && <span className="ap-chip">{n.households.toLocaleString()}세대</span>}
+                              <span className="ap-when">접수 {n.receipt_start ? `${fmtD(n.receipt_start)}~${fmtD(n.receipt_end)}` : n.receipt_end ? `~${fmtD(n.receipt_end)}` : "-"}{n.winner_date ? ` · 발표 ${fmtD(n.winner_date)}` : ""}</span>
+                            </div>
+                          </div>
+                          <span className="ap-go" aria-hidden="true">›</span>
+                        </div>
+                      </li>
                     );
                   })}
-                </tbody>
-              </table>
-            </div>
-            {pages > 1 && (
-              <div className="re-pager">
-                <button type="button" className="btn sm" disabled={page === 0} onClick={() => setPage(page - 1)}>이전</button>
-                <span className="caption">{page + 1} / {pages}</span>
-                <button type="button" className="btn sm" disabled={page >= pages - 1} onClick={() => setPage(page + 1)}>다음</button>
+                  {!shown.length && <li className="re-empty">이 날짜에 접수·발표하는 공고가 없어요.</li>}
+                </ul>
               </div>
-            )}
+            </div>
+            {(() => { const n = rows.find((x) => x.notice_id === open); return n ? (
+              <Dialog title={n.name} onClose={() => setOpen(null)} xl><ApplySide n={n} hideTitle /></Dialog>) : null; })()}
+            <Pager page={page} pages={pages} setPage={setPage} />
             <p className="calc-note" style={{ marginTop: 10 }}>출처: 한국부동산원 청약홈(공공데이터포털)·LH 청약플러스 공고 목록. 일정은 반드시 공고문에서 다시 확인하세요.</p>
           </div>
         )}

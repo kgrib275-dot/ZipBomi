@@ -53,7 +53,7 @@ def _model(cfg: dict, purpose: str = "model") -> str:
 
 def _http_client() -> httpx.AsyncClient:
     return httpx.AsyncClient(timeout=20, follow_redirects=True,
-                             headers={"User-Agent": "Mozilla/5.0 (compatible; ZipGenieBot/1.0)"})
+                             headers={"User-Agent": "Mozilla/5.0 (compatible; ZipBomiBot/1.0)"})
 
 
 # ───────────────────────── 1) 수집 ─────────────────────────
@@ -400,8 +400,8 @@ def newsletter_content() -> tuple[dict | None, list[dict], str]:
     since = (db.last_newsletter_at() or "")[:10]
     # 노트의 published 는 날짜뿐이라, 발송 당일 늦게 게시된 노트가 빠지지 않게 >= 로 본다 (당일 먼저 실린 노트가 한 번 더 실릴 수는 있다)
     notes = [n for n in db.notes("published") if n["published"] >= since][:10] if since else db.notes()[:10]
-    subject = f"[ZipGenie] {issue['week']} · {issue['headline_em'] or issue['headline']}" if issue \
-        else f"[ZipGenie] 새 노트 {len(notes)}편"
+    subject = f"[집보미] {issue['week']} · {issue['headline_em'] or issue['headline']}" if issue \
+        else f"[집보미] 새 노트 {len(notes)}편"
     return issue, notes, subject
 
 
@@ -539,7 +539,14 @@ def re_data(only: list[str] | None = None, backfill: bool = True, csv_only: bool
     """부동산 데이터 수집 (pipeline/redata.py) — 실거래가·청약·금리·지수를 로컬 DB 에 저장. LLM 은 쓰지 않는다.
     csv_only = 실거래가 CSV 자동 다운로드(rt.molit.go.kr)만, dry_run = CSV 계획만 로그에 적고 받지 않는다."""
     from . import redata
-    return redata.run(only=only, backfill=backfill, csv_only=csv_only, dry_run=dry_run)
+    res = redata.run(only=only, backfill=backfill, csv_only=csv_only, dry_run=dry_run)
+    if not only and not csv_only and not dry_run:  # 청약 신청·당첨자 통계도 함께 (2026-11-02, pipeline/apply_stats.py)
+        try:
+            from . import apply_stats
+            res["apply_stats"] = apply_stats.refresh()
+        except Exception:  # noqa: BLE001
+            log.exception("청약 통계 수집 실패")
+    return res
 
 
 def warehouse_sync(full: bool = False) -> dict:

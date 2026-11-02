@@ -46,7 +46,7 @@ def notify(title: str, body: str, key: str | None = None) -> None:
         to = os.environ.get("ALERT_EMAIL", "").strip()
         if to and mailer.is_configured():
             html = f"<p><b>{_esc(title)}</b></p><p>{_esc(body)}</p><p><a href='{site}/admin-ops'>운영 점검 열기</a></p>"
-            mailer.send([(to, "")], f"[ZipGenie 경보] {title}", lambda _t: html)
+            mailer.send([(to, "")], f"[집보미 경보] {title}", lambda _t: html)
     except Exception:  # noqa: BLE001 - 경보 실패가 본 작업을 막지 않게
         log.exception("경보 전송 실패")
 

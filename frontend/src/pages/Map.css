@@ -109,3 +109,19 @@
   .mp-bar-r{width:100%}
   .mp-legend{bottom:18px;left:6px}
 }
+
+/* 바탕지도 고르기·외부 지도 열기 (2026-11-02) */
+.mp-bar-r{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:flex-end}
+.mp-base.seg{display:inline-flex;gap:2px;border:1px solid var(--line);border-radius:12px;padding:3px;background:var(--surface)}
+.mp-base.seg button{all:unset;cursor:pointer;padding:6px 12px;border-radius:9px;font-size:.86rem;color:var(--ink-2);white-space:nowrap}
+.mp-base.seg button.on{background:rgba(217,161,0,.25);color:var(--ink);font-weight:700}
+.mp-outer{white-space:nowrap}
+.mp-map.mp-sat .leaflet-tile-pane{filter:none!important}
+/* 네이버·카카오·구글 지도 (ExternalMap.tsx) — Leaflet 지도 위를 덮는다 */
+.xm-wrap{position:absolute;inset:0;z-index:500}
+.xm-map{width:100%;height:100%}
+.xm-err{position:absolute;left:12px;right:12px;top:12px;background:var(--surface);border:1px solid var(--err-ink);border-radius:10px;padding:10px;font-size:.85rem}
+.xm-dot{display:block;width:14px;height:14px;border-radius:50%;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.4);cursor:pointer}
+.xm-pop{background:#fff;color:#1a1405;border-radius:10px;padding:10px 12px;font-size:12.5px;max-width:280px;box-shadow:0 6px 18px rgba(0,0,0,.3)}
+.mp-base.seg button:disabled{opacity:.4;cursor:not-allowed}
+.mp-map-box{position:relative}

@@ -148,7 +148,7 @@ def _text(msg) -> str:
 
 def generate(prompt: str, json_mode: bool = False, effort: str = "medium", max_tokens: int = 32000) -> str:
     """한 번 묻고 답 받기 (채점·노트 초안·주간 흐름·브리핑). json_mode 면 JSON 만 돌려 달라고 지시한다."""
-    system = "너는 부동산 리서치 서비스 ZipGenie(집지니)의 편집 도우미다."
+    system = "너는 부동산 리서치 서비스 집보미(ZIPBOMI)의 편집 도우미다."
     if json_mode:
         system += " 요청한 JSON 하나만 출력하라. 설명·마크다운 코드블록 없이 JSON 자체만."
     msg = _request(model(), effort, max_tokens, system, [{"role": "user", "content": prompt}])

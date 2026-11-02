@@ -370,7 +370,7 @@ def _t_article_kw(rng, c):
         return None
     a = rng.choice(pool)
     mk = [k for k in _kws(a) if k in c["cats"]]
-    return _q("이 기사에 ZipGenie가 붙인 키워드는?", a["title"], _opts(rng, mk[0], [k for k in c["cats"] if k not in mk[1:]]),
+    return _q("이 기사에 집보미가 붙인 키워드는?", a["title"], _opts(rng, mk[0], [k for k in c["cats"] if k not in mk[1:]]),
               mk[0], f"{a['source']} 기사 · 키워드 {', '.join(mk)}", a["url"])
 
 
@@ -379,7 +379,7 @@ def _t_top_kw(rng, c):
         return None
     top = c["kwc"].most_common(1)[0][0]
     opts = _opts(rng, top, [k for k, _ in c["kwc"].most_common(10)])
-    return _q("최근 7일 ZipGenie가 가장 많이 잡은 키워드는?", "수집 기사 기준", opts, top,
+    return _q("최근 7일 집보미가 가장 많이 잡은 키워드는?", "수집 기사 기준", opts, top,
               " · ".join(f"{k} {c['kwc'][k]}건" for k in sorted(opts or [], key=lambda k: -c["kwc"][k])))
 
 
@@ -424,7 +424,7 @@ def _t_kw_cat(rng, c):
     if not kws:
         return None
     k = rng.choice(kws)
-    return _q(f"'{k}' 키워드는 ZipGenie에서 어느 카테고리로 분류될까?", "키워드 규칙 기준", list(CATS3), c["cats"][k],
+    return _q(f"'{k}' 키워드는 집보미에서 어느 카테고리로 분류될까?", "키워드 규칙 기준", list(CATS3), c["cats"][k],
               "시장·시세=가격·거래량·지역 동향 / 정책·세금·대출=규제·세금·대출 / 청약·분양·개발=청약·정비사업·공급")
 
 

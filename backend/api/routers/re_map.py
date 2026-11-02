@@ -21,6 +21,7 @@ from typing import Literal, Optional
 from fastapi import APIRouter, HTTPException, Query, Request
 from pydantic import BaseModel, Field, ValidationError, field_validator
 
+from api.common import cached
 from api.deps import AdminDep, is_admin
 from pipeline import db, regions_geo, regions_kr
 
@@ -103,6 +104,11 @@ def _jitter(key: str, lat: float, lng: float) -> tuple[float, float]:
 
 @router.get("/re/map/regions")
 def map_regions() -> dict:
+    # 최근 3개월 시군구 집계는 요청마다 0.3초 — 모든 방문자가 같은 값이라 10분 나눠 쓴다 (실거래 수집은 하루 1번)
+    return cached("re_map_regions", _map_regions, 600)
+
+
+def _map_regions() -> dict:
     items: list[dict] = []
     try:
         from pipeline import re_store  # 실거래가 수집기가 만드는 모듈 — 아직 없을 수 있다

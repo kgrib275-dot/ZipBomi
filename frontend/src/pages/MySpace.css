@@ -1,0 +1,70 @@
+/* 내 공간 (/my) */
+.my-acc{display:flex;flex-wrap:wrap;gap:10px;align-items:center;font-size:.9rem;color:var(--ink-2);margin:0 0 14px}
+.my-ask{border:1px solid var(--tint-line);border-radius:16px;padding:14px 16px;margin:0 0 20px;display:flex;flex-direction:column;gap:6px;
+  background:linear-gradient(135deg,rgba(255,213,74,.12),rgba(255,213,74,.02) 60%),var(--surface)}
+.my-ask-f{display:flex;gap:8px}
+.my-ask-f input{flex:1;min-width:0}
+.my-sug{display:flex;flex-wrap:wrap;gap:6px}
+.my-sec{margin:0 0 22px}
+.my-h{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:8px}
+.my-h h3{margin:0;font-size:1.05rem}.my-h h3 small{color:var(--muted);font-weight:600;margin-left:4px}
+.my-h a{font-size:.85rem}
+.my-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(240px,100%),1fr));gap:10px}
+.my-card{display:flex;flex-direction:column;gap:3px;border:1px solid var(--line);border-radius:14px;padding:12px 14px;background:var(--surface);color:var(--ink);text-decoration:none;
+  box-shadow:var(--card-shadow);transition:border-color .15s,transform .15s}
+.my-card:hover{border-color:var(--accent);transform:translateY(-2px)}
+.my-num{font-family:var(--f-display);font-size:1.3rem;font-weight:800;color:var(--accent-2)}
+.my-num small{font-size:.72rem;color:var(--muted);font-weight:600;margin-left:3px}
+.my-chg{font-size:.8rem;font-weight:800}.my-chg.up{color:var(--err-ink)}.my-chg.down{color:var(--ok-ink)}
+.my-note{font-size:.8rem;color:var(--ink-2)}
+.my-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:4px}
+.my-list li{display:flex;flex-wrap:wrap;gap:4px 10px;align-items:center;padding:8px 10px;border:1px solid var(--line);border-radius:10px;background:var(--surface)}
+.my-list li a,.my-list li .linkish{font-weight:700;color:var(--ink);text-decoration:none}
+.my-dd{font-size:.72rem;font-weight:800;padding:2px 8px;border-radius:999px;border:1px solid var(--line);color:var(--accent-2);min-width:3.4em;text-align:center}
+.my-dd.hot{background:var(--accent);color:#1A1405;border-color:var(--accent)}
+.my-x{all:unset;cursor:pointer;margin-left:auto;color:var(--muted);padding:0 6px}
+.my-memo{width:100%;box-sizing:border-box}
+.login-page{max-width:560px;margin:40px auto}
+
+.my-set{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(330px,100%),1fr));gap:10px}
+.my-set-g{border:1px solid var(--line);border-radius:14px;padding:12px 14px;background:var(--surface)}
+.my-set-g>b{display:block;font-size:.85rem;color:var(--accent-2);margin-bottom:6px}
+.my-set-g dl{margin:0;display:flex;flex-direction:column}
+.my-set-r{display:grid;grid-template-columns:7.5em 1fr auto;gap:8px;align-items:baseline;padding:5px 0;border-bottom:1px dashed var(--line);font-size:.86rem}
+.my-set-r:last-child{border-bottom:0}
+.my-set-r dt{color:var(--muted)}
+.my-set-r dd{margin:0;overflow-wrap:anywhere}
+.my-set-r dd.muted{color:var(--muted)}
+.my-set-r a{font-size:.78rem;white-space:nowrap}
+.login-code input{font-size:1.6rem;letter-spacing:.4em;font-weight:800;max-width:220px}
+/* 통합 달력 (MyCalendar.tsx) */
+.mycal{display:grid;grid-template-columns:minmax(280px,.9fr) minmax(0,1.1fr);gap:14px;align-items:start}
+@media (max-width:860px){.mycal{grid-template-columns:minmax(0,1fr)}}
+.mycal .mcal{position:static}
+.dots i.k-start,.mcal-lg i.k-start,.mtag.k-start{background:rgba(34,197,94,.25);color:var(--ok-ink)}
+.dots i.k-end,.mcal-lg i.k-end,.mtag.k-end{background:var(--accent);color:#1A1405}
+.dots i.k-win,.mcal-lg i.k-win,.mtag.k-win{background:var(--surface-2);border:1px solid var(--line);color:var(--ink-2)}
+.dots i.k-lease,.dots i.k-remind,.mcal-lg i.k-remind,.mtag.k-remind,.mtag.k-lease{background:#5AB2FF;color:#0b1a2a}
+.dots i.k-event,.mcal-lg i.k-event,.mtag.k-event{background:#c084fc;color:#1f0b2e}
+.mycal .dots i{width:7px;height:7px;padding:0;border-radius:50%}
+.mcal-lg i{width:10px;height:10px;border-radius:50%}
+.mycal-list{border:1px solid var(--line);border-radius:14px;padding:12px 14px;background:var(--surface);display:flex;flex-direction:column;gap:8px}
+.mycal-list ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:5px}
+.mycal-list li{display:flex;gap:8px;align-items:center;font-size:.88rem}
+.mycal-list .d{color:var(--muted);font-size:.8rem;white-space:nowrap}
+.mycal-list .t{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;flex:1}
+.mtag{font-size:.7rem;font-weight:800;padding:2px 7px;border-radius:999px;white-space:nowrap}
+.mycal-add{display:flex;gap:6px}.mycal-add input{flex:1;min-width:0}
+/* 항목 메모·알림 (ItemNote) */
+.in-wrap{display:inline-flex;flex-wrap:wrap;align-items:center;gap:6px;position:relative}
+.in-btn{all:unset;cursor:pointer;font-size:.75rem;padding:2px 8px;border-radius:999px;border:1px dashed var(--line);color:var(--muted)}
+.in-btn.on{border-style:solid;border-color:#5AB2FF;color:#5AB2FF}
+.in-memo{font-size:.78rem;color:var(--ink-2)}
+.in-pop{display:flex;flex-direction:column;gap:6px;width:min(360px,80vw);padding:10px;border:1px solid var(--accent);border-radius:12px;background:var(--surface);
+  position:absolute;z-index:20;top:calc(100% + 4px);left:0;box-shadow:0 12px 30px rgba(0,0,0,.35)}
+.in-pop textarea{width:100%;box-sizing:border-box}
+.in-row{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.in-row label{font-size:.8rem;display:flex;gap:6px;align-items:center}
+.in-row input[type=text]{flex:1;min-width:120px}
+.my-card{position:relative}
+.my-memo-box{display:flex;flex-direction:column;gap:6px;border-top:1px solid var(--line);padding-top:10px;margin-top:4px}

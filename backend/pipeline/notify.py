@@ -25,7 +25,7 @@ def _strip_bold(text: str) -> str:
 def build_card(issue: dict | None, notes: list[dict], site_url: str, pdf_url: str | None = None) -> dict:
     body: list = [
         {"type": "TextBlock", "size": "Medium", "weight": "Bolder", "color": "Accent",
-         "text": "ZIPGENIE", "wrap": True},
+         "text": "ZIPBOMI", "wrap": True},
     ]
     if issue:
         body += [
@@ -49,7 +49,7 @@ def build_card(issue: dict | None, notes: list[dict], site_url: str, pdf_url: st
         if len(notes) > _MAX_NOTES:
             body.append({"type": "TextBlock", "isSubtle": True, "size": "Small", "wrap": True,
                          "text": f"※ {len(notes)}편 중 {_MAX_NOTES}편만 표시 — 나머지는 사이트에서 확인하세요."})
-    actions = [{"type": "Action.OpenUrl", "title": "ZipGenie 열기", "url": f"{site_url}/"}]
+    actions = [{"type": "Action.OpenUrl", "title": "집보미 열기", "url": f"{site_url}/"}]
     if pdf_url:
         actions.append({"type": "Action.OpenUrl", "title": "주간 리포트 PDF", "url": pdf_url})
     return _wrap({"type": "AdaptiveCard", "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
@@ -60,7 +60,7 @@ def build_test_card() -> dict:
     return _wrap({
         "type": "AdaptiveCard", "$schema": "http://adaptivecards.io/schemas/adaptive-card.json", "version": "1.2",
         "body": [
-            {"type": "TextBlock", "size": "Medium", "weight": "Bolder", "text": "✅ ZipGenie 연결 테스트", "wrap": True},
+            {"type": "TextBlock", "size": "Medium", "weight": "Bolder", "text": "✅ 집보미 연결 테스트", "wrap": True},
             {"type": "TextBlock", "text": "Teams 웹훅이 정상적으로 연결됐습니다.", "wrap": True},
             {"type": "TextBlock", "size": "Small", "isSubtle": True, "wrap": True,
              "text": f"시각: {datetime.now():%Y-%m-%d %H:%M:%S}"},

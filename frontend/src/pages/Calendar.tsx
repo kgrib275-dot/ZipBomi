@@ -6,8 +6,10 @@ import { Link, useSearchParams } from "react-router-dom";
 import { get } from "../api";
 import { Alert, Tabs, useLoad } from "../components/ui";
 import { useMe } from "../me";
-import { useProfile, useRegions } from "../profile";
+import { useProfile } from "../profile";
+import ApplyStats from "./ApplyStats";
 import "./RealEstate.css";
+import "./LabMarket.css";
 
 type Ev = { date: string; type: string; label: string; notice_id: string };
 type Notice = { id: string; name: string; region: string; kind: "sale" | "rent"; category: string; households: number | null; url: string;
@@ -36,7 +38,7 @@ function shift(ym: string, n: number): string {
 export default function CalendarPage() {
   const [sp, setSp] = useSearchParams();
   const tab = sp.get("tab") === "scores" ? TABS[1] : TABS[0];
-  useEffect(() => { document.title = "분양 일정 · 당첨 가점 — ZipGenie"; }, []);
+  useEffect(() => { document.title = "분양 일정 · 당첨 가점 — 집보미"; }, []);
   return (
     <div className="re-page">
       <div>
@@ -53,22 +55,30 @@ export default function CalendarPage() {
   );
 }
 
+const SIDOS = ["서울", "경기", "인천", "부산", "대구", "광주", "대전", "울산", "세종", "강원", "충북", "충남", "전북", "전남", "경북", "경남", "제주"];
+
+// 시군구 코드 앞 두 자리 → 공고의 시·도 이름 (예전엔 화면 이름의 첫 단어를 써서 '광진구'처럼 시·도가 아닌 값이 들어가 걸러지는 공고가 0건이었다)
+const SIDO_OF: Record<string, string> = { "11": "서울", "26": "부산", "27": "대구", "28": "인천", "29": "광주", "30": "대전", "31": "울산", "36": "세종",
+  "41": "경기", "42": "강원", "51": "강원", "43": "충북", "44": "충남", "45": "전북", "52": "전북", "46": "전남", "47": "경북", "48": "경남", "50": "제주" };
+
 function useMySidos(): string[] {
   const { profile } = useProfile();
-  const { byCode } = useRegions();
-  return useMemo(() => Array.from(new Set((profile?.regions || []).map((c) => (byCode[c]?.name || "").split(" ")[0]).filter(Boolean))), [profile?.regions, byCode]);
+  return useMemo(() => Array.from(new Set((profile?.regions || []).map((c) => SIDO_OF[String(c).slice(0, 2)]).filter(Boolean))), [profile?.regions]);
 }
 
 function CalendarTab() {
   const [ym, setYm] = useState(() => ymOf(new Date()));
   const [kind, setKind] = useState<"" | "sale" | "rent">("");
   const [mineOnly, setMineOnly] = useState(false);
+  // 시·도 고르기 (2026-11-02) — 이 브라우저에 기억. '내 관심 지역만'을 켜면 그쪽이 우선
+  const [sido, setSidoRaw] = useState(() => { try { return localStorage.getItem("zg-cal-sido") || ""; } catch { return ""; } });
+  const setSido = (v: string) => { setSidoRaw(v); setMineOnly(false); try { localStorage.setItem("zg-cal-sido", v); } catch { /* 무시 */ } };
   const [pick, setPick] = useState<string | null>(null);
   const sidos = useMySidos();
   const { me } = useMe();
   const { profile, save } = useProfile();
   const alerts = profile?.alert_apply || [];
-  const region = mineOnly ? sidos.join(",") : "";
+  const region = mineOnly ? sidos.join(",") : sido;
   const r = useLoad(() => get<CalRes>(`re/calendar?ym=${ym}&kind=${kind}&region=${encodeURIComponent(region)}`), [ym, kind, region]);
   const d = r.data;
   const byDate = useMemo(() => {
@@ -88,7 +98,12 @@ function CalendarTab() {
   const cells: (number | null)[] = [...Array(first.getDay()).fill(null), ...Array.from({ length: days }, (_, i) => i + 1)];
   while (cells.length % 7) cells.push(null);
   const iso = (day: number) => `${ym}-${String(day).padStart(2, "0")}`;
-  const listDates = Object.keys(byDate).filter((k) => !pick || k === pick).sort();
+  // 날짜를 고르지 않았으면 오늘 이후 일정만 (지난 날짜는 '지난 일정 보기'로) — 목록이 한없이 길어지지 않게 (2026-11-02)
+  const [past, setPast] = useState(false);
+  const today = d?.today || "";
+  const allDates = Object.keys(byDate).sort();
+  const listDates = allDates.filter((k) => (pick ? k === pick : past || !today || k >= today || !ym.startsWith(today.slice(0, 7))));
+  const hidden = pick ? 0 : allDates.length - listDates.length;
 
   return (
     <>
@@ -101,6 +116,10 @@ function CalendarTab() {
         {([["", "전체"], ["sale", "분양"], ["rent", "임대"]] as const).map(([k, l]) => (
           <button key={k} type="button" className={`pill ${kind === k ? "on" : ""}`} onClick={() => setKind(k)}>{l}</button>
         ))}
+        <select className="cal-sido" value={mineOnly ? "" : sido} onChange={(e) => setSido(e.target.value)} aria-label="지역">
+          <option value="">전국</option>
+          {SIDOS.map((x) => <option key={x} value={x}>{x}</option>)}
+        </select>
         {sidos.length > 0 && (
           <button type="button" className={`pill ${mineOnly ? "on" : ""}`} onClick={() => setMineOnly(!mineOnly)} title={sidos.join(", ")}>내 관심 지역만</button>
         )}
@@ -112,6 +131,8 @@ function CalendarTab() {
         </p>
       )}
       {r.error && <Alert kind="err">{r.error}</Alert>}
+      <div className="cal-layout">
+      <div className="cal-left">
       <div className="cal-grid" role="grid" aria-label={`${y}년 ${m}월 청약 일정`}>
         {DOW.map((w, i) => <div key={w} className={`cal-dow ${i === 0 ? "sun" : i === 6 ? "sat" : ""}`}>{w}</div>)}
         {cells.map((day, i) => {
@@ -123,12 +144,20 @@ function CalendarTab() {
             <button key={k} type="button" className={`cal-cell ${k === d?.today ? "today" : ""} ${pick === k ? "on" : ""} ${evs.length ? "has" : ""}`}
               onClick={() => setPick(pick === k ? null : k)} disabled={!evs.length} aria-label={`${m}월 ${day}일 ${evs.length}건`}>
               <span className="cal-d">{day}</span>
-              {Object.entries(counts).slice(0, 3).map(([l, n]) => <span key={l} className={`cal-ev t-${evs.find((e) => e.label === l)?.type}`}>{l} {n}</span>)}
+              {Object.entries(counts).slice(0, 3).map(([l, n]) => <span key={l} className={`cal-ev t-${evs.find((e) => e.label === l)?.type}`} title={`${l} ${n}건`}>{l.replace(/^접수\s*/, "").replace(/^당첨\s*/, "")} {n}</span>)}
             </button>
           );
         })}
       </div>
+      </div>
       <div className="cal-list">
+        <div className="cal-list-h">
+          <b>{pick ? `${Number(pick.slice(5, 7))}월 ${Number(pick.slice(8))}일 일정` : past || !hidden ? `${m}월 전체 일정` : "오늘부터 일정"}</b>
+          <span className="caption">{listDates.reduce((a, k) => a + byDate[k].length, 0)}건</span>
+          <span className="cal-gap" />
+          {pick ? <button type="button" className="btn sm ghost" onClick={() => setPick(null)}>날짜 선택 풀기</button>
+            : hidden > 0 ? <button type="button" className="btn sm ghost" onClick={() => setPast(true)}>지난 일정 {hidden}일 보기</button> : null}
+        </div>
         {r.loading && !d ? <div className="page-loading">불러오는 중…</div> : !listDates.length ? (
           <div className="re-box re-empty">이 달에 표시할 청약 일정이 없어요{mineOnly ? " (내 관심 지역 기준)" : ""}.</div>
         ) : listDates.map((k) => (
@@ -140,25 +169,24 @@ function CalendarTab() {
               const on = alerts.includes(n.id);
               return (
                 <div key={e.type + e.notice_id} className="cal-item">
-                  <span className={`cal-ev t-${e.type}`}>{e.label}</span>
                   <div className="cal-main">
-                    <b>{n.name}</b>
-                    <div className="caption">
-                      {n.region} · {n.kind === "rent" ? "임대" : "분양"}{n.category ? ` · ${n.category}` : ""}{n.households ? ` · ${n.households.toLocaleString()}세대` : ""} · {n.source}
-                    </div>
-                    <div className="caption">
-                      {n.dates.notice && `공고 ${n.dates.notice}`}{n.dates.start && ` · 접수 ${n.dates.start}`}{n.dates.end && ` · 마감 ${n.dates.end}${n.long_open ? " (상시·선착순)" : ""}`}{n.dates.winner && ` · 발표 ${n.dates.winner}`}
+                    <div className="cal-title"><span className={`cal-ev t-${e.type}`}>{e.label}</span><b title={n.name}>{n.name}</b></div>
+                    <div className="cal-chips">
+                      <span>{n.region}</span><span>{n.kind === "rent" ? "임대" : "분양"}</span>
+                      {n.category && <span>{n.category}</span>}{n.households ? <span>{n.households.toLocaleString()}세대</span> : null}
+                      <span className="d">{n.dates.start ? `접수 ${n.dates.start.slice(5)}` : n.dates.notice ? `공고 ${n.dates.notice.slice(5)}` : ""}{n.dates.end ? ` ~ ${n.dates.end.slice(5)}${n.long_open ? " 상시" : ""}` : ""}{n.dates.winner ? ` · 발표 ${n.dates.winner.slice(5)}` : ""}</span>
                     </div>
                   </div>
                   <div className="cal-act">
-                    <button type="button" className={`btn sm ${on ? "primary" : "ghost"}`} aria-pressed={on} onClick={() => toggle(n.id)} title="접수 3일 전 알림">{on ? "🔔 알림 중" : "🔔 알림 받기"}</button>
-                    {n.url && <a className="btn sm ghost" href={n.url} target="_blank" rel="noopener">공고 ↗</a>}
+                    <button type="button" className={`cal-ico${on ? " on" : ""}`} aria-pressed={on} onClick={() => toggle(n.id)} title={on ? "알림 끄기" : "접수 3일 전 알림 받기"} aria-label={on ? "알림 끄기" : "알림 받기"}>🔔</button>
+                    {n.url && <a className="cal-ico" href={n.url} target="_blank" rel="noopener" title="공고 원문" aria-label="공고 원문">↗</a>}
                   </div>
                 </div>
               );
             })}
           </section>
         ))}
+      </div>
       </div>
       <p className="calc-note">
         출처: 한국부동산원 청약홈, LH 청약플러스 공고 목록{d?.fetched_at ? ` · 자료 받은 시각 ${d.fetched_at.slice(0, 16).replace("T", " ")}` : ""}.
@@ -180,6 +208,7 @@ function ScoresTab() {
   const d = r.data;
   return (
     <>
+      <ApplyStats />
       <div className="re-box">
         <div className="caption">내 청약 가점</div>
         {mine === null ? (

@@ -28,6 +28,8 @@ export default function Ask() {
   const [history, setHistory] = useState<Turn[]>(() => loadHistory());
   // 홈 맛보기의 예시 질문(?q=)은 입력칸에 채워만 둔다 — 질문 한도를 쓰는 전송은 본인이 누른다
   const [q, setQ] = useState(() => (new URLSearchParams(window.location.search).get("q") || "").slice(0, 500));
+  // 내 공간 자료(관심 단지 시세·관심 공고·프로필·저장한 노트·메모)를 함께 넘길지 — 기본 켬 (2026-11-02)
+  const [mine, setMine] = useState(true);
   const [busy, setBusy] = useState<"ask" | "web" | null>(null);
   const [warn, setWarn] = useState<string | null>(null);
   const [pending, setPending] = useState<string | null>(null); // 답을 기다리는 중인 질문
@@ -89,7 +91,7 @@ export default function Ask() {
     setPending(text);
     setQ("");
     try {
-      const r = await post<{ answer: string; sources?: Source[]; weak?: boolean }>("ask", { question: text, history: history.map((t) => ({ role: t.role, content: t.content })).slice(-6) });
+      const r = await post<{ answer: string; sources?: Source[]; weak?: boolean }>("ask", { question: text, mine, history: history.map((t) => ({ role: t.role, content: t.content })).slice(-6) });
       setHistory((h) => [...h, { role: "user", content: text }, { role: "assistant", content: r.answer, sources: r.sources || [], weak: !!r.weak }]);
       setData(usage ? { ...usage, used: used + 1, limit_hit: !isAdmin && used + 1 >= quota } : usage);
       reload();
@@ -124,7 +126,7 @@ export default function Ask() {
     <div className="ask-page">
       <div className="eyebrow">질문하기</div>
       <h2 className="sec-h">부동산, <span className="grad">무엇이든 물어보세요</span></h2>
-      <p className="sec-p">집지니에 쌓인 노트와 기사를 근거로 답해요. 답변의 링크로 원문 노트를 확인하세요. 투자 조언이 아닌 참고 정보입니다.</p>
+      <p className="sec-p">집보미에 쌓인 노트와 기사를 근거로 답해요. 답변의 링크로 원문 노트를 확인하세요. 투자 조언이 아닌 참고 정보입니다.</p>
       <Guide title="이렇게 물어보세요" items={[
         ["지역·주제", "'송파구 재건축 소식 알려줘'처럼 지역·주제를 넣으면 근거 노트를 붙여 답해요."],
         ["목록·기간", "'이번 달 정책·세금·대출 노트만 모아줘'처럼 조건을 주면 정확한 목록을 찾아요."],
@@ -188,6 +190,9 @@ export default function Ask() {
 
           {warn && <Alert kind="warn">{warn}</Alert>}
 
+          <label className="check ask-mine" title="관심 단지 시세·관심 공고·내 프로필·저장한 노트·메모를 함께 참고합니다 (내 공간)">
+            <input type="checkbox" checked={mine} onChange={(e) => setMine(e.target.checked)} /> 내 공간 자료(관심 단지·공고·프로필·메모)도 참고해서 답하기
+          </label>
           <form className="chat-in" onSubmit={(e) => { e.preventDefault(); send(q); }}>
             <textarea value={q} maxLength={500} rows={2} placeholder="시세·대출·청약·세금, 궁금한 걸 물어보세요" disabled={limitHit || !!busy}
               onChange={(e) => setQ(e.target.value)}

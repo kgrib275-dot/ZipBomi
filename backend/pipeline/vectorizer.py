@@ -1,6 +1,6 @@
 """노트·기사 임베딩과 의미 검색 (AI_NEWS pipeline/vectorizer.py 기반).
 
-AI_NEWS는 기사만 벡터화했지만, ZipGenie는 게시 노트가 핵심 자산이라 노트를 먼저
+AI_NEWS는 기사만 벡터화했지만, 집보미는 게시 노트가 핵심 자산이라 노트를 먼저
 벡터화하고, 관련도 3점 이상 기사도 함께 벡터화해 "질문하기"의 근거로 쓴다.
 """
 from __future__ import annotations

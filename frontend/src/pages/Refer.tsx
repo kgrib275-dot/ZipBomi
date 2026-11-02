@@ -56,7 +56,7 @@ export default function ReferPage() {
       </div>
       <pre className="box" style={{ margin: "8px 0", padding: "12px 14px", fontFamily: "var(--f-mono)", fontSize: ".9rem", overflow: "auto", whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{data.link}</pre>
       <ShareBar
-        content="refer" note="이 링크로 구독하면 추천으로 셉니다" url={data.link} title="ZipGenie — 이번 주 부동산 흐름을 매주 메일로"
+        content="refer" note="이 링크로 구독하면 추천으로 셉니다" url={data.link} title="집보미 — 이번 주 부동산 흐름을 매주 메일로"
         text="시세·정책·청약 소식을 매주 한 번 정리해 보내 주는 뉴스레터인데, 내 집 마련 준비에 꽤 도움이 돼요. 구독은 무료예요."
       />
 

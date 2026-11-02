@@ -1,17 +1,24 @@
-// AX 데이터 랩 (/lab) — 백엔드가 만든 인터랙티브 대시보드 HTML 문서(/api/lab/html)를 iframe srcdoc 으로 띄운다.
+// 데이터 랩 (/lab) — 위: 시장 숫자 놀이터(LabMarket, 2026-11-02), 아래: — 백엔드가 만든 인터랙티브 대시보드 HTML 문서(/api/lab/html)를 iframe srcdoc 으로 띄운다.
 // 높이는 문서가 postMessage 로 알려 주면 그 값, 아니면 1400px (DocFrame).
 import { get } from "../api";
 import { SubscribeCTA } from "../components/Dialogs";
 import DocFrame from "../components/DocFrame";
 import { Alert, Guide, useLoad } from "../components/ui";
+import LabMarket from "./LabMarket";
+import "./LabMarket.css";
 
 export default function Lab() {
   const { data, error, loading } = useLoad<string>(() => get<string>("lab/html").then((h) => (typeof h === "string" ? h : String(h ?? ""))), []);
   return (
     <div className="lab-page">
       <div className="eyebrow">데이터 랩</div>
+      <h2 className="sec-h">숫자로 직접 <span className="grad">만져 보는 부동산</span></h2>
+      <p className="muted" style={{ margin: "0 0 14px" }}>실거래 수십만 건과 금리·심리 지표를 직접 골라 보고, 내 예산으로 갈 수 있는 동네와 지역 순위를 확인하세요. 막대·선 위에 올리거나 눌러 보면 달별 값이 나와요.</p>
+      <LabMarket />
+      <div className="space" />
+      <div className="eyebrow">뉴스 흐름</div>
       <h2 className="sec-h">부동산 뉴스 흐름을 <span className="grad">직접 탐색</span>하세요</h2>
-      <p className="muted" style={{ margin: "0 0 6px" }}>ZipGenie가 매일 읽는 기사에서 어떤 주제가 함께 움직이는지 보여 줍니다. 기간·소스 그룹·키워드를 고르면 모든 차트가 함께 좁혀지고, ▶ 버튼으로 날짜별로 자라는 모습을 재생할 수 있습니다.</p>
+      <p className="muted" style={{ margin: "0 0 6px" }}>집보미가 매일 읽는 기사에서 어떤 주제가 함께 움직이는지 보여 줍니다. 기간·소스 그룹·키워드를 고르면 모든 차트가 함께 좁혀지고, ▶ 버튼으로 날짜별로 자라는 모습을 재생할 수 있습니다.</p>
       <Guide title="여기서 볼 것" items={[
         ["급상승 키워드", "오른쪽 패널 맨 위 — 최근 갑자기 많이 잡힌 주제입니다."],
         ["키워드 네트워크", "원을 누르면 함께 나온 키워드와 대표 기사, 스트림·히트맵이 그 키워드로 좁혀집니다."],

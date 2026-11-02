@@ -157,6 +157,556 @@ sources:
   - {name: "Google 뉴스 (머니투데이 부동산)", group: "Google 뉴스 검색", type: rss, published_within_hours: 48, site: "https://news.mt.co.kr/",
      url: "https://news.google.com/rss/search?q=%EB%A8%B8%EB%8B%88%ED%88%AC%EB%8D%B0%EC%9D%B4%20%EB%B6%80%EB%8F%99%EC%82%B0%20when%3A1d&hl=ko&gl=KR&ceid=KR:ko"}
 
+
+  # ══ 2026-11-02 출처 확대 (실측 검증: HTTP 200·글 1건 이상·날짜 있음·최근 90일 안 글 — 유튜브는 채널 ID 확인) ══
+  # ── 정부·공공 (추가 22) ──
+  - {name: "한국은행 보도자료", group: "정부·공공", type: rss, published_within_hours: 168,
+     site: "https://www.bok.or.kr/", url: "https://www.bok.or.kr/portal/bbs/P0000559/news.rss?menuNo=200690"}
+  - {name: "한국은행 금통위 의사록", group: "정부·공공", type: rss, published_within_hours: 336,
+     site: "https://www.bok.or.kr/", url: "https://www.bok.or.kr/portal/bbs/B0000245/news.rss?menuNo=200761"}
+  - {name: "기획재정부 보도자료", group: "정부·공공", type: rss, published_within_hours: 168,
+     site: "https://www.moef.go.kr/", url: "https://www.moef.go.kr/com/detailRssTagService.do?bbsId=MOSFBBS_000000000028"}
+  - {name: "재정경제부 블로그", group: "정부·공공", type: rss, published_within_hours: 168,
+     site: "https://blog.naver.com/mofe_korea", url: "https://rss.blog.naver.com/mofe_korea.xml"}
+  - {name: "금융위원회 블로그", group: "정부·공공", type: rss, published_within_hours: 168,
+     site: "https://blog.naver.com/blogfsc", url: "https://rss.blog.naver.com/blogfsc.xml"}
+  - {name: "금융감독원 블로그", group: "정부·공공", type: rss, published_within_hours: 168,
+     site: "https://blog.naver.com/fss2009", url: "https://rss.blog.naver.com/fss2009.xml"}
+  - {name: "한국부동산원 블로그", group: "정부·공공", type: rss, published_within_hours: 168,
+     site: "https://blog.naver.com/kabblog", url: "https://rss.blog.naver.com/kabblog.xml"}
+  - {name: "국토연구원 블로그", group: "정부·공공", type: rss, published_within_hours: 168,
+     site: "https://blog.naver.com/krihsweb", url: "https://rss.blog.naver.com/krihsweb.xml"}
+  - {name: "GH 경기주택도시공사 블로그", group: "정부·공공", type: rss, published_within_hours: 168,
+     site: "https://blog.naver.com/ghstory_official", url: "https://rss.blog.naver.com/ghstory_official.xml"}
+  - {name: "서울시 청년안심주택 블로그", group: "정부·공공", type: rss, published_within_hours: 168,
+     site: "https://blog.naver.com/seoul_youth_house", url: "https://rss.blog.naver.com/seoul_youth_house.xml"}
+  - {name: "국무총리실 블로그", group: "정부·공공", type: rss, published_within_hours: 168,
+     site: "https://blog.naver.com/primeministerkr", url: "https://rss.blog.naver.com/primeministerkr.xml"}
+  - {name: "서울시 블로그", group: "정부·공공", type: rss, published_within_hours: 168,
+     site: "https://blog.naver.com/haechiseoul", url: "https://rss.blog.naver.com/haechiseoul.xml"}
+  - {name: "경기도 블로그", group: "정부·공공", type: rss, published_within_hours: 168,
+     site: "https://blog.naver.com/gyeonggi_gov", url: "https://rss.blog.naver.com/gyeonggi_gov.xml"}
+  - {name: "인천시 블로그", group: "정부·공공", type: rss, published_within_hours: 168,
+     site: "https://blog.naver.com/incheontogi", url: "https://rss.blog.naver.com/incheontogi.xml"}
+  - {name: "부산시 블로그", group: "정부·공공", type: rss, published_within_hours: 168,
+     site: "https://blog.naver.com/cooolbusan", url: "https://rss.blog.naver.com/cooolbusan.xml"}
+  - {name: "대한민국 정부 블로그(정책브리핑)", group: "정부·공공", type: rss, published_within_hours: 168,
+     site: "https://blog.naver.com/hellopolicy", url: "https://rss.blog.naver.com/hellopolicy.xml"}
+  - {name: "행정안전부 블로그", group: "정부·공공", type: rss, published_within_hours: 168,
+     site: "https://blog.naver.com/mopaspr", url: "https://rss.blog.naver.com/mopaspr.xml"}
+  - {name: "국세청 블로그", group: "정부·공공", type: rss, published_within_hours: 168,
+     site: "https://blog.naver.com/ntscafe", url: "https://rss.blog.naver.com/ntscafe.xml"}
+  - {name: "국가데이터처(통계청) 블로그", group: "정부·공공", type: rss, published_within_hours: 168,
+     site: "https://blog.naver.com/hi_nso", url: "https://rss.blog.naver.com/hi_nso.xml"}
+  - {name: "Google 뉴스 (LH 한국토지주택공사)", group: "정부·공공", type: rss, published_within_hours: 168,
+     site: "https://news.google.com/", url: "https://news.google.com/rss/search?q=LH%20%ED%95%9C%EA%B5%AD%ED%86%A0%EC%A7%80%EC%A3%BC%ED%83%9D%EA%B3%B5%EC%82%AC%20when%3A1d&hl=ko&gl=KR&ceid=KR:ko"}
+  - {name: "Google 뉴스 (주택금융공사·보금자리론)", group: "정부·공공", type: rss, published_within_hours: 168,
+     site: "https://news.google.com/", url: "https://news.google.com/rss/search?q=%EC%A3%BC%ED%83%9D%EA%B8%88%EC%9C%B5%EA%B3%B5%EC%82%AC%20OR%20%EB%B3%B4%EA%B8%88%EC%9E%90%EB%A6%AC%EB%A1%A0%20when%3A1d&hl=ko&gl=KR&ceid=KR:ko"}
+  - {name: "HUG 주택도시보증공사 블로그", group: "정부·공공", type: rss, published_within_hours: 168,
+     site: "https://blog.naver.com/khug_official", url: "https://rss.blog.naver.com/khug_official.xml"}
+  # ── 경제지 부동산 (추가 19) ──
+  - {name: "이투데이 부동산", group: "경제지 부동산", type: rss, published_within_hours: 24,
+     site: "https://www.etoday.co.kr/", url: "https://rss.etoday.co.kr/eto/land_news.xml"}
+  - {name: "비즈워치 부동산", group: "경제지 부동산", type: rss, published_within_hours: 24,
+     site: "https://news.bizwatch.co.kr/", url: "https://news.bizwatch.co.kr/rss/service/real_estate"}
+  - {name: "서울파이낸스 건설·부동산", group: "경제지 부동산", type: rss, published_within_hours: 24,
+     site: "https://www.seoulfn.com/", url: "https://www.seoulfn.com/rss/S1N4.xml"}
+  - {name: "시사저널e 부동산", group: "경제지 부동산", type: rss, published_within_hours: 48,
+     site: "https://www.sisajournal-e.com/", url: "https://www.sisajournal-e.com/rss/S1N3.xml"}
+  - {name: "이뉴스투데이 부동산", group: "경제지 부동산", type: rss, published_within_hours: 48,
+     site: "https://www.enewstoday.co.kr/", url: "https://www.enewstoday.co.kr/rss/S1N79.xml"}
+  - {name: "데일리한국 경제·부동산", group: "경제지 부동산", type: rss, published_within_hours: 24,
+     site: "https://daily.hankooki.com/", url: "https://daily.hankooki.com/rss/S1N4.xml"}
+  - {name: "뉴스핌 부동산", group: "경제지 부동산", type: rss, published_within_hours: 24,
+     site: "https://www.newspim.com/", url: "https://rss.newspim.com/news/category/104"}
+  - {name: "뉴스핌 경제", group: "경제지 부동산", type: rss, published_within_hours: 24,
+     site: "https://www.newspim.com/", url: "https://rss.newspim.com/news/category/103"}
+  - {name: "아주경제 경제", group: "경제지 부동산", type: rss, published_within_hours: 24,
+     site: "https://www.ajunews.com/", url: "https://www.ajunews.com/rss/economy.xml"}
+  - {name: "매일경제 경제", group: "경제지 부동산", type: rss, published_within_hours: 24,
+     site: "https://www.mk.co.kr/news/economy/", url: "https://www.mk.co.kr/rss/30100041/"}
+  - {name: "아시아경제 경제", group: "경제지 부동산", type: rss, published_within_hours: 24,
+     site: "https://www.asiae.co.kr/", url: "https://www.asiae.co.kr/rss/economy.htm"}
+  - {name: "이투데이 경제", group: "경제지 부동산", type: rss, published_within_hours: 24,
+     site: "https://www.etoday.co.kr/", url: "https://rss.etoday.co.kr/eto/economy_news.xml"}
+  - {name: "이투데이 금융", group: "경제지 부동산", type: rss, published_within_hours: 24,
+     site: "https://www.etoday.co.kr/", url: "https://rss.etoday.co.kr/eto/finance_news.xml"}
+  - {name: "서울파이낸스 정책·경제", group: "경제지 부동산", type: rss, published_within_hours: 24,
+     site: "https://www.seoulfn.com/", url: "https://www.seoulfn.com/rss/S1N1.xml"}
+  - {name: "조세일보", group: "경제지 부동산", type: rss, published_within_hours: 24,
+     site: "https://www.joseilbo.com/", url: "https://www.joseilbo.com/Contents/rss/rss_total.php"}
+  - {name: "녹색경제신문 경제", group: "경제지 부동산", type: rss, published_within_hours: 24,
+     site: "https://www.greened.kr/", url: "https://www.greened.kr/rss/S1N13.xml"}
+  - {name: "스트레이트뉴스 경제", group: "경제지 부동산", type: rss, published_within_hours: 24,
+     site: "https://www.straightnews.co.kr/", url: "https://www.straightnews.co.kr/rss/S1N14.xml"}
+  - {name: "EBN", group: "경제지 부동산", type: rss, published_within_hours: 24,
+     site: "https://www.ebn.co.kr/", url: "https://cdn.ebn.co.kr/rss/gns_allArticle.xml"}
+  - {name: "뉴스토마토", group: "경제지 부동산", type: rss, published_within_hours: 24,
+     site: "https://www.newstomato.com/", url: "http://www.newstomato.com/rss/"}
+  # ── 종합·경제 뉴스 (추가 11) ──
+  - {name: "MBN 경제", group: "종합·경제 뉴스", type: rss, published_within_hours: 24,
+     site: "https://www.mbn.co.kr/", url: "https://www.mbn.co.kr/rss/economy/"}
+  - {name: "오마이뉴스 경제", group: "종합·경제 뉴스", type: rss, published_within_hours: 24,
+     site: "https://www.ohmynews.com/", url: "http://rss.ohmynews.com/rss/economy.xml"}
+  - {name: "프레시안 경제", group: "종합·경제 뉴스", type: rss, published_within_hours: 24,
+     site: "https://www.pressian.com/", url: "https://www.pressian.com/api/v3/site/rss/section/67"}
+  - {name: "매일신문", group: "종합·경제 뉴스", type: rss, published_within_hours: 24,
+     site: "https://www.imaeil.com/", url: "https://www.imaeil.com/rss"}
+  - {name: "경기신문", group: "종합·경제 뉴스", type: rss, published_within_hours: 24,
+     site: "https://www.kgnews.co.kr/", url: "https://www.kgnews.co.kr/data/rss/news.xml"}
+  - {name: "전북일보 경제", group: "종합·경제 뉴스", type: rss, published_within_hours: 48,
+     site: "https://www.jjan.kr/", url: "https://www.jjan.kr/news/rssEconomy"}
+  - {name: "대구일보 경제", group: "종합·경제 뉴스", type: rss, published_within_hours: 48,
+     site: "https://www.idaegu.com/", url: "https://cdn.idaegu.com/rss/gns_S1N4.xml"}
+  - {name: "중부일보 경제", group: "종합·경제 뉴스", type: rss, published_within_hours: 48,
+     site: "https://www.joongboo.com/", url: "https://www.joongboo.com/rss/S1N3.xml"}
+  - {name: "경상일보 경제", group: "종합·경제 뉴스", type: rss, published_within_hours: 48,
+     site: "https://www.ksilbo.co.kr/", url: "https://www.ksilbo.co.kr/rss/S1N2.xml"}
+  - {name: "인천일보 경제", group: "종합·경제 뉴스", type: rss, published_within_hours: 48,
+     site: "https://www.incheonilbo.com/", url: "https://www.incheonilbo.com/rss/S1N4.xml"}
+  - {name: "경북일보 경제", group: "종합·경제 뉴스", type: rss, published_within_hours: 48,
+     site: "https://www.kyongbuk.co.kr/", url: "https://cdn.kyongbuk.co.kr/rss/gns_S1N4.xml"}
+  # ── 부동산 전문지 (추가 20) ──
+  - {name: "대한전문건설신문", group: "부동산 전문지", type: rss, published_within_hours: 168,
+     site: "https://www.koscaj.com/", url: "https://www.koscaj.com/rss/allArticle.xml"}
+  - {name: "한국아파트신문", group: "부동산 전문지", type: rss, published_within_hours: 168,
+     site: "https://www.hapt.co.kr/", url: "https://www.hapt.co.kr/rss/allArticle.xml"}
+  - {name: "국토일보", group: "부동산 전문지", type: rss, published_within_hours: 168,
+     site: "https://www.ikld.kr/", url: "http://www.ikld.kr/rss/allArticle.xml"}
+  - {name: "토목신문(건설이코노미뉴스)", group: "부동산 전문지", type: rss, published_within_hours: 168,
+     site: "https://www.cenews.co.kr/", url: "http://www.cenews.co.kr/rss/allArticle.xml"}
+  - {name: "한국건설신문", group: "부동산 전문지", type: rss, published_within_hours: 168,
+     site: "https://www.conslove.co.kr/", url: "http://www.conslove.co.kr/rss/allArticle.xml"}
+  - {name: "아유경제(위클리한국주택경제)", group: "부동산 전문지", type: rss, published_within_hours: 168,
+     site: "https://www.arunews.com/", url: "https://www.arunews.com/rss/allArticle.xml"}
+  - {name: "엔지니어링데일리", group: "부동산 전문지", type: rss, published_within_hours: 168,
+     site: "https://www.engdaily.com/", url: "https://www.engdaily.com/rss/allArticle.xml"}
+  - {name: "철도경제신문", group: "부동산 전문지", type: rss, published_within_hours: 168,
+     site: "https://www.redaily.co.kr/", url: "https://www.redaily.co.kr/rss/allArticle.xml"}
+  - {name: "건축사신문", group: "부동산 전문지", type: rss, published_within_hours: 168,
+     site: "https://www.ancnews.kr/", url: "https://www.ancnews.kr/rss/allArticle.xml"}
+  - {name: "직방 블로그", group: "부동산 전문지", type: rss, published_within_hours: 168,
+     site: "https://blog.naver.com/zigbang", url: "https://rss.blog.naver.com/zigbang.xml"}
+  - {name: "KB부동산 블로그", group: "부동산 전문지", type: rss, published_within_hours: 168,
+     site: "https://blog.naver.com/kbland_official", url: "https://rss.blog.naver.com/kbland_official.xml"}
+  - {name: "호갱노노 블로그", group: "부동산 전문지", type: rss, published_within_hours: 168,
+     site: "https://blog.naver.com/hogangnono_official", url: "https://rss.blog.naver.com/hogangnono_official.xml"}
+  - {name: "다방 블로그", group: "부동산 전문지", type: rss, published_within_hours: 168,
+     site: "https://blog.naver.com/station3inc", url: "https://rss.blog.naver.com/station3inc.xml"}
+  - {name: "리얼투데이 블로그", group: "부동산 전문지", type: rss, published_within_hours: 168,
+     site: "https://blog.naver.com/realtodaykorea", url: "https://rss.blog.naver.com/realtodaykorea.xml"}
+  - {name: "집토스 블로그", group: "부동산 전문지", type: rss, published_within_hours: 168,
+     site: "https://blog.naver.com/ziptoss_estate", url: "https://rss.blog.naver.com/ziptoss_estate.xml"}
+  - {name: "Google 뉴스 (집코노미)", group: "부동산 전문지", type: rss, published_within_hours: 168,
+     site: "https://news.google.com/", url: "https://news.google.com/rss/search?q=%EC%A7%91%EC%BD%94%EB%85%B8%EB%AF%B8%20when%3A1d&hl=ko&gl=KR&ceid=KR:ko"}
+  - {name: "Google 뉴스 (부동산R114)", group: "부동산 전문지", type: rss, published_within_hours: 168,
+     site: "https://news.google.com/", url: "https://news.google.com/rss/search?q=%EB%B6%80%EB%8F%99%EC%82%B0R114%20OR%20%EB%B6%80%EB%8F%99%EC%82%B0114%20when%3A1d&hl=ko&gl=KR&ceid=KR:ko"}
+  - {name: "한국공인중개사협회 블로그", group: "부동산 전문지", type: rss, published_within_hours: 168,
+     site: "https://blog.naver.com/kar_official", url: "https://rss.blog.naver.com/kar_official.xml"}
+  - {name: "전문건설신문", group: "부동산 전문지", type: rss, published_within_hours: 168,
+     site: "https://www.kscnews.co.kr/", url: "https://www.kscnews.co.kr/rss/allArticle.xml"}
+  - {name: "한국부동산뉴스", group: "부동산 전문지", type: rss, published_within_hours: 168,
+     site: "https://www.kar.or.kr/", url: "https://www.karnews.or.kr/rss/allArticle.xml"}
+  # ── Google 뉴스 검색 (추가 15) ──
+  - {name: "Google 뉴스 (리츠)", group: "Google 뉴스 검색", type: rss, published_within_hours: 24,
+     site: "https://news.google.com/", url: "https://news.google.com/rss/search?q=%EB%A6%AC%EC%B8%A0%20OR%20REITs%20%EB%B6%80%EB%8F%99%EC%82%B0%20when%3A1d&hl=ko&gl=KR&ceid=KR:ko"}
+  - {name: "Google 뉴스 (상가 공실)", group: "Google 뉴스 검색", type: rss, published_within_hours: 24,
+     site: "https://news.google.com/", url: "https://news.google.com/rss/search?q=%EC%83%81%EA%B0%80%20%EA%B3%B5%EC%8B%A4%20OR%20%EC%83%81%EA%B0%80%20%EC%9E%84%EB%8C%80%EB%A3%8C%20when%3A1d&hl=ko&gl=KR&ceid=KR:ko"}
+  - {name: "Google 뉴스 (지식산업센터·물류센터)", group: "Google 뉴스 검색", type: rss, published_within_hours: 24,
+     site: "https://news.google.com/", url: "https://news.google.com/rss/search?q=%EC%A7%80%EC%8B%9D%EC%82%B0%EC%97%85%EC%84%BC%ED%84%B0%20OR%20%EB%AC%BC%EB%A5%98%EC%84%BC%ED%84%B0%20%EA%B3%B5%EC%8B%A4%20when%3A1d&hl=ko&gl=KR&ceid=KR:ko"}
+  - {name: "Google 뉴스 (정책대출·신생아 특례)", group: "Google 뉴스 검색", type: rss, published_within_hours: 24,
+     site: "https://news.google.com/", url: "https://news.google.com/rss/search?q=%EC%8B%A0%EC%83%9D%EC%95%84%20%ED%8A%B9%EB%A1%80%EB%8C%80%EC%B6%9C%20OR%20%EB%94%94%EB%94%A4%EB%8F%8C%EB%8C%80%EC%B6%9C%20OR%20%EB%B2%84%ED%8C%80%EB%AA%A9%EB%8C%80%EC%B6%9C%20when%3A1d&hl=ko&gl=KR&ceid=KR:ko"}
+  - {name: "Google 뉴스 (3기 신도시)", group: "Google 뉴스 검색", type: rss, published_within_hours: 24,
+     site: "https://news.google.com/", url: "https://news.google.com/rss/search?q=3%EA%B8%B0%20%EC%8B%A0%EB%8F%84%EC%8B%9C%20when%3A1d&hl=ko&gl=KR&ceid=KR:ko"}
+  - {name: "Google 뉴스 (1기 신도시 재건축)", group: "Google 뉴스 검색", type: rss, published_within_hours: 24,
+     site: "https://news.google.com/", url: "https://news.google.com/rss/search?q=1%EA%B8%B0%20%EC%8B%A0%EB%8F%84%EC%8B%9C%20%EC%9E%AC%EA%B1%B4%EC%B6%95%20OR%20%EB%85%B8%ED%9B%84%EA%B3%84%ED%9A%8D%EB%8F%84%EC%8B%9C%20when%3A1d&hl=ko&gl=KR&ceid=KR:ko"}
+  - {name: "Google 뉴스 (모아타운·신속통합기획)", group: "Google 뉴스 검색", type: rss, published_within_hours: 24,
+     site: "https://news.google.com/", url: "https://news.google.com/rss/search?q=%EB%AA%A8%EC%95%84%ED%83%80%EC%9A%B4%20OR%20%EC%8B%A0%EC%86%8D%ED%86%B5%ED%95%A9%EA%B8%B0%ED%9A%8D%20when%3A1d&hl=ko&gl=KR&ceid=KR:ko"}
+  - {name: "Google 뉴스 (세종 집값)", group: "Google 뉴스 검색", type: rss, published_within_hours: 24,
+     site: "https://news.google.com/", url: "https://news.google.com/rss/search?q=%EC%84%B8%EC%A2%85%20%EC%95%84%ED%8C%8C%ED%8A%B8%20OR%20%EC%84%B8%EC%A2%85%20%EC%A7%91%EA%B0%92%20when%3A1d&hl=ko&gl=KR&ceid=KR:ko"}
+  - {name: "Google 뉴스 (주택연금)", group: "Google 뉴스 검색", type: rss, published_within_hours: 24,
+     site: "https://news.google.com/", url: "https://news.google.com/rss/search?q=%EC%A3%BC%ED%83%9D%EC%97%B0%EA%B8%88%20when%3A1d&hl=ko&gl=KR&ceid=KR:ko"}
+  - {name: "Google 뉴스 (역전세·깡통전세)", group: "Google 뉴스 검색", type: rss, published_within_hours: 24,
+     site: "https://news.google.com/", url: "https://news.google.com/rss/search?q=%EC%97%AD%EC%A0%84%EC%84%B8%20OR%20%EA%B9%A1%ED%86%B5%EC%A0%84%EC%84%B8%20when%3A1d&hl=ko&gl=KR&ceid=KR:ko"}
+  - {name: "Google 뉴스 (갭투자)", group: "Google 뉴스 검색", type: rss, published_within_hours: 24,
+     site: "https://news.google.com/", url: "https://news.google.com/rss/search?q=%EA%B0%AD%ED%88%AC%EC%9E%90%20when%3A1d&hl=ko&gl=KR&ceid=KR:ko"}
+  - {name: "Google 뉴스 (아파트 거래량)", group: "Google 뉴스 검색", type: rss, published_within_hours: 24,
+     site: "https://news.google.com/", url: "https://news.google.com/rss/search?q=%EC%95%84%ED%8C%8C%ED%8A%B8%20%EA%B1%B0%EB%9E%98%EB%9F%89%20OR%20%EC%A3%BC%ED%83%9D%20%EA%B1%B0%EB%9E%98%EB%9F%89%20when%3A1d&hl=ko&gl=KR&ceid=KR:ko"}
+  - {name: "Google 뉴스 (주택 인허가·착공)", group: "Google 뉴스 검색", type: rss, published_within_hours: 24,
+     site: "https://news.google.com/", url: "https://news.google.com/rss/search?q=%EC%A3%BC%ED%83%9D%20%EC%9D%B8%ED%97%88%EA%B0%80%20OR%20%EC%A3%BC%ED%83%9D%20%EC%B0%A9%EA%B3%B5%20OR%20%EC%A4%80%EA%B3%B5%20%EC%8B%A4%EC%A0%81%20when%3A1d&hl=ko&gl=KR&ceid=KR:ko"}
+  - {name: "Google 뉴스 (다주택자·임대사업자)", group: "Google 뉴스 검색", type: rss, published_within_hours: 24,
+     site: "https://news.google.com/", url: "https://news.google.com/rss/search?q=%EB%8B%A4%EC%A3%BC%ED%83%9D%EC%9E%90%20OR%20%EC%9E%84%EB%8C%80%EC%82%AC%EC%97%85%EC%9E%90%20OR%20%EC%A4%91%EA%B3%BC%EC%84%B8%20when%3A1d&hl=ko&gl=KR&ceid=KR:ko"}
+  - {name: "Google 뉴스 (분양가)", group: "Google 뉴스 검색", type: rss, published_within_hours: 24,
+     site: "https://news.google.com/", url: "https://news.google.com/rss/search?q=%EB%B6%84%EC%96%91%EA%B0%80%20%EC%83%81%ED%95%9C%EC%A0%9C%20OR%20%EB%B6%84%EC%96%91%EA%B0%80%20%EC%83%81%EC%8A%B9%20when%3A1d&hl=ko&gl=KR&ceid=KR:ko"}
+  # ── 유튜브 (추가 78) ──
+  - {name: "유튜브 · 부읽남TV", group: "유튜브", type: youtube, published_within_hours: 336,
+     site: "https://www.youtube.com/@buiknam_tv", channel_ids: ["UC2QeHNJFfuQWB4cy3M-745g"]}
+  - {name: "유튜브 · 월급쟁이부자들TV", group: "유튜브", type: youtube, published_within_hours: 336,
+     site: "https://www.youtube.com/@weolbu_official", channel_ids: ["UCDSj40X9FFUAnx1nv7gQhcA"]}
+  - {name: "유튜브 · 직방TV", group: "유튜브", type: youtube, published_within_hours: 336,
+     site: "https://www.youtube.com/@zigbangtv", channel_ids: ["UCiUQWRA_xsGzvNVGFlBKBiQ"]}
+  - {name: "유튜브 · 호갱노노", group: "유튜브", type: youtube, published_within_hours: 336,
+     site: "https://www.youtube.com/@hogangnono_official", channel_ids: ["UClLfyztBvjo5174QRxbUoTw"]}
+  - {name: "유튜브 · 스마트튜브(빠숑)", group: "유튜브", type: youtube, published_within_hours: 336,
+     site: "https://www.youtube.com/@ppassong", channel_ids: ["UCKosTo5bqKm4v264z2zDnFQ"]}
+  - {name: "유튜브 · 김인만의 부다방TV", group: "유튜브", type: youtube, published_within_hours: 336,
+     site: "https://www.youtube.com/@budabang", channel_ids: ["UC02Dp0K7JKQ8w2Yifz3UGTg"]}
+  - {name: "유튜브 · 표영호TV", group: "유튜브", type: youtube, published_within_hours: 336,
+     site: "https://www.youtube.com/@tv0505", channel_ids: ["UCp8lZRI3NSCXxhn_a_WGVKQ"]}
+  - {name: "유튜브 · 아영이네 행복주택", group: "유튜브", type: youtube, published_within_hours: 336,
+     site: "https://www.youtube.com/@아영이네행복주택", channel_ids: ["UC4uGVGxC9kiYkLBnU1a97Vw"]}
+  - {name: "유튜브 · 집코노미", group: "유튜브", type: youtube, published_within_hours: 336,
+     site: "https://www.youtube.com/@jipconomy", channel_ids: ["UCAVdqlngIAxHtwlCA2hjv3A"]}
+  - {name: "유튜브 · 매부리TV", group: "유튜브", type: youtube, published_within_hours: 336,
+     site: "https://www.youtube.com/@maeburitv", channel_ids: ["UCCt6iN6nJemSe_OHRihYBAQ"]}
+  - {name: "유튜브 · 땅집고", group: "유튜브", type: youtube, published_within_hours: 336,
+     site: "https://www.youtube.com/@ddangzipgo", channel_ids: ["UCFhF5oooL5ugxHKvTxBD75Q"]}
+  - {name: "유튜브 · KBS 경제한방", group: "유튜브", type: youtube, published_within_hours: 336,
+     site: "https://www.youtube.com/@e-hanbang", channel_ids: ["UCn_38aaCktkBLPv3EtfmiUA"]}
+  - {name: "유튜브 · SBS Biz 뉴스", group: "유튜브", type: youtube, published_within_hours: 336,
+     site: "https://www.youtube.com/@SBSBiz2021", channel_ids: ["UCbMjg2EvXs_RUGW-KrdM3pw"]}
+  - {name: "유튜브 · 한국경제TV", group: "유튜브", type: youtube, published_within_hours: 336,
+     site: "https://www.youtube.com/@hkwowtv", channel_ids: ["UCF8AeLlUbEpKju6v1H6p8Eg"]}
+  - {name: "유튜브 · 리치고TV", group: "유튜브", type: youtube, published_within_hours: 336,
+     site: "https://www.youtube.com/@RICHGO406", channel_ids: ["UC3nsb3SxlRrJQ9egkKNnlfg"]}
+  - {name: "유튜브 · 단희TV", group: "유튜브", type: youtube, published_within_hours: 336,
+     site: "https://www.youtube.com/@단희TV", channel_ids: ["UCOMG2V-vUgYX0aHiBDbBTyg"]}
+  - {name: "유튜브 · 서울경제TV", group: "유튜브", type: youtube, published_within_hours: 336,
+     site: "https://www.youtube.com/@SeoulEconomyTV", channel_ids: ["UC3p-0EWA8OXko2EUDUXAy5w"]}
+  - {name: "유튜브 · 쇼킹부동산", group: "유튜브", type: youtube, published_within_hours: 336,
+     site: "https://www.youtube.com/@쇼킹부동산", channel_ids: ["UCcloDgiDqz8twby7zvG-USg"]}
+  - {name: "유튜브 · 부동산김사부TV", group: "유튜브", type: youtube, published_within_hours: 336,
+     site: "https://www.youtube.com/@budongsan-kimsabu", channel_ids: ["UC2rRsSOig2nHpGQhH8A8CcQ"]}
+  - {name: "유튜브 · 경매하는 붇옹산", group: "유튜브", type: youtube, published_within_hours: 336,
+     site: "https://www.youtube.com/@jaegebal", channel_ids: ["UC9HYs-EG-tXxZbsgMi6TzEw"]}
+  - {name: "유튜브 · 손품왕TV", group: "유튜브", type: youtube, published_within_hours: 336,
+     site: "https://www.youtube.com/@SPW-TV", channel_ids: ["UCPvilmSQBJFvBKh9pxkGHWg"]}
+  - {name: "유튜브 · 박준연의 경제로 읽는 부동산", group: "유튜브", type: youtube, published_within_hours: 336,
+     site: "https://www.youtube.com/@빌딩의신", channel_ids: ["UC8fLp2MqsnYqcNwpG-jzyFg"]}
+  - {name: "유튜브 · 위험한 부동산", group: "유튜브", type: youtube, published_within_hours: 336,
+     site: "https://www.youtube.com/@위험한부동산", channel_ids: ["UCmdvMbz8dr-IRLuJxdPDwrw"]}
+  - {name: "유튜브 · 채널 제네시스박", group: "유튜브", type: youtube, published_within_hours: 336,
+     site: "https://www.youtube.com/@제네시스박", channel_ids: ["UCHOPWa8g36QPHB00JmdZluw"]}
+  - {name: "유튜브 · 아임해피 정지영", group: "유튜브", type: youtube, published_within_hours: 336,
+     site: "https://www.youtube.com/@iamhappyteacher", channel_ids: ["UCwZzWtI-uwoYSDaubTx7Tzw"]}
+  - {name: "유튜브 · 다꿈스쿨TV", group: "유튜브", type: youtube, published_within_hours: 336,
+     site: "https://www.youtube.com/@dakkoomschool", channel_ids: ["UCiYcXH2xoBeaXCQs7G9zImg"]}
+  - {name: "유튜브 · 얼음공장", group: "유튜브", type: youtube, published_within_hours: 336,
+     site: "https://www.youtube.com/@얼음공장의반백수프로", channel_ids: ["UCuDVP_3ImJ9rIW184cUWObg"]}
+  - {name: "유튜브 · 고부자(고준석)", group: "유튜브", type: youtube, published_within_hours: 336,
+     site: "https://www.youtube.com/@gobuja", channel_ids: ["UCF_eZbmXq2t-5HS4PqAAUwA"]}
+  - {name: "유튜브 · MTN 머니투데이방송", group: "유튜브", type: youtube, published_within_hours: 336,
+     site: "https://www.youtube.com/@mtn", channel_ids: ["UClErHbdZKUnD1NyIUeQWvuQ"]}
+  - {name: "유튜브 · 이데일리TV", group: "유튜브", type: youtube, published_within_hours: 336,
+     site: "https://www.youtube.com/@Edaily_TV", channel_ids: ["UC8Sv6O3Ux8ePVqorx8aOBMg"]}
+  - {name: "유튜브 · 삼프로TV", group: "유튜브", type: youtube, published_within_hours: 336,
+     site: "https://www.youtube.com/@3protv", channel_ids: ["UChlv4GSd7OQl3js-jkLOnFA"]}
+  - {name: "유튜브 · 815머니톡", group: "유튜브", type: youtube, published_within_hours: 336,
+     site: "https://www.youtube.com/@815moneytalk", channel_ids: ["UCCG6BEYjfQMGzypJw2EJCDQ"]}
+  - {name: "유튜브 · 경제 읽어주는 남자(김광석TV)", group: "유튜브", type: youtube, published_within_hours: 336,
+     site: "https://www.youtube.com/@경읽남_김광석TV", channel_ids: ["UC3pfEoxaRDT6hvZZjpHu7Tg"]}
+  - {name: "유튜브 · 광주 부동산 채널", group: "유튜브", type: youtube, published_within_hours: 336,
+     site: "https://www.youtube.com/@광주부동산채널", channel_ids: ["UCBNUcGXcGSNIzd2EjxmSesQ"]}
+  - {name: "유튜브 · 부동산지인", group: "유튜브", type: youtube, published_within_hours: 336,
+     site: "https://www.youtube.com/@aptgin", channel_ids: ["UC6zUcmkn6ThoNNF7HmNuYew"]}
+  - {name: "유튜브 · 투미부동산(투미TV)", group: "유튜브", type: youtube, published_within_hours: 336,
+     site: "https://www.youtube.com/@TUMI7777", channel_ids: ["UC9meL6XNNckzlleWelmO9tQ"]}
+  - {name: "유튜브 · 후랭이TV", group: "유튜브", type: youtube, published_within_hours: 336,
+     site: "https://www.youtube.com/@Hootv", channel_ids: ["UChnfOZtjny0KBSVkfS9nwsg"]}
+  - {name: "유튜브 · 매일경제TV", group: "유튜브", type: youtube, published_within_hours: 336,
+     site: "https://www.youtube.com/@MKeconomy_TV", channel_ids: ["UCnfwIKyFYRuqZzzKBDt6JOA"]}
+  - {name: "유튜브 · 임성배TV-부동산재테크", group: "유튜브", type: youtube, published_within_hours: 336,
+     site: "https://www.youtube.com/@rim_tv", channel_ids: ["UCSs7gpAPr8yv-LGFPJMLtTA"]}
+  - {name: "유튜브 · 청약홈TV", group: "유튜브", type: youtube, published_within_hours: 336,
+     site: "https://www.youtube.com/@apt_home", channel_ids: ["UCPmI5ygQuHcDsb_HZDxBhWA"]}
+  - {name: "유튜브 · SH tv 서울주택도시개발공사", group: "유튜브", type: youtube, published_within_hours: 336,
+     site: "https://www.youtube.com/@SHtv_Seoul", channel_ids: ["UCD_GS8VmhbRvNrCn3plPX9A"]}
+  - {name: "유튜브 · LH청약센터", group: "유튜브", type: youtube, published_within_hours: 336,
+     site: "https://www.youtube.com/@LH_청약센터", channel_ids: ["UCu61x77ULoV6nyTSOS42aJA"]}
+  - {name: "유튜브 · 류창헌세무사와 부동산세금들", group: "유튜브", type: youtube, published_within_hours: 336,
+     site: "https://www.youtube.com/@류창헌세무사와부동산", channel_ids: ["UCqv_hV-Edf6Ex3jKUa6tXDg"]}
+  - {name: "유튜브 · 한문도TV 부동산채널", group: "유튜브", type: youtube, published_within_hours: 336,
+     site: "https://www.youtube.com/@tv_4355", channel_ids: ["UCu9SkglGtbnwtht-fP75Nbw"]}
+  - {name: "유튜브 · 채부심(채상욱)", group: "유튜브", type: youtube, published_within_hours: 336,
+     site: "https://www.youtube.com/@chaeboosim", channel_ids: ["UCD9vzSxZ69pjcnf8hgCQXVQ"]}
+  - {name: "유튜브 · 연합뉴스경제TV", group: "유튜브", type: youtube, published_within_hours: 336,
+     site: "https://www.youtube.com/@연합뉴스경제TV", channel_ids: ["UC6kZpTl39-_SqfBrF1-N2oQ"]}
+  - {name: "유튜브 · 손에잡히는경제", group: "유튜브", type: youtube, published_within_hours: 336,
+     site: "https://www.youtube.com/@손경제", channel_ids: ["UCiYbaVEODktcsh09454Grow"]}
+  - {name: "유튜브 · 아파트언박싱 by 직방TV", group: "유튜브", type: youtube, published_within_hours: 336,
+     site: "https://www.youtube.com/@apt_unboxing", channel_ids: ["UCJVvp-gguhUgmryUMxaQWGA"]}
+  - {name: "유튜브 · 집터뷰", group: "유튜브", type: youtube, published_within_hours: 336,
+     site: "https://www.youtube.com/@집터뷰", channel_ids: ["UC6RUdJ9pYwEcaDfVfobvi3g"]}
+  - {name: "유튜브 · 이현정TV(부동산 경매)", group: "유튜브", type: youtube, published_within_hours: 336,
+     site: "https://www.youtube.com/@joyfulsara", channel_ids: ["UC_2RIlf74F6fkhl3Q3QXFRg"]}
+  - {name: "유튜브 · 세빛희", group: "유튜브", type: youtube, published_within_hours: 336,
+     site: "https://www.youtube.com/@sevity", channel_ids: ["UC57afMs8CRYBir28yejxWiQ"]}
+  - {name: "유튜브 · 슈카월드", group: "유튜브", type: youtube, published_within_hours: 336,
+     site: "https://www.youtube.com/@syukaworld", channel_ids: ["UCsJ6RuBiTVWRX156FVbeaGg"]}
+  - {name: "유튜브 · 부동산2인자", group: "유튜브", type: youtube, published_within_hours: 336,
+     site: "https://www.youtube.com/@2Inja", channel_ids: ["UCEPcMXd3yQWolxBHSGOd07w"]}
+  - {name: "유튜브 · 알파카(Alpaca)", group: "유튜브", type: youtube, published_within_hours: 336,
+     site: "https://www.youtube.com/@alpacarealestate", channel_ids: ["UCk-iowIL1sV-d0oDcP_KW8g"]}
+  - {name: "유튜브 · 정창래의 부동산 성공투자", group: "유튜브", type: youtube, published_within_hours: 336,
+     site: "https://www.youtube.com/@victory_inv", channel_ids: ["UCcO3WDALk4_1jJfDRv5Ykyw"]}
+  - {name: "유튜브 · 파가시 아파트 가격시황", group: "유튜브", type: youtube, published_within_hours: 336,
+     site: "https://www.youtube.com/@pagasii", channel_ids: ["UCHNwpYjtV8qc_HJlOfnDcAg"]}
+  - {name: "유튜브 · 행꿈사(경매)", group: "유튜브", type: youtube, published_within_hours: 336,
+     site: "https://www.youtube.com/@haengkkumsa", channel_ids: ["UCNj4VVVJSLVARaQg_rp38zw"]}
+  - {name: "유튜브 · 청약전문가 베니아TV", group: "유튜브", type: youtube, published_within_hours: 336,
+     site: "https://www.youtube.com/@benia_tv", channel_ids: ["UCU-sDFa8ZckKQuYBgcox4Fw"]}
+  - {name: "유튜브 · 재개발은 진와이스", group: "유튜브", type: youtube, published_within_hours: 336,
+     site: "https://www.youtube.com/@재개발은진와이스", channel_ids: ["UCU_ZmyDbx6tJ0vrKm4v54jQ"]}
+  - {name: "유튜브 · 두꺼비세무사", group: "유튜브", type: youtube, published_within_hours: 336,
+     site: "https://www.youtube.com/@두꺼비세무사", channel_ids: ["UCiLdPBP0AeP-Z9CDH4MggYQ"]}
+  - {name: "유튜브 · 머니투데이 부릿지", group: "유튜브", type: youtube, published_within_hours: 336,
+     site: "https://www.youtube.com/@buridge", channel_ids: ["UCKXWYKTnQiRGPpkkAdiFhUw"]}
+  - {name: "유튜브 · 부동산 시민교수 부티인", group: "유튜브", type: youtube, published_within_hours: 336,
+     site: "https://www.youtube.com/@부티인", channel_ids: ["UC5WOMHb5hqula6LVc08cW4A"]}
+  - {name: "유튜브 · 경매와 상가투자 부가남", group: "유튜브", type: youtube, published_within_hours: 336,
+     site: "https://www.youtube.com/@buganam", channel_ids: ["UCmDBkGyVLKeNndxx6QarZqw"]}
+  - {name: "유튜브 · 김종율TV(상가·토지)", group: "유튜브", type: youtube, published_within_hours: 336,
+     site: "https://www.youtube.com/@zong6262", channel_ids: ["UCa08Pwp6Rj7jGz6QElDHojw"]}
+  - {name: "유튜브 · 빌딩진영쌤", group: "유튜브", type: youtube, published_within_hours: 336,
+     site: "https://www.youtube.com/@Building_Jinyoung", channel_ids: ["UCpUMuzeaTByFLw5D7vkWmcA"]}
+  - {name: "유튜브 · 유근용의 투자공부", group: "유튜브", type: youtube, published_within_hours: 336,
+     site: "https://www.youtube.com/@유근용의투자공부", channel_ids: ["UCkLVKNpfwwaovHwavw1Au_g"]}
+  - {name: "유튜브 · KB부동산TV", group: "유튜브", type: youtube, published_within_hours: 336,
+     site: "https://www.youtube.com/@kbland", channel_ids: ["UCHmXGmj6JA-4iQ1UFMC7LYw"]}
+  - {name: "유튜브 · 한국부동산원", group: "유튜브", type: youtube, published_within_hours: 336,
+     site: "https://www.youtube.com/@한국부동산원", channel_ids: ["UCXiDk1r8MDRqTD0j2BxNWWQ"]}
+  - {name: "유튜브 · LH 한국토지주택공사", group: "유튜브", type: youtube, published_within_hours: 336,
+     site: "https://www.youtube.com/@with_LH", channel_ids: ["UCzCH27zxNFmbzultWL4u-bw"]}
+  - {name: "유튜브 · 국토교통부", group: "유튜브", type: youtube, published_within_hours: 336,
+     site: "https://www.youtube.com/@korealand", channel_ids: ["UC0G0Z05LATPtpUkxeOrEjOA"]}
+  - {name: "유튜브 · HUG 주택도시보증공사", group: "유튜브", type: youtube, published_within_hours: 336,
+     site: "https://www.youtube.com/@KHUGofficial", channel_ids: ["UCXXERp2lKuALHbyuXIpLqzw"]}
+  - {name: "유튜브 · 한국은행", group: "유튜브", type: youtube, published_within_hours: 336,
+     site: "https://www.youtube.com/@theBankofKoreakr", channel_ids: ["UCyK8niZNIfBTgRNkuURdoXA"]}
+  - {name: "유튜브 · 집공략", group: "유튜브", type: youtube, published_within_hours: 336,
+     site: "https://www.youtube.com/@집공략", channel_ids: ["UC8L4UAyMMBqK7Ulf3FgkdQA"]}
+  - {name: "유튜브 · 헤이부동산법률TV", group: "유튜브", type: youtube, published_within_hours: 336,
+     site: "https://www.youtube.com/@HEY부동산법률TV", channel_ids: ["UCTu-PypaP5A_jBImjl39zOQ"]}
+  - {name: "유튜브 · 서울빌딩스", group: "유튜브", type: youtube, published_within_hours: 336,
+     site: "https://www.youtube.com/@seoulbuildings", channel_ids: ["UChWr9SX2ZqDUJ4aMg0y9PMw"]}
+  - {name: "유튜브 · 김효지 미국 부동산", group: "유튜브", type: youtube, published_within_hours: 336,
+     site: "https://www.youtube.com/@김효지미국부동산", channel_ids: ["UCFNQZkUo08wAZpXmZDs3tPg"]}
+  - {name: "유튜브 · 임대박사", group: "유튜브", type: youtube, published_within_hours: 336,
+     site: "https://www.youtube.com/@renthousedoctor", channel_ids: ["UComvIE1tzV8fdkA-IT78OtA"]}
+  - {name: "유튜브 · 집현전", group: "유튜브", type: youtube, published_within_hours: 336,
+     site: "https://www.youtube.com/@CH집현전", channel_ids: ["UCCKNQVD1pphAKK3VDlWiHMw"]}
+  # ── 블로그·커뮤니티 (추가 22) ──
+  - {name: "빠숑(김학렬) 블로그", group: "블로그·커뮤니티", type: rss, published_within_hours: 168,
+     site: "https://blog.naver.com/ppassong", url: "https://rss.blog.naver.com/ppassong.xml"}
+  - {name: "아기곰 블로그", group: "블로그·커뮤니티", type: rss, published_within_hours: 168,
+     site: "https://blog.naver.com/a-cute-bear", url: "https://rss.blog.naver.com/a-cute-bear.xml"}
+  - {name: "부동산 상하좌우 블로그", group: "블로그·커뮤니티", type: rss, published_within_hours: 168,
+     site: "https://blog.naver.com/realguru_blog", url: "https://rss.blog.naver.com/realguru_blog.xml"}
+  - {name: "Reddit r/RealEstate", group: "블로그·커뮤니티", type: rss, published_within_hours: 168,
+     site: "https://www.reddit.com/r/RealEstate/", url: "https://www.reddit.com/r/RealEstate/.rss"}
+  - {name: "Medium · real-estate 태그", group: "블로그·커뮤니티", type: rss, published_within_hours: 168,
+     site: "https://medium.com/tag/real-estate", url: "https://medium.com/feed/tag/real-estate"}
+  - {name: "Medium · housing 태그", group: "블로그·커뮤니티", type: rss, published_within_hours: 168,
+     site: "https://medium.com/tag/housing", url: "https://medium.com/feed/tag/housing"}
+  - {name: "Reddit r/REBubble", group: "블로그·커뮤니티", type: rss, published_within_hours: 168,
+     site: "https://www.reddit.com/r/REBubble/", url: "https://www.reddit.com/r/REBubble/.rss"}
+  - {name: "Reddit r/RealEstateInvesting", group: "블로그·커뮤니티", type: rss, published_within_hours: 168,
+     site: "https://www.reddit.com/r/realestateinvesting/", url: "https://www.reddit.com/r/realestateinvesting/.rss"}
+  - {name: "The Overshoot", group: "블로그·커뮤니티", type: rss, published_within_hours: 336,
+     site: "https://theovershoot.co/", url: "https://theovershoot.co/feed"}
+  - {name: "Kyla Scanlon", group: "블로그·커뮤니티", type: rss, published_within_hours: 336,
+     site: "https://kyla.substack.com/", url: "https://kyla.substack.com/feed"}
+  - {name: "Housing Notes (Jonathan Miller)", group: "블로그·커뮤니티", type: rss, published_within_hours: 336,
+     site: "https://www.millersamuel.com/", url: "https://www.millersamuel.com/feed/"}
+  - {name: "A Wealth of Common Sense", group: "블로그·커뮤니티", type: rss, published_within_hours: 168,
+     site: "https://awealthofcommonsense.com/", url: "https://awealthofcommonsense.com/feed/"}
+  - {name: "The Big Picture (Ritholtz)", group: "블로그·커뮤니티", type: rss, published_within_hours: 168,
+     site: "https://ritholtz.com/", url: "https://ritholtz.com/feed/"}
+  - {name: "뽐뿌 부동산포럼", group: "블로그·커뮤니티", type: rss, published_within_hours: 168,
+     site: "https://www.ppomppu.co.kr/", url: "https://www.ppomppu.co.kr/rss.php?id=house"}
+  - {name: "도시계획연구소 블로그(재개발)", group: "블로그·커뮤니티", type: rss, published_within_hours: 168,
+     site: "https://blog.naver.com/dosi_lab", url: "https://rss.blog.naver.com/dosi_lab.xml"}
+  - {name: "인포인트 블로그(실거래 동향)", group: "블로그·커뮤니티", type: rss, published_within_hours: 168,
+     site: "https://blog.naver.com/inppoint", url: "https://rss.blog.naver.com/inppoint.xml"}
+  - {name: "사마중달의 절차탁마(부동산 뉴스·블로그 모음)", group: "블로그·커뮤니티", type: rss, published_within_hours: 168,
+     site: "https://blog.naver.com/baekilee", url: "https://rss.blog.naver.com/baekilee.xml"}
+  - {name: "택스로랜드 블로그(세금·부동산법)", group: "블로그·커뮤니티", type: rss, published_within_hours: 168,
+     site: "https://blog.naver.com/taxlawland", url: "https://rss.blog.naver.com/taxlawland.xml"}
+  - {name: "건국대 건축주대학 블로그", group: "블로그·커뮤니티", type: rss, published_within_hours: 168,
+     site: "https://blog.naver.com/lifesopia", url: "https://rss.blog.naver.com/lifesopia.xml"}
+  - {name: "bigandzoom 블로그(지역 개발 소식)", group: "블로그·커뮤니티", type: rss, published_within_hours: 168,
+     site: "https://blog.naver.com/bigandzoom", url: "https://rss.blog.naver.com/bigandzoom.xml"}
+  - {name: "머니레이더 블로그(청약·분양)", group: "블로그·커뮤니티", type: rss, published_within_hours: 168,
+     site: "https://blog.naver.com/marketbomber", url: "https://rss.blog.naver.com/marketbomber.xml"}
+  - {name: "강동파파의 경제 이야기 블로그", group: "블로그·커뮤니티", type: rss, published_within_hours: 168,
+     site: "https://blog.naver.com/gangdongpapa3", url: "https://rss.blog.naver.com/gangdongpapa3.xml"}
+  # ── 해외 언론 (추가 53) ──
+  - {name: "CNBC Real Estate", group: "해외 언론", type: rss, published_within_hours: 48,
+     site: "https://www.cnbc.com/real-estate/", url: "https://www.cnbc.com/id/10000115/device/rss/rss.html"}
+  - {name: "CNBC Economy", group: "해외 언론", type: rss, published_within_hours: 24,
+     site: "https://www.cnbc.com/economy/", url: "https://www.cnbc.com/id/20910258/device/rss/rss.html"}
+  - {name: "HousingWire", group: "해외 언론", type: rss, published_within_hours: 48,
+     site: "https://www.housingwire.com/", url: "https://www.housingwire.com/feed/"}
+  - {name: "The Real Deal (NY)", group: "해외 언론", type: rss, published_within_hours: 48,
+     site: "https://therealdeal.com/", url: "https://therealdeal.com/new-york/feed/"}
+  - {name: "Mortgage News Daily", group: "해외 언론", type: rss, published_within_hours: 48,
+     site: "https://www.mortgagenewsdaily.com/", url: "https://www.mortgagenewsdaily.com/rss/full"}
+  - {name: "Redfin News", group: "해외 언론", type: rss, published_within_hours: 168,
+     site: "https://www.redfin.com/news/", url: "https://www.redfin.com/news/feed/"}
+  - {name: "Realtor.com News", group: "해외 언론", type: rss, published_within_hours: 48,
+     site: "https://www.realtor.com/news/", url: "https://www.realtor.com/news/feed/"}
+  - {name: "Zillow Press Releases", group: "해외 언론", type: rss, published_within_hours: 168,
+     site: "https://zillow.mediaroom.com/", url: "https://zillow.mediaroom.com/press-releases?pagetemplate=rss"}
+  - {name: "Guardian Housing", group: "해외 언론", type: rss, published_within_hours: 72,
+     site: "https://www.theguardian.com/society/housing", url: "https://www.theguardian.com/society/housing/rss"}
+  - {name: "Guardian Property", group: "해외 언론", type: rss, published_within_hours: 72,
+     site: "https://www.theguardian.com/money/property", url: "https://www.theguardian.com/money/property/rss"}
+  - {name: "FT Property", group: "해외 언론", type: rss, published_within_hours: 72,
+     site: "https://www.ft.com/property", url: "https://www.ft.com/property?format=rss"}
+  - {name: "FT Global Economy", group: "해외 언론", type: rss, published_within_hours: 48,
+     site: "https://www.ft.com/global-economy", url: "https://www.ft.com/global-economy?format=rss"}
+  - {name: "Economist Finance & Economics", group: "해외 언론", type: rss, published_within_hours: 168,
+     site: "https://www.economist.com/finance-and-economics", url: "https://www.economist.com/finance-and-economics/rss.xml"}
+  - {name: "Globe and Mail Real Estate", group: "해외 언론", type: rss, published_within_hours: 48,
+     site: "https://www.theglobeandmail.com/real-estate/", url: "https://www.theglobeandmail.com/arc/outboundfeeds/rss/category/real-estate/"}
+  - {name: "SCMP Property", group: "해외 언론", type: rss, published_within_hours: 48,
+     site: "https://www.scmp.com/business/property", url: "https://www.scmp.com/rss/96/feed"}
+  - {name: "SCMP Economy", group: "해외 언론", type: rss, published_within_hours: 48,
+     site: "https://www.scmp.com/economy", url: "https://www.scmp.com/rss/12/feed"}
+  - {name: "Straits Times Business", group: "해외 언론", type: rss, published_within_hours: 48,
+     site: "https://www.straitstimes.com/business", url: "https://www.straitstimes.com/news/business/rss.xml"}
+  - {name: "Curbed", group: "해외 언론", type: rss, published_within_hours: 72,
+     site: "https://www.curbed.com/", url: "https://www.curbed.com/rss/index.xml"}
+  - {name: "Commercial Observer", group: "해외 언론", type: rss, published_within_hours: 48,
+     site: "https://commercialobserver.com/", url: "https://commercialobserver.com/feed/"}
+  - {name: "WSJ Economy", group: "해외 언론", type: rss, published_within_hours: 48,
+     site: "https://www.wsj.com/economy", url: "https://feeds.content.dowjones.io/public/rss/socialeconomyfeed"}
+  - {name: "NYT Real Estate", group: "해외 언론", type: rss, published_within_hours: 72,
+     site: "https://www.nytimes.com/section/realestate", url: "https://rss.nytimes.com/services/xml/rss/nyt/RealEstate.xml"}
+  - {name: "NYT Economy", group: "해외 언론", type: rss, published_within_hours: 48,
+     site: "https://www.nytimes.com/section/business/economy", url: "https://rss.nytimes.com/services/xml/rss/nyt/Economy.xml"}
+  - {name: "Korea Herald", group: "해외 언론", type: rss, published_within_hours: 24,
+     site: "https://www.koreaherald.com/", url: "https://www.koreaherald.com/rss/newsAll"}
+  - {name: "Korea Times Business", group: "해외 언론", type: rss, published_within_hours: 48,
+     site: "https://www.koreatimes.co.kr/", url: "https://www.koreatimes.co.kr/www/rss/biz.xml"}
+  - {name: "Wolf Street", group: "해외 언론", type: rss, published_within_hours: 72,
+     site: "https://wolfstreet.com/", url: "https://wolfstreet.com/feed/"}
+  - {name: "Mortgage Professional America", group: "해외 언론", type: rss, published_within_hours: 48,
+     site: "https://www.mpamag.com/us", url: "https://www.mpamag.com/us/rss"}
+  - {name: "Mingtiandi (Asia RE)", group: "해외 언론", type: rss, published_within_hours: 72,
+     site: "https://www.mingtiandi.com/", url: "https://www.mingtiandi.com/feed/"}
+  - {name: "Bisnow", group: "해외 언론", type: rss, published_within_hours: 48,
+     site: "https://www.bisnow.com/", url: "https://www.bisnow.com/rss-feed/home"}
+  - {name: "Bloomberg Economics", group: "해외 언론", type: rss, published_within_hours: 24,
+     site: "https://www.bloomberg.com/economics", url: "https://feeds.bloomberg.com/economics/news.rss"}
+  - {name: "Google News (US housing market)", group: "해외 언론", type: rss, published_within_hours: 24,
+     site: "https://news.google.com/", url: "https://news.google.com/rss/search?q=%22housing%20market%22%20OR%20%22home%20sales%22%20when%3A1d&hl=en-US&gl=US&ceid=US:en"}
+  - {name: "Google News (mortgage rates)", group: "해외 언론", type: rss, published_within_hours: 24,
+     site: "https://news.google.com/", url: "https://news.google.com/rss/search?q=%22mortgage%20rates%22%20when%3A1d&hl=en-US&gl=US&ceid=US:en"}
+  - {name: "Google News (home prices)", group: "해외 언론", type: rss, published_within_hours: 24,
+     site: "https://news.google.com/", url: "https://news.google.com/rss/search?q=%22home%20prices%22%20OR%20Case-Shiller%20when%3A1d&hl=en-US&gl=US&ceid=US:en"}
+  - {name: "Google News (China property)", group: "해외 언론", type: rss, published_within_hours: 24,
+     site: "https://news.google.com/", url: "https://news.google.com/rss/search?q=China%20property%20developers%20OR%20%22China%20property%22%20when%3A1d&hl=en-US&gl=US&ceid=US:en"}
+  - {name: "Google News (commercial real estate)", group: "해외 언론", type: rss, published_within_hours: 24,
+     site: "https://news.google.com/", url: "https://news.google.com/rss/search?q=%22commercial%20real%20estate%22%20when%3A1d&hl=en-US&gl=US&ceid=US:en"}
+  - {name: "Mortgage Strategy (UK)", group: "해외 언론", type: rss, published_within_hours: 168,
+     site: "https://www.mortgagestrategy.co.uk/", url: "https://www.mortgagestrategy.co.uk/feed/"}
+  - {name: "Shelterforce", group: "해외 언론", type: rss, published_within_hours: 168,
+     site: "https://shelterforce.org/", url: "https://shelterforce.org/feed/"}
+  - {name: "Planetizen", group: "해외 언론", type: rss, published_within_hours: 168,
+     site: "https://www.planetizen.com/", url: "https://www.planetizen.com/frontpage/feed"}
+  - {name: "The Urbanist", group: "해외 언론", type: rss, published_within_hours: 168,
+     site: "https://www.theurbanist.org/", url: "https://www.theurbanist.org/feed/"}
+  - {name: "CNA (Channel NewsAsia) Business", group: "해외 언론", type: rss, published_within_hours: 72,
+     site: "https://www.channelnewsasia.com/business", url: "https://www.channelnewsasia.com/api/v1/rss-outbound-feed?_format=xml&category=6936"}
+  - {name: "The Business Times SG Property", group: "해외 언론", type: rss, published_within_hours: 72,
+     site: "https://www.businesstimes.com.sg/property", url: "https://www.businesstimes.com.sg/rss/property"}
+  - {name: "ABC News AU Business", group: "해외 언론", type: rss, published_within_hours: 72,
+     site: "https://www.abc.net.au/news/business", url: "https://www.abc.net.au/news/feed/51892/rss.xml"}
+  - {name: "Property Industry Eye", group: "해외 언론", type: rss, published_within_hours: 72,
+     site: "https://propertyindustryeye.com/", url: "https://propertyindustryeye.com/feed/"}
+  - {name: "Estate Agent Today", group: "해외 언론", type: rss, published_within_hours: 72,
+     site: "https://www.estateagenttoday.co.uk/", url: "https://www.estateagenttoday.co.uk/rss"}
+  - {name: "Landlord Today", group: "해외 언론", type: rss, published_within_hours: 72,
+     site: "https://www.landlordtoday.co.uk/", url: "https://www.landlordtoday.co.uk/rss"}
+  - {name: "Better Dwelling (Canada)", group: "해외 언론", type: rss, published_within_hours: 168,
+     site: "https://betterdwelling.com/", url: "https://betterdwelling.com/feed/"}
+  - {name: "Storeys (Canada)", group: "해외 언론", type: rss, published_within_hours: 72,
+     site: "https://storeys.com/", url: "https://storeys.com/feed/"}
+  - {name: "Canadian Mortgage Trends", group: "해외 언론", type: rss, published_within_hours: 168,
+     site: "https://www.canadianmortgagetrends.com/", url: "https://www.canadianmortgagetrends.com/feed/"}
+  - {name: "Multifamily Dive", group: "해외 언론", type: rss, published_within_hours: 72,
+     site: "https://www.multifamilydive.com/", url: "https://www.multifamilydive.com/feeds/news/"}
+  - {name: "Construction Dive", group: "해외 언론", type: rss, published_within_hours: 72,
+     site: "https://www.constructiondive.com/", url: "https://www.constructiondive.com/feeds/news/"}
+  - {name: "Smart Cities Dive", group: "해외 언론", type: rss, published_within_hours: 168,
+     site: "https://www.smartcitiesdive.com/", url: "https://www.smartcitiesdive.com/feeds/news/"}
+  - {name: "Google News (Reuters real estate)", group: "해외 언론", type: rss, published_within_hours: 168,
+     site: "https://www.reuters.com/business/", url: "https://news.google.com/rss/search?q=site%3Areuters.com%20%22real%20estate%22%20OR%20housing%20when%3A7d&hl=en-US&gl=US&ceid=US%3Aen"}
+  - {name: "Vox Housing", group: "해외 언론", type: rss, published_within_hours: 336,
+     site: "https://www.vox.com/", url: "https://www.vox.com/rss/housing/index.xml"}
+  - {name: "Google News (Nikkei Asia property)", group: "해외 언론", type: rss, published_within_hours: 168,
+     site: "https://asia.nikkei.com/", url: "https://news.google.com/rss/search?q=site%3Aasia.nikkei.com%20property%20OR%20housing%20when%3A7d&hl=en-US&gl=US&ceid=US%3Aen"}
+  # ── 해외 연구·리서치 (추가 29) ──
+  - {name: "Calculated Risk", group: "해외 연구·리서치", type: rss, published_within_hours: 168,
+     site: "https://www.calculatedriskblog.com/", url: "https://calculatedrisk.substack.com/feed"}
+  - {name: "Realtor.com Research", group: "해외 연구·리서치", type: rss, published_within_hours: 168,
+     site: "https://www.realtor.com/research/", url: "https://www.realtor.com/research/feed/"}
+  - {name: "Zillow Research", group: "해외 연구·리서치", type: rss, published_within_hours: 168,
+     site: "https://www.zillow.com/research/", url: "https://www.zillow.com/research/feed/"}
+  - {name: "BIS Central Bankers Speeches", group: "해외 연구·리서치", type: rss, published_within_hours: 168,
+     site: "https://www.bis.org/", url: "https://www.bis.org/doclist/cbspeeches.rss"}
+  - {name: "Federal Reserve Press Releases", group: "해외 연구·리서치", type: rss, published_within_hours: 168,
+     site: "https://www.federalreserve.gov/", url: "https://www.federalreserve.gov/feeds/press_all.xml"}
+  - {name: "NAHB Eye on Housing", group: "해외 연구·리서치", type: rss, published_within_hours: 168,
+     site: "https://eyeonhousing.org/", url: "https://eyeonhousing.org/feed/"}
+  - {name: "Liberty Street Economics (NY Fed)", group: "해외 연구·리서치", type: rss, published_within_hours: 168,
+     site: "https://libertystreeteconomics.newyorkfed.org/", url: "https://libertystreeteconomics.newyorkfed.org/feed/"}
+  - {name: "San Francisco Fed", group: "해외 연구·리서치", type: rss, published_within_hours: 168,
+     site: "https://www.frbsf.org/", url: "https://www.frbsf.org/feed/"}
+  - {name: "Atlanta Fed Macroblog", group: "해외 연구·리서치", type: rss, published_within_hours: 168,
+     site: "https://www.atlantafed.org/", url: "https://www.atlantafed.org/rss/macroblog"}
+  - {name: "Federal Reserve FEDS Notes", group: "해외 연구·리서치", type: rss, published_within_hours: 336,
+     site: "https://www.federalreserve.gov/", url: "https://www.federalreserve.gov/feeds/feds_notes.xml"}
+  - {name: "Federal Reserve Speeches", group: "해외 연구·리서치", type: rss, published_within_hours: 168,
+     site: "https://www.federalreserve.gov/", url: "https://www.federalreserve.gov/feeds/speeches.xml"}
+  - {name: "OECD Ecoscope", group: "해외 연구·리서치", type: rss, published_within_hours: 336,
+     site: "https://oecdecoscope.blog/", url: "https://oecdecoscope.blog/feed/"}
+  - {name: "NLIHC", group: "해외 연구·리서치", type: rss, published_within_hours: 168,
+     site: "https://nlihc.org/", url: "https://nlihc.org/rss.xml"}
+  - {name: "Bruegel", group: "해외 연구·리서치", type: rss, published_within_hours: 168,
+     site: "https://www.bruegel.org/", url: "https://www.bruegel.org/rss.xml"}
+  - {name: "CEPR VoxEU", group: "해외 연구·리서치", type: rss, published_within_hours: 168,
+     site: "https://cepr.org/voxeu", url: "https://cepr.org/rss/vox-content"}
+  - {name: "Bank Underground (BoE)", group: "해외 연구·리서치", type: rss, published_within_hours: 336,
+     site: "https://bankunderground.co.uk/", url: "https://bankunderground.co.uk/feed/"}
+  - {name: "Bank of England News", group: "해외 연구·리서치", type: rss, published_within_hours: 168,
+     site: "https://www.bankofengland.co.uk/", url: "https://www.bankofengland.co.uk/rss/news"}
+  - {name: "Bank of Canada Publications", group: "해외 연구·리서치", type: rss, published_within_hours: 168,
+     site: "https://www.bankofcanada.ca/", url: "https://www.bankofcanada.ca/content_type/publications/feed/"}
+  - {name: "ECB Blog", group: "해외 연구·리서치", type: rss, published_within_hours: 336,
+     site: "https://www.ecb.europa.eu/", url: "https://www.ecb.europa.eu/rss/blog.html"}
+  - {name: "ECB Press", group: "해외 연구·리서치", type: rss, published_within_hours: 168,
+     site: "https://www.ecb.europa.eu/", url: "https://www.ecb.europa.eu/rss/press.html"}
+  - {name: "BIS & FSI Publications", group: "해외 연구·리서치", type: rss, published_within_hours: 336,
+     site: "https://www.bis.org/", url: "https://www.bis.org/doclist/bis_fsi_publs.rss"}
+  - {name: "Rightmove News", group: "해외 연구·리서치", type: rss, published_within_hours: 168,
+     site: "https://www.rightmove.co.uk/news/", url: "https://www.rightmove.co.uk/news/feed/"}
+  - {name: "Strong Towns", group: "해외 연구·리서치", type: rss, published_within_hours: 168,
+     site: "https://www.strongtowns.org/", url: "https://www.strongtowns.org/journal?format=rss"}
+  - {name: "Construction Physics", group: "해외 연구·리서치", type: rss, published_within_hours: 336,
+     site: "https://www.construction-physics.com/", url: "https://www.construction-physics.com/feed"}
+  - {name: "Apricitas Economics", group: "해외 연구·리서치", type: rss, published_within_hours: 336,
+     site: "https://www.apricitas.io/", url: "https://www.apricitas.io/feed"}
+  - {name: "Market Urbanism", group: "해외 연구·리서치", type: rss, published_within_hours: 336,
+     site: "https://marketurbanism.com/", url: "https://marketurbanism.com/feed/"}
+  - {name: "Noahpinion", group: "해외 연구·리서치", type: rss, published_within_hours: 168,
+     site: "https://www.noahpinion.blog/", url: "https://www.noahpinion.blog/feed"}
+  - {name: "Sightline Institute", group: "해외 연구·리서치", type: rss, published_within_hours: 336,
+     site: "https://www.sightline.org/", url: "https://www.sightline.org/feed/"}
+  - {name: "Darrell Owens (housing Substack)", group: "해외 연구·리서치", type: rss, published_within_hours: 720,
+     site: "https://darrellowens.substack.com/", url: "https://darrellowens.substack.com/feed"}
+
   # ── 네이버 뉴스 검색 ─────────────────────────────────────────
   # 네이버 뉴스 검색 API — NAVER_CLIENT_ID/SECRET이 없으면 자동으로 건너뛴다(0건, 오류 아님).
   - name: 네이버뉴스

@@ -1,6 +1,6 @@
-# ZipGenie — React + FastAPI 판
+# 집보미 — React + FastAPI 판
 
-Streamlit 판(ZipGenie)을 **React(화면) + FastAPI(Python API)** 로 나눠 다시 만든 독립 프로젝트입니다.
+Streamlit 판(집보미)을 **React(화면) + FastAPI(Python API)** 로 나눠 다시 만든 독립 프로젝트입니다.
 **2026-10-29부터 운영·개발은 이 프로젝트에서만 합니다** — Streamlit 판은 더 고치지 않습니다(필요할 때만 따로).
 
 - 저장소: https://github.com/kgrib275-dot/ZipGenine
@@ -16,7 +16,7 @@ Streamlit 판(ZipGenie)을 **React(화면) + FastAPI(Python API)** 로 나눠 �
 | 서버 | Streamlit 한 프로세스 | FastAPI + uvicorn (`/api/…` JSON) |
 | 동시 100명 첫 응답 (실측, 이 PC) | 15.7초 | **0.7초** (95% 1.0초) |
 | 개발 포트 / 공개 로컬 포트 | 4002 / 4012~ | **5030** (화면 개발 5173) / **5012~** |
-| DB | `ZipGenie/data/zipgenie.db` | `backend/data/zipgenie.db` |
+| DB | `ZipBomi/data/zipbomi.db` | `backend/data/zipbomi.db` |
 | Databricks 스키마 기본값 | `zipgenie` | **`zipgenie_react`** |
 | 작업 스케줄러 이름 | `AXReview Public` | **`AXReview React Public`** |
 
@@ -80,7 +80,7 @@ npm run build             # frontend\dist 생성 (start-public 이 자동으로�
 콘텐츠를 Streamlit 판에서 가져오려면(기사·노트·주간 흐름·키워드만, 개인정보 제외):
 ```powershell
 cd backend
-venv\Scripts\python tools\import_content.py "C:\...\ZipGenie\data\zipgenie.db"
+venv\Scripts\python tools\import_content.py "C:\...\집보미\data\zipbomi.db"
 ```
 > 이 폴더는 처음 만들 때 이미 한 번 가져왔습니다 (기사 1,108 · 노트 22 · 주간 흐름 1 · 키워드 20).
 

@@ -32,7 +32,7 @@ def smtp_config() -> dict:
         "port": int(os.environ.get("SMTP_PORT", "587") or 587),
         "user": os.environ.get("SMTP_USER", ""),
         "password": os.environ.get("SMTP_PASS", ""),
-        # SMTP_FROM 이 "ZipGenie <a@b.com>" 꼴이어도 주소만 쓴다 (표시 이름은 보낼 때 붙인다) — 봉투 발신자에 이름이 섞이면 거부하는 서버가 있다
+        # SMTP_FROM 이 "집보미 <a@b.com>" 꼴이어도 주소만 쓴다 (표시 이름은 보낼 때 붙인다) — 봉투 발신자에 이름이 섞이면 거부하는 서버가 있다
         "sender": parseaddr(os.environ.get("SMTP_FROM", "") or os.environ.get("SMTP_USER", ""))[1],
         "tls": os.environ.get("SMTP_TLS", "starttls").lower(),  # starttls / ssl / none
     }
@@ -355,8 +355,8 @@ def render(s: dict, unsubscribe_token: str = "", industries: list[str] | None = 
 <table width="100%" cellpadding="0" cellspacing="0" style="background:#120F08"><tr><td align="center">
 <table width="640" cellpadding="0" cellspacing="0" style="max-width:640px;width:100%">
 <tr><td style="padding:28px 32px;background:linear-gradient(120deg,#1C180F,#3A3220);border-bottom:3px solid #F5B800;border-radius:0 0 18px 18px">
-  <div style="font-size:22px;font-weight:800;color:#FBF6E9">ZIP<span style="color:#FFD54A">GENIE</span> <span style="font-size:13px;font-weight:600;color:#B8AB8A">집지니</span></div>
-  <div style="font-size:12px;color:#FFE89A;margin-top:4px">내 집 마련과 부동산 결정을 위한 프라이빗 리서치</div>
+  <div style="font-size:22px;font-weight:800;color:#FBF6E9">ZIP<span style="color:#FFD54A">BOMI</span> <span style="font-size:13px;font-weight:600;color:#B8AB8A">집보미</span></div>
+  <div style="font-size:12px;color:#FFE89A;margin-top:4px">집에 관한 모든 것 — 시세·청약·대출·세금·정책</div>
 </td></tr>
 {result_html}
 {streak_html}
@@ -367,7 +367,7 @@ def render(s: dict, unsubscribe_token: str = "", industries: list[str] | None = 
 {refer}
 <tr><td style="padding:24px 32px 36px;font-size:12px;color:#B8AB8A;line-height:1.7">
   <a href="{mail_link(base, 'flow', '/', sd, token)}" style="color:#FFD54A">사이트에서 보기</a> · {pdf_link}
-  <a href="{unsub}" style="color:#B8AB8A">구독 해지</a><br>© ZipGenie
+  <a href="{unsub}" style="color:#B8AB8A">구독 해지</a><br>© 집보미
 </td></tr>
 </table></td></tr></table></body></html>""".replace(_TOKEN_SLOT, token)
 
@@ -383,7 +383,7 @@ def confirm_html(confirm_token: str) -> str:
     base = site_url()
     return f"""<!doctype html><html><body style="margin:0;background:#120F08;font-family:'Malgun Gothic',sans-serif;color:#FBF6E9">
 <div style="max-width:560px;margin:0 auto;padding:36px 28px">
-  <div style="font-size:22px;font-weight:800">ZIP<span style="color:#FFD54A">GENIE</span> <span style="font-size:13px;font-weight:600;color:#B8AB8A">집지니</span></div>
+  <div style="font-size:22px;font-weight:800">ZIP<span style="color:#FFD54A">BOMI</span> <span style="font-size:13px;font-weight:600;color:#B8AB8A">집보미</span></div>
   <h2 style="font-size:19px;margin:22px 0 10px">구독 신청을 확인해 주세요</h2>
   <p style="color:#E8DEC6;line-height:1.7;font-size:14px">아래 버튼을 누르면 구독이 완료됩니다. 직접 신청하지 않았다면 이 메일을 무시하세요 — 아무것도 발송되지 않습니다.</p>
   <p style="margin:26px 0"><a href="{base}/confirm?t={confirm_token}" style="background:#F5B800;color:#1A1405;text-decoration:none;font-weight:700;padding:12px 22px;border-radius:999px">구독 확인하기</a></p>
@@ -391,12 +391,55 @@ def confirm_html(confirm_token: str) -> str:
 </div></body></html>"""
 
 
+def _shell(title: str, body: str) -> str:
+    return f"""<!doctype html><html><body style="margin:0;background:#120F08;font-family:'Malgun Gothic',sans-serif;color:#FBF6E9">
+<div style="max-width:560px;margin:0 auto;padding:36px 28px">
+  <div style="font-size:22px;font-weight:800">ZIP<span style="color:#FFD54A">BOMI</span> <span style="font-size:13px;font-weight:600;color:#B8AB8A">집보미</span></div>
+  <h2 style="font-size:19px;margin:22px 0 10px">{title}</h2>
+  {body}
+</div></body></html>"""
+
+
+def login_html(token: str, code: str) -> str:
+    """메일 링크 로그인 (api/routers/auth.py) — 30분, 한 번만. 다른 기기에서 열면 6자리 코드도 필요."""
+    base = site_url()
+    return _shell("집보미에 로그인합니다", f"""
+  <p style="color:#E8DEC6;line-height:1.7;font-size:14px">아래 버튼을 누르면 이 메일 주소로 로그인됩니다. 직접 요청하지 않았다면 이 메일을 무시하세요 — 링크와 코드가 함께 없으면 로그인되지 않습니다.</p>
+  <p style="margin:26px 0"><a href="{base}/login?t={token}" style="background:#F5B800;color:#1A1405;text-decoration:none;font-weight:700;padding:12px 22px;border-radius:999px">로그인하기</a></p>
+  <p style="color:#E8DEC6;font-size:14px">로그인을 요청한 기기가 아닌 곳에서 열면 아래 확인 코드를 넣어 주세요.</p>
+  <p style="font-size:28px;font-weight:800;letter-spacing:8px;color:#FFD54A;margin:6px 0 18px">{code}</p>
+  <p style="color:#B8AB8A;font-size:12px">링크와 코드는 30분 동안, 한 번만 쓸 수 있습니다. 코드를 5번 틀리면 링크가 무효가 됩니다. 이 메일을 다른 사람에게 전달하지 마세요.</p>""")
+
+
+def send_login_link(email: str, token: str, code: str) -> bool:
+    if not is_configured():
+        return False
+    ok, _ = send([(email, "")], f"[집보미] 로그인 링크 (확인 코드 {code})", lambda _t: login_html(token, code))
+    return ok == 1
+
+
+def send_login_notice(email: str, revoke_token: str, ua: str = "") -> bool:
+    """로그인 알림 — 본인이 아니면 '모든 기기에서 로그아웃'."""
+    if not is_configured():
+        return False
+    from datetime import datetime as _dt
+    from html import escape as _esc
+    base = site_url()
+    body = f"""
+  <p style="color:#E8DEC6;line-height:1.7;font-size:14px">{_dt.now().strftime('%Y-%m-%d %H:%M')}에 이 메일 주소로 집보미에 로그인했습니다.<br>
+  <span style="color:#B8AB8A;font-size:12px">브라우저: {_esc(ua) or '-'}</span></p>
+  <p style="color:#E8DEC6;font-size:14px">본인이 맞다면 아무것도 하지 않아도 됩니다. 본인이 아니라면 아래 버튼으로 모든 기기에서 로그아웃하세요.</p>
+  <p style="margin:22px 0"><a href="{base}/login?revoke={revoke_token}" style="background:#2A2416;color:#FFD54A;border:1px solid #FFD54A;text-decoration:none;font-weight:700;padding:11px 20px;border-radius:999px">내가 아니에요 — 모든 기기에서 로그아웃</a></p>"""
+    ok, _ = send([(email, "")], "[집보미] 새 로그인 알림", lambda _t: _shell("새 로그인 알림", body))
+    return ok == 1
+
+
 def ask_link_html(link_token: str) -> str:
     """'질문하기 연결' 메일 — 구독한 주소로 이 브라우저를 잇는 링크 (api/routers/ask.py link). 링크를 연 것만으로 잇지 않고 화면의 버튼으로 확정."""
     base = site_url()
     return f"""<!doctype html><html><body style="margin:0;background:#120F08;font-family:'Malgun Gothic',sans-serif;color:#FBF6E9">
 <div style="max-width:560px;margin:0 auto;padding:36px 28px">
-  <div style="font-size:22px;font-weight:800">ZIP<span style="color:#FFD54A">GENIE</span> <span style="font-size:13px;font-weight:600;color:#B8AB8A">집지니</span></div>
+  <div style="font-size:22px;font-weight:800">ZIP<span style="color:#FFD54A">BOMI</span> <span style="font-size:13px;font-weight:600;color:#B8AB8A">집보미</span></div>
   <h2 style="font-size:19px;margin:22px 0 10px">질문하기를 이 구독자로 연결합니다</h2>
   <p style="color:#E8DEC6;line-height:1.7;font-size:14px">아래 버튼을 누르면 지금 쓰는 브라우저가 이 구독 주소와 이어져 남은 질문 횟수를 쓸 수 있습니다. 직접 요청하지 않았다면 이 메일을 무시하세요.</p>
   <p style="margin:26px 0"><a href="{base}/ask?link={link_token}" style="background:#F5B800;color:#1A1405;text-decoration:none;font-weight:700;padding:12px 22px;border-radius:999px">질문하기 연결하기</a></p>
@@ -409,7 +452,7 @@ def ask_credits_html(n: int) -> str:
     base = site_url()
     return f"""<!doctype html><html><body style="margin:0;background:#120F08;font-family:'Malgun Gothic',sans-serif;color:#FBF6E9">
 <div style="max-width:560px;margin:0 auto;padding:36px 28px">
-  <div style="font-size:22px;font-weight:800">ZIP<span style="color:#FFD54A">GENIE</span> <span style="font-size:13px;font-weight:600;color:#B8AB8A">집지니</span></div>
+  <div style="font-size:22px;font-weight:800">ZIP<span style="color:#FFD54A">BOMI</span> <span style="font-size:13px;font-weight:600;color:#B8AB8A">집보미</span></div>
   <h2 style="font-size:19px;margin:22px 0 10px">질문 {int(n)}회가 충전되었습니다</h2>
   <p style="color:#E8DEC6;line-height:1.7;font-size:14px">연결해 둔 브라우저에서 바로 이어서 질문할 수 있습니다. 다른 브라우저라면 질문하기 화면에서 구독한 주소로 다시 연결해 주세요.</p>
   <p style="margin:26px 0"><a href="{base}/ask" style="background:#F5B800;color:#1A1405;text-decoration:none;font-weight:700;padding:12px 22px;border-radius:999px">질문하기 열기</a></p>
@@ -420,7 +463,7 @@ def send_confirmation(email: str, confirm_token: str) -> bool:
     """구독 확인 메일. SMTP가 없으면 False (관리 > 구독·발송에서 나중에 다시 보낼 수 있다)."""
     if not is_configured():
         return False
-    ok, _ = send([(email, "")], "[ZipGenie] 구독 신청을 확인해 주세요", lambda _t: confirm_html(confirm_token))
+    ok, _ = send([(email, "")], "[집보미] 구독 신청을 확인해 주세요", lambda _t: confirm_html(confirm_token))
     return ok == 1
 
 
@@ -445,7 +488,7 @@ def send(recipients: list[tuple[str, str]], subject: str, html_for, on_sent=None
                 continue  # 다른 실행이 이미 보냈거나 보내는 중
             msg = MIMEMultipart("alternative")
             msg["Subject"] = subject
-            msg["From"] = formataddr(("ZipGenie", cfg["sender"]))
+            msg["From"] = formataddr(("집보미", cfg["sender"]))
             msg["To"] = email
             msg.attach(MIMEText(html_for(token), "html", "utf-8"))
             try:

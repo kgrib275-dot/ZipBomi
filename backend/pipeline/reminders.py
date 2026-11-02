@@ -121,7 +121,7 @@ def _wrap(title: str, body: str, unsub_token: str) -> str:
     unsub = f'<a href="{base}/unsubscribe?t={html.escape(unsub_token)}" style="color:#B8AB8A">구독 해지</a>' if unsub_token else ""
     return f"""<!doctype html><html><body style="margin:0;background:#120F08;font-family:'Malgun Gothic',sans-serif;color:#FBF6E9">
 <div style="max-width:560px;margin:0 auto;padding:36px 28px">
-  <div style="font-size:22px;font-weight:800">ZIP<span style="color:#FFD54A">GENIE</span> <span style="font-size:13px;font-weight:600;color:#B8AB8A">집지니</span></div>
+  <div style="font-size:22px;font-weight:800">ZIP<span style="color:#FFD54A">BOMI</span> <span style="font-size:13px;font-weight:600;color:#B8AB8A">집보미</span></div>
   <h2 style="font-size:19px;margin:22px 0 10px">{title}</h2>
   {body}
   <p style="color:#B8AB8A;font-size:12px;line-height:1.6;margin-top:28px">내 프로필에서 알림을 켜 두셔서 보내 드렸어요. 알림은 <a href="{base}/me" style="color:#B8AB8A">내 프로필</a>에서 끌 수 있어요. {unsub}</p>
@@ -152,7 +152,7 @@ def render(item: dict) -> tuple[str, str]:
                 + (_btn(n["url"], "공고 원문 보기") if str(n.get("url") or "").startswith("http") else "")
                 + f'<p style="font-size:13px"><a href="{base}/calendar" style="color:#FFD54A">분양 일정 전체 보기 →</a> · '
                   f'<a href="{base}/calc" style="color:#FFD54A">내 청약 가점 계산 →</a></p>')
-        return f"[ZipGenie] {dday} 청약 {item['what']} — {n.get('name', '')[:40]}", _wrap(f"{dday} · 청약 {item['what']} 알림", body, item["token"])
+        return f"[집보미] {dday} 청약 {item['what']} — {n.get('name', '')[:40]}", _wrap(f"{dday} · 청약 {item['what']} 알림", body, item["token"])
     step = item["step"]
     tips = ("집주인에게 계약 갱신 여부를 알릴 수 있는 기간이에요(만기 6개월~2개월 전). 계약갱신요구권 사용 여부와 새 집 시세를 함께 보세요."
             if step == 90 else
@@ -161,7 +161,7 @@ def render(item: dict) -> tuple[str, str]:
             f'{left}일 남았어요.</p><p style="color:#E8DEC6;line-height:1.7;font-size:14px">{tips}</p>'
             + _btn(f"{base}/deals", "우리 동네 전월세 실거래가 보기")
             + f'<p style="font-size:13px"><a href="{base}/calc" style="color:#FFD54A">전세가율·갭 계산 →</a></p>')
-    return f"[ZipGenie] 전세 만기 {dday} 알림", _wrap(f"전세 만기 {dday}", body, item["token"])
+    return f"[집보미] 전세 만기 {dday} 알림", _wrap(f"전세 만기 {dday}", body, item["token"])
 
 
 def run(today: date | None = None, dry_run: bool = False) -> dict:

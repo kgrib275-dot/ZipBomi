@@ -1,4 +1,4 @@
-# ZipGenie API 계약 (backend ↔ frontend)
+# 집보미 API 계약 (backend ↔ frontend)
 
 모든 주소는 `/api/…`. 응답은 JSON. 오류는 `{"detail": "사람에게 보여 줄 문구"}` + HTTP 상태(400 입력, 403 권한, 404 없음, 429 한도).
 공개 API는 `deps.caller` 로 방문자(서명 쿠키 `axv`)를 식별하고 필요하면 쿠키를 심는다. 관리 API는 `deps.require_admin`

@@ -9,7 +9,10 @@ import "leaflet/dist/leaflet.css";
 import { del, get, post, put } from "../api";
 import { Alert, Dialog, useLoad } from "../components/ui";
 import { useMe } from "../me";
+import ExternalMap, { type Engine, type MapPoint } from "./ExternalMap";
 import "./Map.css";
+
+const ENGINE_LABEL: Record<Engine, string> = { naver: "네이버", kakao: "카카오", google: "구글" };
 
 // ───────── 자료형 ─────────
 type Sgg = { code: string; name: string; lat: number; lng: number };
@@ -39,6 +42,14 @@ const KOREA: [number, number] = [36.4, 127.8];
 // CARTO 무료 래스터(light_all·dark_all)는 2026-11 확인 시 키 없이 'API KEY REQUIRED' 워터마크만 돌려줘 쓰지 않는다.
 // 다크 테마는 같은 타일을 CSS 필터로 어둡게 뒤집는다 (Map.css .mp-dark).
 const TILE = "https://tile.openstreetmap.org/{z}/{x}/{y}.png";
+// 바탕지도 고르기 (2026-11-02) — 네이버·구글 지도를 사이트 안에 띄우려면 각 회사 API 키·도메인 등록이 필요해, 키 없이 쓸 수 있는
+// 일반 지도·위성 사진을 고르게 하고 네이버·구글 지도는 지금 보는 위치 그대로 새 창으로 연다.
+const BASES = {
+  osm: { label: "일반 지도", url: TILE, attr: "", max: 19 },
+  sat: { label: "위성 사진", url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+         attr: 'Tiles &copy; <a href="https://www.esri.com/" target="_blank" rel="noopener">Esri</a>', max: 18 },
+} as const;
+type BaseKey = keyof typeof BASES;
 const ATTR = '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors';
 const PRICE_COLORS = ["#FFE89A", "#FFD54A", "#F5B800", "#D9A100", "#9A6F00"]; // 연노랑 → 짙은 황토
 const STATUS_COLOR: Record<Status, string> = { 접수중: "#16a34a", 예정: "#F5B800", 마감: "#8a8170" };
@@ -144,7 +155,7 @@ function listingPopup(l: Listing, admin: boolean): string {
 function pricePopup(p: PriceItem, months: number): string {
   return `<div class="mp-pop">
     <div class="mp-pop-tag" style="--c:#F5B800">최근 ${months}개월 아파트 매매</div>
-    <b class="mp-pop-h">${esc(p.region)}</b>
+    <b class="mp-pop-h">${esc(p.region)} ${esc(p.sigungu)}</b>
     <dl>
       <dt>중위 거래가</dt><dd>${esc(man(p.median_price_manwon))}</dd>
       <dt>3.3㎡당 중위</dt><dd>${esc(man(p.median_per_3_3m2_manwon))}</dd>
@@ -199,6 +210,25 @@ export default function MapPage() {
   const boxRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
   const tileRef = useRef<L.TileLayer | null>(null);
+  const [base, setBase] = useState<BaseKey>(() => { try { return localStorage.getItem("zg-map-base") === "sat" ? "sat" : "osm"; } catch { return "osm"; } });
+  // 네이버·카카오·구글 지도로 보기 (2026-11-02) — 키가 있는 회사만 켜진다 (ExternalMap.tsx)
+  const mapKeys = useMe().me?.map_keys || { naver: "", kakao: "", google: "" };
+  const [engine, setEngineRaw] = useState<Engine | null>(() => { try { const v = localStorage.getItem("zg-map-engine"); return v === "naver" || v === "kakao" || v === "google" ? v : null; } catch { return null; } });
+  const setEngine = (e: Engine | null) => {
+    const m = mapRef.current;
+    if (m) { const c = m.getCenter(); setExtCenter([c.lat, c.lng]); setExtZoom(m.getZoom()); }
+    setEngineRaw(e); try { localStorage.setItem("zg-map-engine", e || ""); } catch { /* 무시 */ }
+  };
+  const [extCenter, setExtCenter] = useState<[number, number]>([37.5665, 126.978]);
+  const [extZoom, setExtZoom] = useState(11);
+  const openOuter = (who: "naver" | "google") => {
+    const m = mapRef.current;
+    if (!m) return;
+    const c = m.getCenter(), z = m.getZoom();
+    const url = who === "naver" ? `https://map.naver.com/p?c=${c.lng.toFixed(6)},${c.lat.toFixed(6)},${Math.min(z, 19)},0,0,0,dh`
+      : `https://www.google.com/maps/@${c.lat.toFixed(6)},${c.lng.toFixed(6)},${z}z`;
+    window.open(url, "_blank", "noopener");
+  };
   const groups = useRef<{ price: L.LayerGroup; apply: L.LayerGroup; listing: L.LayerGroup } | null>(null);
   const markers = useRef<{ apply: Map<string, L.CircleMarker>; listing: Map<number, L.Marker>; price: Map<string, L.CircleMarker> }>({ apply: new Map(), listing: new Map(), price: new Map() });
   const placingRef = useRef(false);
@@ -252,9 +282,14 @@ export default function MapPage() {
   // ── 바탕지도 (한 번) — 라이트/다크 전환은 상자의 .mp-dark 클래스(CSS 필터)로 ──
   useEffect(() => {
     const map = mapRef.current;
-    if (!map || tileRef.current) return;
-    tileRef.current = L.tileLayer(TILE, { attribution: ATTR, maxZoom: 19 }).addTo(map);
-  }, []);
+    if (!map) return;
+    tileRef.current?.remove();
+    const b = BASES[base];
+    tileRef.current = L.tileLayer(b.url, { attribution: b.attr || ATTR, maxZoom: b.max }).addTo(map);
+    tileRef.current.bringToBack();
+    boxRef.current?.classList.toggle("mp-sat", base === "sat");
+    try { localStorage.setItem("zg-map-base", base); } catch { /* 무시 */ }
+  }, [base]);
 
   // ── 레이어 켜고 끄기 ──
   useEffect(() => {
@@ -276,7 +311,7 @@ export default function MapPage() {
       const m = L.circleMarker([p.lat, p.lng], {
         radius: 8 + 22 * Math.sqrt(p.deals / maxDeals), color: "#5c4300", weight: 1, fillColor: binColor(bins, p.median_per_3_3m2_manwon), fillOpacity: 0.72,
       }).bindPopup(pricePopup(p, regions.data?.months || 3), { maxWidth: 280 })
-        .bindTooltip(`${p.region} · ${man(p.median_per_3_3m2_manwon)}/3.3㎡`, { direction: "top" });
+        .bindTooltip(`${p.region} ${p.sigungu} · ${man(p.median_per_3_3m2_manwon)}/3.3㎡`, { direction: "top" });
       m.addTo(g);
       markers.current.price.set(p.lawd_cd, m);
     }
@@ -418,6 +453,18 @@ export default function MapPage() {
   };
 
   const priceItems = useMemo(() => [...(regions.data?.items || [])].sort((a, b) => (b.median_per_3_3m2_manwon ?? 0) - (a.median_per_3_3m2_manwon ?? 0)), [regions.data]);
+  // 네이버·카카오·구글 지도에 같은 자료를 그릴 점 (켠 레이어만)
+  const extPoints = useMemo<MapPoint[]>(() => {
+    if (!engine) return [];
+    const out: MapPoint[] = [];
+    const items = regions.data?.items || [];
+    const maxDeals = Math.max(1, ...items.map((i) => i.deals));
+    if (layers.price) for (const p of items) out.push({ id: "p" + p.lawd_cd, lat: p.lat, lng: p.lng, kind: "price", color: binColor(bins, p.median_per_3_3m2_manwon),
+      radius: 8 + 22 * Math.sqrt(p.deals / maxDeals), html: pricePopup(p, regions.data?.months || 3), title: `${p.region} ${p.sigungu}` });
+    if (layers.apply) for (const n of apply.data?.items || []) out.push({ id: "a" + n.id, lat: n.lat, lng: n.lng, kind: "apply", color: STATUS_COLOR[n.status], html: noticePopup(n), title: n.name });
+    if (layers.listing) for (const l of listings.data?.items || []) out.push({ id: "l" + l.id, lat: l.lat, lng: l.lng, kind: "listing", color: "#5AB2FF", html: listingPopup(l, !!listings.data?.admin), title: l.title });
+    return out;
+  }, [engine, regions.data, apply.data, listings.data, layers, bins]);
   const notices = apply.data?.items || [];
   const listItems = listings.data?.items || [];
   const sgroups = regions.data?.groups || [];
@@ -446,6 +493,15 @@ export default function MapPage() {
           ))}
         </div>
         <div className="mp-bar-r">
+          <div className="seg mp-base" role="group" aria-label="바탕지도">
+            {(Object.keys(BASES) as BaseKey[]).map((k) => <button key={k} type="button" className={!engine && base === k ? "on" : ""} onClick={() => { setBase(k); setEngine(null); }}>{BASES[k].label}</button>)}
+          </div>
+          <div className="seg mp-base" role="group" aria-label="지도 회사">
+            {(["naver", "kakao", "google"] as Engine[]).map((k) => (
+              <button key={k} type="button" className={engine === k ? "on" : ""} disabled={!mapKeys[k]} onClick={() => setEngine(engine === k ? null : k)}
+                title={mapKeys[k] ? `${ENGINE_LABEL[k]}로 보기` : `${ENGINE_LABEL[k]} — 관리자가 지도 키를 등록하면 쓸 수 있어요`}>{ENGINE_LABEL[k]}</button>
+            ))}
+          </div>
           <label className="sr-only" htmlFor="mp-jump">지역 바로가기</label>
           <select id="mp-jump" className="mp-jump" value={jump} onChange={(e) => onJump(e.target.value)}>
             <option value="">지역 바로가기</option>
@@ -473,6 +529,7 @@ export default function MapPage() {
       <div className="mp-wrap">
         <div className={`mp-map-box ${placing ? "placing" : ""} ${dark ? "mp-dark" : ""}`}>
           <div ref={boxRef} className="mp-map" aria-label="부동산 지도" />
+          {engine && mapKeys[engine] && <ExternalMap engine={engine} apiKey={mapKeys[engine]} points={extPoints} center={extCenter} zoom={extZoom} />}
           {placing && <div className="mp-placing">매물 위치를 지도에서 클릭하세요</div>}
           <div className="mp-legend" aria-label="범례">
             {layers.apply && (
@@ -575,7 +632,7 @@ export default function MapPage() {
                       <li key={p.lawd_cd}>
                         <button type="button" onClick={() => focus("price", p.lawd_cd, p.lat, p.lng)}>
                           <span className="mp-sw" style={{ background: binColor(bins, p.median_per_3_3m2_manwon) }} />
-                          <b>{p.region}</b>
+                          <b>{p.region} {p.sigungu}</b>
                           <small>3.3㎡당 {man(p.median_per_3_3m2_manwon)} · 중위 {man(p.median_price_manwon)} · {p.deals.toLocaleString("ko-KR")}건</small>
                         </button>
                       </li>

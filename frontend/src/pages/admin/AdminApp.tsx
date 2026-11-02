@@ -26,6 +26,7 @@ const PAGES: { path: string; label: string; grp?: string; C: React.LazyExoticCom
   { path: "engagement", label: "참여 분석", C: L(() => import("./Engagement")) },
   { path: "warehouse", label: "Databricks 적재", C: L(() => import("./Warehouse")) },
   { path: "subscribers", label: "구독·발송", grp: "사람", C: L(() => import("./Subscribers")) },
+  { path: "accounts", label: "회원 계정", C: L(() => import("./Accounts")) },
   { path: "access", label: "관리자·접속", C: L(() => import("./Access")) },
   { path: "privacy", label: "개인정보 처리방침", C: L(() => import("./PrivacySettings")) },
 ];

@@ -37,17 +37,38 @@ type Home = {
 /** 공유 링크(?s=1)로 들어온 방문을 세션당 한 번 기록한다 (app/play_ui.track_share_visit). */
 
 /** 소스 목록 — 그룹별 펼침 상자 (홈 '어디서 찾아 읽나'). */
+// 출처 묶음 — 묶음 탭(곳 수) + 고른 묶음의 출처 칩. 예전 접이식 목록은 묶음이 많아지면 칸 높이가 들쭉날쭉했다 (2026-11-02)
+const SRC_ICON: Record<string, string> = { "정부·공공": "🏛", "경제지 부동산": "📰", "종합·경제 뉴스": "🗞", "부동산 전문지": "🏗", "Google 뉴스 검색": "🔎",
+  "네이버 뉴스 검색": "🔎", "유튜브": "▶", "블로그·커뮤니티": "💬", "해외 언론": "🌐", "해외 연구·리서치": "📊" };
+/** 화면에 가까워질 때 그린다 — 첫 화면 아래 구역의 API 요청(시장 요약·최고가 거래)을 첫 그리기 뒤로 미룬다 (2026-11-02 속도 개선) */
+function LazyMount({ children, minHeight }: { children: React.ReactNode; minHeight: number }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [on, setOn] = useState(() => typeof IntersectionObserver === "undefined");
+  useEffect(() => {
+    if (on || !ref.current) return;
+    const io = new IntersectionObserver((es) => { if (es.some((e) => e.isIntersecting)) { setOn(true); io.disconnect(); } }, { rootMargin: "600px 0px" });
+    io.observe(ref.current);
+    return () => io.disconnect();
+  }, [on]);
+  return <div ref={ref} style={on ? undefined : { minHeight }}>{on ? children : null}</div>;
+}
+
 export function SourceGroups({ sources }: { sources: Record<string, { name: string; url: string }[]> }) {
+  const groups = Object.entries(sources).filter(([, v]) => v.length);
+  const [pick, setPick] = useState(groups[0]?.[0] || "");
+  const items = sources[pick] || [];
   return (
-    <div className="src-grid">
-      {Object.entries(sources).map(([group, items]) => (
-        <details key={group} className="expander">
-          <summary><b>{group}</b> · {items.length}곳</summary>
-          <ul className="body src-list">
-            {items.map((s) => <li key={s.name}><a href={s.url} target="_blank" rel="noopener">{s.name} ↗</a></li>)}
-          </ul>
-        </details>
-      ))}
+    <div className="src-box">
+      <div className="src-tabs" role="tablist" aria-label="출처 묶음">
+        {groups.map(([g, v]) => (
+          <button key={g} type="button" role="tab" aria-selected={pick === g} className={`src-tab${pick === g ? " on" : ""}`} onClick={() => setPick(g)}>
+            <span aria-hidden="true">{SRC_ICON[g] || "•"}</span>{g}<b>{v.length}</b>
+          </button>
+        ))}
+      </div>
+      <div className="src-chips" role="tabpanel" aria-label={pick}>
+        {items.map((s) => <a key={s.name + s.url} href={s.url} target="_blank" rel="noopener" className="src-chip">{s.name.replace(/^유튜브 · /, "")}<span aria-hidden="true">↗</span></a>)}
+      </div>
     </div>
   );
 }
@@ -219,6 +240,33 @@ function MineBlock() {
   );
 }
 
+// 히어로 주제 — [이름, 화면, 아이콘]
+const HERO_TOPICS: [string, string, string][] = [["실거래가", "/deals", "📈"], ["청약 일정", "/calendar", "🗓"], ["대출 한도", "/calc", "🏦"],
+  ["취득세", "/calc?tab=tax", "🧾"], ["현행 규제", "/now", "📌"], ["시장 노트", "/notes", "📰"]];
+const ROT_WORDS = ["시세", "청약", "대출", "세금", "전월세", "정책"];
+
+/** 돌아가며 바뀌는 주제 단어 — 움직임 줄이기 설정이면 첫 단어만 */
+function RotWord() {
+  const [i, setI] = useState(0);
+  useEffect(() => {
+    if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return;
+    const t = window.setInterval(() => setI((x) => (x + 1) % ROT_WORDS.length), 2200);
+    return () => window.clearInterval(t);
+  }, []);
+  return (
+    <span className="rot" aria-live="off">
+      <span key={i} className="rot-w grad">{ROT_WORDS[i]}</span>
+    </span>
+  );
+}
+
+/** 마우스 위치를 히어로의 CSS 변수로 — 빛(hero-glow)이 따라온다 */
+function heroGlow(e: React.MouseEvent<HTMLElement>) {
+  const r = e.currentTarget.getBoundingClientRect();
+  e.currentTarget.style.setProperty("--mx", `${e.clientX - r.left}px`);
+  e.currentTarget.style.setProperty("--my", `${e.clientY - r.top}px`);
+}
+
 export default function HomePage() {
   const { openSubscribe } = useDialogs();
   const { data, error } = useLoad(() => get<Home>("home"));
@@ -237,23 +285,29 @@ export default function HomePage() {
   // 히어로(제목·버튼)는 API 를 기다리지 않고 바로 그린다 — 예전엔 /api/home 응답 전까지 '불러오는 중'만 보여
   // 휴대폰 첫 화면(LCP)이 6초를 넘었다. 숫자만 응답 뒤에 채운다.
   const hero = (c: { notes: number; articles_week: number; sources: number } | null) => (
-    <section className="hero">
-      <div className="hero-by" aria-hidden="true" />
-      <h1 className="hero-h1"><span className="grad">ZipGenie</span></h1>
-      <p className="hero-lead">내 집 마련과 부동산 결정을 위한 프라이빗 리서치</p>
-      <p className="hero-sub">흩어진 시세·정책·청약 정보를 매일 모아 읽고, 나에게 필요한 것만 정리해 둡니다.</p>
-      {c && c.notes >= MIN_NOTES_FOR_COUNTS && (
-        <div className="hero-stats">
-          <div><CountUp to={c.notes} /><span>쌓인 노트</span></div>
-          <div><CountUp to={c.articles_week} /><span>최근 7일 읽은 기사</span></div>
-          <div><CountUp to={c.sources} /><span>살펴보는 출처</span></div>
+    // 2026-11-02: 서비스 취지 = 집에 관한 모든 것. 주제 단어가 돌아가며 바뀌고(RotWord), 칩을 누르면 그 화면으로,
+    // 마우스를 움직이면 빛이 따라온다(HeroGlow). '살 수 있는 집값' 계산은 아래 별도 구역(afford-sec)으로 옮겼다.
+    <section className="hero hero2" onMouseMove={heroGlow}>
+      <div className="hero-glow" aria-hidden="true" />
+      <div className="hero-main">
+        <div className="hero-kicker"><span className="grad">ZIPBOMI</span> · 집보미 — 집을 봐 주는 비서</div>
+        <h1 className="hero-h1">집에 관한 모든 것,<br /><RotWord />까지 한곳에서</h1>
+        <p className="hero-sub">아파트 실거래가부터 청약 일정, 대출 한도, 세금, 정책 변화까지. 흩어진 집 이야기를 매일 모아 숫자와 함께 정리해 드립니다.</p>
+        <nav className="hero-topics" aria-label="주제 바로가기">
+          {HERO_TOPICS.map(([label, to, icon]) => <Link key={to} to={to} className="hero-topic"><i aria-hidden="true">{icon}</i>{label}</Link>)}
+        </nav>
+        {c && c.notes >= MIN_NOTES_FOR_COUNTS && (
+          <div className="hero-stats">
+            <div><CountUp to={c.notes} /><span>쌓인 노트</span></div>
+            <div><CountUp to={c.articles_week} /><span>7일간 읽은 기사</span></div>
+            <div><CountUp to={c.sources} /><span>살펴보는 출처</span></div>
+          </div>
+        )}
+        <div className="hero-btns">
+          <button className="btn primary" onClick={() => openSubscribe("home_hero")}>월요일 맞춤 브리핑 받기 →</button>
+          <Link className="btn ghost" to="/deals">실거래가 보기</Link>
         </div>
-      )}
-      <div className="hero-btns">
-        <button className="btn primary" onClick={() => openSubscribe("home_hero")}>월요일 아침 맞춤 브리핑 받기 →</button>
-        <Link className="btn ghost" to="/deals">실거래가 찾아보기</Link>
       </div>
-      <AffordHero />
     </section>
   );
   // .home — 홈 전용 가독성 규칙(Home.css 맨 아래)의 범위. 다른 페이지 스타일은 건드리지 않는다.
@@ -275,8 +329,15 @@ export default function HomePage() {
 
       <Ticker t={data.ticker} />
 
+      {/* ---------- 바로 계산 — 살 수 있는 집값 (히어로에서 분리, 2026-11-02) ---------- */}
+      <section className="afford-sec" aria-label="살 수 있는 집 가격 계산">
+        <div className="eyebrow">바로 계산</div>
+        <h2 className="sec-h">대출까지 받으면 <span className="grad">얼마짜리 집</span>을 살 수 있을까?</h2>
+        <AffordHero />
+      </section>
+
       {/* ---------- 지금 시장 (지표·거래·청약·기사 — 2026-11-02 보강) ---------- */}
-      <MarketBoard />
+      <LazyMount minHeight={420}><MarketBoard /></LazyMount>
 
       {/* ---------- For you ---------- */}
       {data.for_you?.length > 0 && (
@@ -385,7 +446,7 @@ export default function HomePage() {
         <div>
           <div className="eyebrow" style={{ color: "#FFE89A" }}>뉴스레터</div>
           <h2 className="sec-h" style={{ color: "#fff" }}>이번 주 부동산 소식,<br />월요일 아침 메일로</h2>
-          <p className="sec-p">시세·정책·청약 중 내 집 마련에 꼭 필요한 것만 골라 보내 드려요.</p>
+          <p className="sec-p">시세·청약·대출·세금·정책 중 꼭 알아야 할 것만 골라 보내 드려요.</p>
         </div>
         <button className="btn cta-btn" onClick={() => openSubscribe("home_cta")}>무료로 받아 보기 →</button>
       </section>

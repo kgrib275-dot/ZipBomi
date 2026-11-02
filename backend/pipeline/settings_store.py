@@ -46,7 +46,7 @@ DEFAULTS = {
     "admin_ips": [],
     # AI 모델 (관리 > AI 모델 설정) — provider: gemini|claude. Claude 키는 data/llm_keys.json (pipeline/claude_llm.py)
     "llm": {"provider": "gemini", "claude_model": "claude-opus-5-5"},
-    "warehouse": {"auto_sync": False},  # ZipGenie: Databricks 적재는 기본 꺼짐 (다른 서비스 스키마와 섞이지 않게)
+    "warehouse": {"auto_sync": False},  # 집보미: Databricks 적재는 기본 꺼짐 (다른 서비스 스키마와 섞이지 않게)
     "engage": {"sample_on_map": True},  # 공개 참여 지도에 예시(가상) 데이터를 함께 보여 줄지 (배지로 표시)  # Databricks 설정이 있으면 수집·초안·주간 흐름·발송 뒤 자동 적재
 }
 
@@ -201,11 +201,28 @@ def client_ip(ip: str | None, headers: dict[str, str]) -> tuple[str | None, bool
     return forwarded or None, True
 
 
+def rate_key(ip: str | None) -> str | None:
+    """남용 제한에 쓰는 IP 키 — IPv6 는 /64 대역으로 묶는다 (한 사용자가 대역 안 주소를 바꿔 가며 제한을 피하지 못하게).
+    관리자 판정·접속 기록에는 원래 IP 를 그대로 쓴다 (2026-11-02 보안 점검)."""
+    if not ip or ":" not in ip:
+        return ip
+    try:
+        import ipaddress
+        return str(ipaddress.ip_network(ip + "/64", strict=False))
+    except ValueError:
+        return ip
+
+
 def is_admin_request(ip: str | None, headers: dict[str, str]) -> bool:
     real_ip, proxied = client_ip(ip, headers)
     if proxied:
         # 프록시 경유 요청은 "로컬"로 취급하지 않는다 — 등록된 IP만 관리자.
         return bool(real_ip) and any(a["ip"] == real_ip for a in load()["admin_ips"])
+    # 로컬 접속은 브라우저에서 온 요청만 관리자로 본다 — 브라우저는 모든 요청에 Sec-Fetch-Site 를 붙이지만, 같은 PC 의 다른 공개
+    # 서비스(AX Review·Trade_IQ)가 서버 코드로 이 주소를 부르면(SSRF) 이 헤더가 없다. 다른 사이트에서 온 요청(cross-site)도 거절.
+    lower = {k.lower(): v for k, v in headers.items()}
+    if lower.get("sec-fetch-site", "") not in ("same-origin", "none", "same-site"):
+        return False
     return is_admin_ip(real_ip)
 
 

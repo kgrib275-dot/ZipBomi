@@ -10,7 +10,7 @@ import { get } from "../api";
 import { Alert, useLoad } from "../components/ui";
 import { useMe } from "../me";
 import { ApplyTab, DataPending, DatasetPicker, DatasetView } from "./DealsData";
-import { type TrendRes as DrillRes, type Watch, SourceLine, Star, TrendChart, pctText, useWatch, ymLabel } from "./reShared";
+import { type TrendRes as DrillRes, type Watch, ChartTip, Pager, SizeSel, SourceLine, Star, TipBox, TrendChart, usePageSize, pctText, useWatch, ymLabel } from "./reShared";
 import "./RealEstate.css";
 
 type Region = { code: string; name: string };
@@ -96,6 +96,8 @@ export default function Deals() {
   const [sort, setSort] = useState(saved.sort || "new");
   const [q, setQ] = useState("");
   const [page, setPage] = useState(0);
+  const [size, setSize] = usePageSize("deals");
+  const [favOnly, setFavOnly] = useState(false);
   // ?tab=apply 로 바로 '청약 공고' 탭을 열 수 있다 (공유 링크)
   const [tab, setTab] = useState<"deals" | "apply">(() => {
     const t = new URLSearchParams(window.location.search).get("tab") || saved.tab;
@@ -136,12 +138,13 @@ export default function Deals() {
   const deals = useLoad<DealsRes | null>(() => (configured && isApt ? get<DealsRes>(`re/deals?lawd=${lawd}&ymd=${ymd}`) : Promise.resolve(null)), [lawd, ymd, configured, isApt]);
   const trend = useLoad<TrendRes | null>(() => (configured && isApt ? get<TrendRes>(`re/deals/trend?lawd=${lawd}&ymd=${ymd}&months=12`) : Promise.resolve(null)), [lawd, ymd, configured, isApt]);
 
-  useEffect(() => setPage(0), [lawd, ymd, area, sort, q]);
+  useEffect(() => setPage(0), [lawd, ymd, area, sort, q, favOnly]);
 
   const rows = useMemo(() => {
     let rs = deals.data?.rows || [];
     const qq = q.trim().replace(/\s+/g, "").toLowerCase();
     if (qq) rs = rs.filter((r) => (r.apt + r.dong).replace(/\s+/g, "").toLowerCase().includes(qq));
+    if (favOnly) rs = rs.filter((r) => W.has(lawd, r.apt, r.dong));
     if (area === "s") rs = rs.filter((r) => r.area <= 60);
     else if (area === "m") rs = rs.filter((r) => r.area > 60 && r.area <= 85);
     else if (area === "l") rs = rs.filter((r) => r.area > 85);
@@ -152,9 +155,9 @@ export default function Deals() {
       pp: (a, b) => pp(b) - pp(a),
     };
     return [...rs].sort(cmp[sort] || cmp.new);
-  }, [deals.data, q, area, sort]);
-  const pages = Math.max(1, Math.ceil(rows.length / PAGE));
-  const shown = rows.slice(page * PAGE, page * PAGE + PAGE);
+  }, [deals.data, q, area, sort, favOnly, W, lawd]);
+  const pages = Math.max(1, Math.ceil(rows.length / size));
+  const shown = rows.slice(page * size, page * size + size);
 
   // ----- 관심 목록 (단지 = 시군구·동·이름, 지역 = apt "") -----
   const isWatched = (l: string, apt: string, dong = "") => W.has(l, apt, dong);
@@ -299,7 +302,10 @@ export default function Deals() {
                   </div>
                   <div className="btn-row" style={{ marginBottom: 10 }}>
                     {AREAS.map((a) => <button key={a.k} type="button" className={`pill ${area === a.k ? "on" : ""}`} onClick={() => setArea(a.k)}>{a.label}</button>)}
+                    <button type="button" className={`pill ${favOnly ? "on" : ""}`} aria-pressed={favOnly} onClick={() => setFavOnly(!favOnly)}>{favOnly ? "★" : "☆"} 관심 단지만</button>
                     <span className="caption">{rows.length.toLocaleString()}건</span>
+                    <span className="cal-gap" />
+                    <SizeSel size={size} setSize={setSize} setPage={setPage} />
                   </div>
                   <div className="table-wrap">
                     <table className="table re-table">
@@ -326,17 +332,11 @@ export default function Deals() {
                             </td>
                           </tr>
                         ))}
-                        {!shown.length && <tr><td colSpan={8} className="re-empty">조건에 맞는 거래가 없습니다.</td></tr>}
+                        {!shown.length && <tr><td colSpan={8} className="re-empty">{favOnly ? "이 달에 거래된 관심 단지가 없습니다. 단지 이름 앞 ☆를 눌러 관심 단지로 저장하세요." : "조건에 맞는 거래가 없습니다."}</td></tr>}
                       </tbody>
                     </table>
                   </div>
-                  {pages > 1 && (
-                    <div className="re-pager">
-                      <button type="button" className="btn sm" disabled={page === 0} onClick={() => setPage(page - 1)}>이전</button>
-                      <span className="caption">{page + 1} / {pages}</span>
-                      <button type="button" className="btn sm" disabled={page >= pages - 1} onClick={() => setPage(page + 1)}>다음</button>
-                    </div>
-                  )}
+                  <Pager page={page} pages={pages} setPage={setPage} />
                   <p className="calc-note" style={{ marginTop: 10 }}>해제 거래는 줄을 그어 표시하고 통계에서 뺐습니다. 3.3㎡당 = 거래가 ÷ 전용면적 × 3.305785.</p>
                 </div>
               </>
@@ -395,6 +395,7 @@ function NoteInput({ value, onSave }: { value: string; onSave: (v: string) => vo
 }
 
 function TrendBox({ t, loading, error }: { t: TrendRes | null; loading: boolean; error: string | null }) {
+  const [hover, setHover] = useState<number | null>(null);
   if (loading && !t) return <div className="re-box re-empty">최근 12개월 흐름을 불러오는 중… (처음엔 달마다 받아 와서 조금 걸려요)</div>;
   if (error) return <Alert kind="warn">{error}</Alert>;
   const all = t?.points || [];
@@ -420,21 +421,35 @@ function TrendBox({ t, loading, error }: { t: TrendRes | null; loading: boolean;
   return (
     <div className="re-box re-trend">
       <h3>3.3㎡당 중위가격 · 최근 {all.length}개월 <span className="caption">({chg >= 0 ? "+" : ""}{chg.toFixed(1)}%)</span></h3>
+      <div className="ctip-wrap">
       <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label={`3.3㎡당 중위가격 추이, ${ymdLabel(first.ymd)}부터 ${ymdLabel(last.ymd)}까지 ${chg.toFixed(1)}% 변화`}>
         <line className="grid" x1={L} x2={W - R} y1={y(hi)} y2={y(hi)} />
         <line className="grid" x1={L} x2={W - R} y1={y(lo)} y2={y(lo)} />
         {segs.map((d, i) => <path key={i} className="ln" d={d} />)}
         {idx.map(([p, i]) => (
-          <circle key={p.ymd} className="dot" cx={x(i)} cy={y(p.median_pyeong)} r={3.5}>
-            <title>{`${ymdLabel(p.ymd)} ${man(p.median_pyeong)} (${p.count ?? 0}건)`}</title>
-          </circle>
+          <circle key={p.ymd} className="dot" cx={x(i)} cy={y(p.median_pyeong)} r={hover === i ? 5 : 3.5} />
         ))}
         <text className="val" x={x(fi)} y={y(first.median_pyeong) - 8} textAnchor="start">{man(first.median_pyeong)}</text>
         <text className="val" x={x(li)} y={y(last.median_pyeong) - 8} textAnchor="end">{man(last.median_pyeong)}</text>
         {all.map((p, i) => (i === 0 || i === all.length - 1 || i % 3 === 0) && (
           <text key={"l" + p.ymd} x={x(i)} y={H - 8} textAnchor={i === 0 ? "start" : i === all.length - 1 ? "end" : "middle"}>{`${p.ymd.slice(2, 4)}.${p.ymd.slice(4)}`}</text>
         ))}
+        {hover !== null && all[hover] && (
+          <ChartTip x={x(hover)} y={all[hover].median_pyeong !== null ? y(all[hover].median_pyeong as number) : null} top={T - 6} bottom={H - B} />
+        )}
+        {/* 달마다 넓은 투명 칸 — 작은 점을 정확히 맞추지 않아도, 휴대폰에서 눌러도 값이 보이게 */}
+        {all.map((p, i) => {
+          const w = (W - L - R) / Math.max(all.length - 1, 1);
+          return <rect key={"h" + p.ymd} className="hit" x={x(i) - w / 2} width={w} y={0} height={H - B}
+            onMouseEnter={() => setHover(i)} onMouseLeave={() => setHover(null)} onClick={() => setHover(i)} onTouchStart={() => setHover(i)} />;
+        })}
       </svg>
+      {hover !== null && all[hover] && (
+        <TipBox x={x(hover)} y={all[hover].median_pyeong !== null ? y(all[hover].median_pyeong as number) : null} W={W} H={H}
+          lines={[ymdLabel(all[hover].ymd), all[hover].median_pyeong !== null ? `3.3㎡당 ${man(all[hover].median_pyeong as number)}` : "거래 없음",
+            `거래 ${all[hover].count ?? 0}건`]} />
+      )}
+      </div>
       {t?.partial && <p className="calc-note">일부 달은 아직 받지 못해 비어 있습니다. 잠시 뒤 다시 열면 채워집니다.</p>}
     </div>
   );

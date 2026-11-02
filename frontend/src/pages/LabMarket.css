@@ -1,0 +1,80 @@
+/* 데이터 랩 — 시장 숫자 놀이터 (LabMarket.tsx) */
+.lm{display:flex;flex-direction:column;gap:14px}
+.lm-skel{height:520px;border-radius:18px;background:var(--surface);border:1px solid var(--line)}
+.lm-skel.sm{height:220px}
+.lm-two{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+@media (max-width:900px){.lm-two{grid-template-columns:minmax(0,1fr)}}
+.lm-card{border:1px solid var(--line);border-radius:18px;padding:16px 18px;background:var(--surface);box-shadow:var(--card-shadow);min-width:0}
+.lm-card h3{margin:2px 0 10px;font-size:1.15rem}
+.lm-h{display:flex;justify-content:space-between;align-items:flex-end;gap:10px;flex-wrap:wrap}
+.lm-ctl{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:10px}
+.lm-chart{position:relative}
+.lm-chart svg{width:100%;height:auto;display:block}
+.lm-chart text{fill:var(--muted);font-size:11px}
+.lm-chart .ax{font-size:10px}
+.lm-bar{fill:var(--line);transition:fill .15s}
+.lm-bar.on{fill:var(--accent-2)}
+.lm-line{fill:none;stroke:var(--accent);stroke-width:2.6;stroke-linejoin:round}
+.lm-dot{fill:var(--accent);stroke:var(--surface);stroke-width:1.5}
+.lm-cross{stroke:var(--accent);stroke-dasharray:3 3;opacity:.7}
+.lm-grid{stroke:var(--line)}
+.lm-chart .hit{fill:transparent;cursor:crosshair}
+.lm-tip{position:absolute;top:6px;transform:translateX(-50%);background:var(--surface);border:1px solid var(--accent);border-radius:10px;padding:7px 10px;
+  display:flex;flex-direction:column;gap:2px;font-size:12.5px;white-space:nowrap;pointer-events:none;box-shadow:0 8px 22px rgba(0,0,0,.3);z-index:2}
+.lm-tip.r{transform:translateX(-100%)}
+.lm-tip span{color:var(--ink-2);display:flex;align-items:center;gap:5px}
+.lm-tip i{display:inline-block;width:9px;height:9px;border-radius:50%}
+.lm-range{width:100%;accent-color:var(--accent);margin:6px 0 0}
+.lm-scale{display:flex;justify-content:space-between;font-size:.72rem;color:var(--muted);margin-bottom:8px}
+.lm-sel{width:auto;padding:5px 10px;border-radius:999px;font-size:.84rem}
+.lm-big{margin:10px 0 8px;font-size:.9rem;color:var(--ink-2)}
+.lm-big b{font-family:var(--f-display);font-size:2rem;color:var(--accent-2);margin-right:4px}
+.lm-chips{display:flex;flex-wrap:wrap;gap:6px;max-height:210px;overflow:auto}
+.lm-chip{display:inline-flex;flex-direction:column;padding:5px 10px;border-radius:10px;border:1px solid var(--line);background:var(--surface-2);color:var(--ink);text-decoration:none;font-size:.84rem;font-weight:700;
+  transition:border-color .15s,transform .15s}
+.lm-chip small{font-size:.7rem;color:var(--muted);font-weight:600}
+.lm-chip:hover{border-color:var(--accent);transform:translateY(-2px)}
+.lm-rank{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:5px}
+.lm-rank li{display:grid;grid-template-columns:20px minmax(0,8.5em) 1fr auto;gap:8px;align-items:center;font-size:.86rem}
+.lm-rank .rk{color:var(--muted);font-weight:800;text-align:center}
+.lm-rank .nm{color:var(--ink);font-weight:700;text-decoration:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lm-rank .bar{height:10px;background:var(--surface-2);border-radius:6px;overflow:hidden}
+.lm-rank .bar i{display:block;height:100%;background:linear-gradient(90deg,var(--accent-2),var(--accent));border-radius:6px;transition:width .4s cubic-bezier(.2,.8,.2,1)}
+.lm-rank .bar i.neg{background:linear-gradient(90deg,#3b82f6,#60a5fa)}
+.lm-rank b{font-family:var(--f-display);font-size:.88rem;white-space:nowrap}
+.lm-rank b.up{color:var(--err-ink)}.lm-rank b.down{color:#3b82f6}
+.lm-pick{all:unset;cursor:pointer;display:inline-flex;align-items:center;gap:6px;padding:5px 11px;border-radius:999px;border:1.5px solid;font-size:.84rem;font-weight:700}
+.lm-pick i{width:9px;height:9px;border-radius:50%}
+/* 청약 통계 (ApplyStats.tsx) */
+.as{display:flex;flex-direction:column;gap:14px;margin-bottom:16px}
+.as-sum{margin:0 0 8px;font-size:.92rem;color:var(--ink-2)}
+.as-sum b{color:var(--ink)}.as-sum b.ok{color:var(--ok-ink)}.as-sum b.no{color:var(--err-ink)}
+.as-band{fill:rgba(245,184,0,.16);stroke:none}
+.as-mine{stroke:#5AB2FF;stroke-width:1.6;stroke-dasharray:6 4}
+.lm-chart text.as-mine-t{fill:#5AB2FF;font-weight:700}
+.as-ages{display:flex;flex-direction:column;gap:10px}
+.as-age{display:grid;grid-template-columns:5.5em 1fr auto;gap:4px 10px;align-items:center}
+.as-age .lbl{font-weight:700;font-size:.88rem}
+.as-age .bar{height:12px;background:var(--surface-2);border-radius:6px;overflow:hidden}
+.as-age .bar i{display:block;height:100%;background:linear-gradient(90deg,var(--accent-2),var(--accent))}
+.as-age b{font-family:var(--f-display)}
+.as-age small{grid-column:1 / 4;color:var(--muted);font-size:.76rem}
+/* 지역 상세 · 영업용 (LabRegion.tsx) */
+.lr-table{max-height:520px;overflow:auto}
+.lr-table th{position:sticky;top:0;background:var(--surface);z-index:1}
+.lr-th{all:unset;cursor:pointer;white-space:nowrap}.lr-th.on{color:var(--accent-2)}
+.lr-table td.num{white-space:nowrap}
+.lr-v{display:block}.lr-v.up{color:var(--err-ink)}.lr-v.down{color:#3b82f6}
+.lr-bar{display:block;height:4px;background:var(--surface-2);border-radius:3px;margin-top:3px;overflow:hidden}
+.lr-bar i{display:block;height:100%;background:var(--accent)}
+.lr-copy{all:unset;cursor:pointer;padding:2px 6px;border-radius:6px}.lr-copy:hover{background:var(--surface-2)}
+.lr-h{margin:6px 0 8px;font-size:1rem}.lr-h small{color:var(--muted);font-weight:600;font-size:.75rem;margin-left:4px}
+.lr-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;max-height:420px;overflow:auto}
+.lr-list li{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:0 8px;align-items:baseline;padding:6px 0;border-bottom:1px dashed var(--line);font-size:.86rem}
+ul.lr-list li{grid-template-columns:minmax(0,1fr) auto auto}
+.lr-list .nm{font-weight:700;color:var(--ink);text-decoration:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lr-list .meta{grid-column:1 / -1;color:var(--muted);font-size:.75rem}
+ol.lr-list .meta{grid-column:2 / 4}
+.lr-list .rk{color:var(--accent-2);font-weight:800}
+.lr-list b{font-family:var(--f-display);white-space:nowrap}
+.lr-list .up{color:var(--err-ink);font-weight:800;font-size:.8rem}

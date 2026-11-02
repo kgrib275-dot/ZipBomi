@@ -23,7 +23,7 @@ router = APIRouter(prefix="/admin/ops", tags=["admin-ops"], dependencies=[Depend
 OK, WARN, BAD = "ok", "warn", "bad"
 _ICON = {OK: "🟢", WARN: "🟡", BAD: "🔴"}
 DEV_PORT = 5030
-PUBLIC_PORTS = [5030]  # ZipGenie 전용 포트 (다른 서비스 5012 와 분리)
+PUBLIC_PORTS = [5030]  # 집보미 전용 포트 (다른 서비스 5012 와 분리)
 
 
 def _free_ram_gb() -> float | None:
@@ -177,7 +177,7 @@ def _rows() -> list[dict]:
         ram = _free_ram_gb()
         if ram is not None:
             add("자원", "메모리 여유", OK if ram > 2 else WARN, f"{ram:.1f}GB", "" if ram > 2 else "다른 프로그램을 닫거나 개발 서버를 끄세요")
-        logs = sorted((db.ROOT / "data" / "logs").glob("zipgenie-*.log"))
+        logs = sorted((db.ROOT / "data" / "logs").glob("zip*-*.log"))
         add("자원", "로그 파일", OK if logs else WARN, " · ".join(f"{p.name} {p.stat().st_size // 1024}KB" for p in logs) or "아직 없음",
             "서버(포트)별 · 5MB × 5개 순환 보관")
     finally:

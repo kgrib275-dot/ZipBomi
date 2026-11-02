@@ -28,7 +28,7 @@ BASE = "https://apis.data.go.kr/1613000"
 PAGE_SIZE = 1000
 MAX_PAGES = 20  # 한 시군구·한 달이 2만 건을 넘는 일은 없다 — 무한 반복 방지
 HARD_CAP = 9800  # API 하나의 하루 호출 상한 (개발 계정 1만 건 — 화면 즉시 조회와 배치를 합쳐서)
-UA = "ZipGenie/1.0 (+data collection; contact: site admin)"
+UA = "ZipBomi/1.0 (+data collection; contact: site admin)"
 
 _lock = threading.Lock()
 _KEY_IN_URL = re.compile(r"((?:serviceKey|authKey|apiKey)=)[^&\s\"']+", re.I)

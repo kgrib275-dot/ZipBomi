@@ -56,7 +56,7 @@ const UL = ({ children }: { children: React.ReactNode }) => <ul className="sec-p
 /** 처리방침 한 버전 — app/policy_view.render 와 같은 13개 조항. */
 function PolicyView({ content, effective, announced }: { content: Content; effective: string; announced?: string | null }) {
   const s = content.settings || {};
-  const operator = s.operator || "ZipGenie 운영자";
+  const operator = s.operator || "집보미 운영자";
   const measures = [
     "관리 화면 접근 제한 — 서버가 있는 PC 또는 등록한 IP에서만 접근",
     "전송 구간 암호화(HTTPS), 서버는 외부에서 직접 접속할 수 없게 내부 주소에만 열어 둠",
@@ -71,7 +71,7 @@ function PolicyView({ content, effective, announced }: { content: Content; effec
   return (
     <div className="policy">
       <p className="sec-p" style={{ maxWidth: 780 }}>
-        {operator}(이하 '운영자')는 「개인정보 보호법」에 따라 ZipGenie(이하 '사이트') 이용자의 개인정보를 보호하고 관련 고충을 신속하게 처리하기 위해 다음과 같이 개인정보 처리방침을 둡니다.<br />
+        {operator}(이하 '운영자')는 「개인정보 보호법」에 따라 집보미(이하 '사이트') 이용자의 개인정보를 보호하고 관련 고충을 신속하게 처리하기 위해 다음과 같이 개인정보 처리방침을 둡니다.<br />
         <b>시행일: {effective}</b>{announced ? ` · 공지일: ${announced}` : ""}
       </p>
 
