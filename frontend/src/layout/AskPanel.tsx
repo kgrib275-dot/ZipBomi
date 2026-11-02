@@ -11,6 +11,7 @@ type Turn = { role: "user" | "assistant"; content: string };
 type Usage = { enabled: boolean; quota: number; used: number; limit_hit: boolean; linked: boolean; need_grant?: boolean; is_admin: boolean;
   email_masked?: string; member?: { expires?: string } | null };
 const HKEY = "zipgenie-ask-history";
+const MKEY = "zipgenie-ask-mine";
 const SUGGEST = ["내 관심 단지 최근 거래 흐름 요약해 줘", "이번 주 꼭 알아야 할 부동산 소식 3가지", "내 가점으로 해볼 만한 청약은?", "스트레스 DSR이 내 대출 한도에 주는 영향은?"];
 
 const load = (): Turn[] => { try { const v = JSON.parse(sessionStorage.getItem(HKEY) || "[]"); return Array.isArray(v) ? v : []; } catch { return []; } };
@@ -51,6 +52,7 @@ export default function AskPanel() {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
   const [usage, setUsage] = useState<Usage | null>(null);
+  const [mine, setMine] = useState(() => { try { return localStorage.getItem(MKEY) === "1"; } catch { return false; } });
   const end = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const on = () => setOpen(true);
@@ -72,7 +74,7 @@ export default function AskPanel() {
     const next: Turn[] = [...hist, { role: "user", content: t }];
     setHist(next);
     try {
-      const r = await post<{ answer: string }>("ask", { question: t, mine: true, history: hist.slice(-6) });
+      const r = await post<{ answer: string }>("ask", { question: t, mine, history: hist.slice(-6) });
       setHist([...next, { role: "assistant", content: r.answer }]);
     } catch (e) {
       setHist(hist);
@@ -97,14 +99,15 @@ export default function AskPanel() {
       </div>
       <div className="ap-sub">
         {!loggedIn ? "메일로 로그인하면 처음 1번 무료" : usage?.is_admin ? "관리자 · 한도 없음" : usage?.member ? "월 구독" : usage ? `남은 질문 ${left}/${usage.quota}회` : ""}
-        <span> · 내 관심 단지·공고·프로필을 근거로 답해요</span>
+        <span> · 생성형 AI 답변이라 틀릴 수 있어요</span>
       </div>
       <div className="ap-body">
         {!hist.length && (
           <div className="ap-empty">
             <div className="ap-big">✦</div>
             <b>무엇이든 물어보세요</b>
-            <p>시세·청약·대출·세금·정책, 그리고 내 공간에 저장한 관심 단지와 공고를 바탕으로 답합니다.</p>
+            <p>시세·청약·대출·세금·정책을 노트와 공개 자료로 답합니다. 아래에서 켜면 내 공간의 관심 단지·공고도 참고해요.</p>
+            <p className="ap-ai">보미AI 답변은 생성형 AI가 만든 결과물이라 틀릴 수 있어요. 중요한 결정 전에는 원문·공고로 확인하세요. 주민번호·계좌번호 같은 민감한 정보는 적지 마세요.</p>
             {SUGGEST.map((s) => <button key={s} type="button" className="ap-sug" disabled={!loggedIn || busy} onClick={() => send(s)}>{s}<span>›</span></button>)}
           </div>
         )}
@@ -121,11 +124,16 @@ export default function AskPanel() {
           <button type="button" className="btn primary block" onClick={() => openContact(`[보미AI 사용 신청]\n계정: ${usage.email_masked || ""}\n사용 목적: \n희망 횟수: `)}>📨 관리자에게 사용 신청</button>
         </div>
       ) : (
+        <>
+        <label className="ap-mine" title="관심 단지·관심 공고·내 프로필·메모를 질문과 함께 Google Gemini로 보냅니다">
+          <input type="checkbox" checked={mine} onChange={(e) => { setMine(e.target.checked); try { localStorage.setItem(MKEY, e.target.checked ? "1" : "0"); } catch { /* 무시 */ } }} /> 내 공간 자료도 참고해서 답하기
+        </label>
         <form className="ap-in" onSubmit={(e) => { e.preventDefault(); send(q); }}>
           <textarea rows={2} maxLength={500} value={q} placeholder="예: 광진구 84㎡ 요즘 시세 어때?" onChange={(e) => setQ(e.target.value)}
             onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(q); } }} disabled={busy} />
           <button className="btn primary" disabled={busy || !q.trim()} aria-label="보내기">↑</button>
         </form>
+        </>
       )}
     </aside>
   );

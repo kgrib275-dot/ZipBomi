@@ -110,6 +110,7 @@ function Footer() {
       <div className="site-foot">
         <span>© 2026 <b>집보미</b></span>
         <span>집보미 · 집에 관한 모든 것 — 시세·청약·대출·세금·정책을 한곳에서</span>
+        <span className="foot-note">무료 정보 서비스 · 투자 권유가 아닌 참고 자료입니다 · 노트 초안과 보미AI 답변은 생성형 AI로 만듭니다</span>
         <span>
           <Link to="/letter">뉴스레터 미리보기</Link>
           {me?.privacy_active !== false && <> · <Link to="/privacy" style={{ color: "var(--ink-hi)", fontWeight: 800 }}>개인정보 처리방침</Link></>}

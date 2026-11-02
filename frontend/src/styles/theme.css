@@ -371,6 +371,10 @@ input[type="month"],input[type="date"]{font:inherit;padding:9px 12px;border-radi
 .ap-msg.assistant{align-self:flex-start;background:var(--surface-2);border:1px solid var(--line)}
 .ap-msg.typing{color:var(--muted)}
 .ap-err{font-size:.82rem;color:var(--err-ink)}
+.ap-ai{font-size:.74rem;color:var(--muted);margin-top:10px}
+.ap-mine{display:flex;gap:6px;align-items:center;padding:6px 14px 0;font-size:.78rem;color:var(--muted);cursor:pointer}
+.note-ai{margin-top:14px}
+.site-foot .foot-note{flex-basis:100%;font-size:.74rem;color:var(--muted)}
 .ap-foot{padding:12px 14px;border-top:1px solid var(--line);display:flex;flex-direction:column;gap:6px}
 .ap-in{display:flex;gap:8px;padding:10px 12px;border-top:1px solid var(--line);align-items:flex-end}
 .ap-in textarea{flex:1;resize:none;min-height:42px;max-height:120px}

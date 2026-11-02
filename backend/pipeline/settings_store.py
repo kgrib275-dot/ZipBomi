@@ -38,7 +38,8 @@ DEFAULTS = {
     # member_daily: 월 구독자(코드) 하루 질문 수 (pipeline/membership.py).
     # per_ip_daily는 구독 횟수제 밖의 남용 상한 (쿠키를 지워도 IP 로 묶임, 월 구독자 제외), global_daily 는 전체 합계.
     "ask": {"enabled": True, "free_credits": 3, "free_daily": 3, "member_daily": 30, "per_ip_daily": 10, "global_daily": 40,
-            "web_search": True, "plan_price": ""},
+            "web_search": True, "plan_price": "",
+            "membership": False},  # 유료 월 구독 — 집보미는 무료 서비스라 기본 꺼짐 (켜려면 사업자·통신판매업 신고 먼저)
     # 편집 관점 (pipeline/editorial.py) — '꼭 알아야 할 3가지' 선정과 본문 색 강조에 쓴다.
     "lens": {"stance": "내 집 마련과 부동산 결정에 이번 주 바로 쓸 수 있는 것만 고릅니다.",
              "focus": ["실거래가", "전세", "청약", "대출 규제", "재건축", "공급"],

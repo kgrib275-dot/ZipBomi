@@ -125,6 +125,7 @@ function NoteDetail({ id }: { id: string }) {
         {impact.length > 0 && <ImpactBlocks key={n.id} blocks={impact} mine={profile?.type} />}
       </div>
       {!!n.policy?.length && <PolicyBlock items={n.policy} />}
+      <p className="caption note-ai">이 노트는 생성형 AI가 원문을 읽고 쓴 초안을 운영자가 검토해 게시한 것입니다. 수치·일정은 원문과 공고로 꼭 확인하세요.</p>
       {n.url && <a className="btn" href={n.url} target="_blank" rel="noopener" style={{ marginTop: 14 }}>↗ 원문 보기</a>}
 
       {(data.prev || data.next) && (

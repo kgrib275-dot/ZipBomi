@@ -35,7 +35,11 @@ NOTICE_DAYS, MAJOR_NOTICE_DAYS = 7, 30  # 시행 전 공지 기간 (정보주체
 
 
 def settings() -> dict:
-    return {**DEFAULTS, **(settings_store.load().get("privacy") or {})}
+    s = {**DEFAULTS, **(settings_store.load().get("privacy") or {})}
+    # 메일 발송 업체를 비워 두면 SMTP_HOST 로 채운다 — Gmail 이면 Google LLC(미국) 국외 이전으로 표시
+    if not s["smtp_vendor"].strip() and os.environ.get("SMTP_HOST", "").lower().endswith("gmail.com"):
+        s["smtp_vendor"], s["smtp_country"] = "Google LLC (Gmail)", "미국"
+    return s
 
 
 def missing() -> list[str]:
@@ -54,6 +58,12 @@ def _features() -> dict:
     }
 
 
+def _paid() -> bool:
+    """유료 월 구독을 받거나, 아직 이용 기간이 남은 구독자가 있으면 True."""
+    from . import membership
+    return bool(settings_store.load()["ask"].get("membership")) or membership.active_count() > 0
+
+
 def records() -> list[dict]:
     """처리 업무별 (업무, 목적, 필수 항목, 선택 항목, 자동 생성 항목, 보유 기간)."""
     R = db.RETENTION_DAYS
@@ -69,7 +79,7 @@ def records() -> list[dict]:
         {"name": "문의 접수", "purpose": "문의 확인 및 답변", "required": "이름, 이메일, 문의 내용", "optional": "부서·직책",
          "auto": "접수 일시", "keep": f"접수 후 {R['contacts'] // 30}개월"},
     ]
-    if f["ask"]:
+    if f["ask"] and _paid():
         out.append({"name": "월 구독 신청·이용 (질문하기)", "purpose": "월 구독 안내, 구독 코드 발급, 하루 이용 한도 관리",
                     "required": "이름, 이메일", "optional": "부서·직책",
                     "auto": "이용 기간, 구독 코드(복원할 수 없는 해시로 저장), 질문 횟수",
@@ -96,7 +106,7 @@ def records() -> list[dict]:
                  "· 알림 발송 기록도 구독 해지 시 즉시 파기 ('내 프로필'에서 지우기·'내 기록 지우기'로 언제든 삭제)"},
         # 2026-11-02 메일 링크 로그인·내 공간 — 계정 이메일, 로그인 링크(해시), 내 공간 저장값(관심 공고·저장한 노트·계산·메모)
         {"name": "로그인 계정·내 공간 (선택)", "purpose": "메일 링크 로그인, 여러 기기에서 같은 설정·관심 목록 보기, 내 공간(관심 단지·관심 공고·저장한 노트·저장한 계산·메모) 제공, "
-                                               "질문하기에서 본인이 켠 경우 내 공간 자료를 참고한 답변",
+                                               "보미AI에서 본인이 켠 경우 내 공간 자료를 참고한 답변",
          "required": "이메일", "optional": "관심 공고, 저장한 노트, 저장한 계산(입력값·결과 요약), 메모",
          "auto": "가입·마지막 로그인 일시, 로그인 링크(복원할 수 없는 해시로 저장, 30분 뒤 만료), 계정에 연결된 쿠키 식별값(zgv)",
          "keep": "'내 기록 지우기'로 탈퇴할 때까지 (계정의 내 공간 저장값은 오래 접속하지 않아도 지우지 않음) · 만료된 로그인 링크는 다음 발급 때 파기"},
@@ -112,9 +122,9 @@ def entrustments() -> list[dict]:
     s, f = settings(), _features()
     out = []
     if f["smtp"]:
-        out.append({"to": s["smtp_vendor"] or "메일 발송 서버 운영사 (SMTP)", "work": "구독 확인·뉴스레터 메일 발송"})
+        out.append({"to": s["smtp_vendor"] or "메일 발송 서버 운영사 (SMTP)", "work": "구독 확인·뉴스레터·로그인 링크·알림 메일 발송"})
     if f["ask"]:
-        out.append({"to": "Google LLC (Gemini API)", "work": "질문하기 답변 생성, 노트 의미 검색 (질문·검색어 처리, 저장하지 않음)"})
+        out.append({"to": "Google LLC (Gemini API)", "work": "보미AI 답변 생성, 노트 초안 작성, 노트 의미 검색 (질문·검색어 처리 — Google 정책에 따라 처리·보관 (무료 이용 등급은 Google이 서비스 개선·사람 검토에 이용할 수 있음 — 민감한 개인정보는 입력하지 마세요))"})
     if f["databricks"]:
         out.append({"to": "Databricks, Inc.", "work": "서비스 이용 통계 분석용 데이터 보관 (이름·이메일·IP 제외)"})
     out.append({"to": "Tailscale Inc.", "work": "공개 주소 접속 중계 (접속 IP가 지나감)"})
@@ -126,9 +136,9 @@ def overseas() -> list[dict]:
     s, f = settings(), _features()
     out = []
     if f["ask"]:
-        out.append({"to": "Google LLC", "country": "미국", "items": "질문·대화 일부, 의미 검색어 (본인이 입력한 내용), 질문할 때 '내 공간 자료 참고'를 켠 경우 내 프로필·관심 단지·관심 공고·저장한 노트 제목·메모 요약",
-                    "when": "질문·검색할 때마다 암호화된 네트워크로 전송", "purpose": "답변 생성·검색 (Google 정책에 따른 기간, 이 사이트는 저장하지 않음)",
-                    "contact": "https://policies.google.com/privacy", "refuse": "질문하기·의미 검색을 쓰지 않으면 이전되지 않음 (거부 시 해당 기능만 이용 불가)"})
+        out.append({"to": "Google LLC", "country": "미국", "items": "질문·대화 일부, 의미 검색어 (본인이 입력한 내용), 보미AI에서 '내 공간 자료 참고'를 켠 경우 내 프로필·관심 단지·관심 공고·저장한 노트 제목·메모 요약",
+                    "when": "질문·검색할 때마다 암호화된 네트워크로 전송", "purpose": "답변 생성·검색 — Google 정책에 따라 처리·보관 (무료 이용 등급은 Google이 서비스 개선·사람 검토에 이용할 수 있음 — 민감한 개인정보는 입력하지 마세요) · 이 사이트는 질문 원문을 저장하지 않음",
+                    "contact": "https://policies.google.com/privacy", "refuse": "보미AI·의미 검색을 쓰지 않으면 이전되지 않음 (거부 시 해당 기능만 이용 불가)"})
     if f["databricks"]:
         out.append({"to": "Databricks, Inc.", "country": s["databricks_region"], "items": "참여 기록·선택 프로필 (쿠키 식별값 기준, 이름·이메일·IP 제외)",
                     "when": "작업 후 수시, 암호화된 네트워크로 전송", "purpose": "이용 통계 분석, 이 사이트의 보유 기간과 같음",
@@ -139,7 +149,7 @@ def overseas() -> list[dict]:
     if f["smtp"] and s["smtp_country"] and s["smtp_country"] != "대한민국":
         out.append({"to": s["smtp_vendor"] or "메일 발송 업체", "country": s["smtp_country"], "items": "이메일",
                     "when": "메일 발송 시", "purpose": "메일 발송 (업체 정책에 따른 기간)", "contact": "업체 개인정보처리방침",
-                    "refuse": "거부 시 구독할 수 없음"})
+                    "refuse": "거부 시 구독·메일 로그인을 할 수 없음"})
     return out
 
 

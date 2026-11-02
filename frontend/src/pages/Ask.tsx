@@ -12,7 +12,7 @@ import "./Ask.css";
 
 type Source = { title: string; url: string; kind: string; sim: number };
 type Turn = { role: "user" | "assistant"; content: string; sources?: Source[]; weak?: boolean };
-type Usage = { enabled: boolean; quota: number; used: number; limit_hit: boolean; linked: boolean; need_grant?: boolean; email_masked?: string; requested?: boolean; member?: { expires?: string } | null; is_admin: boolean; free_credits: number; member_daily: number; plan_price?: string; global_hit?: boolean; web_search?: boolean };
+type Usage = { enabled: boolean; quota: number; used: number; limit_hit: boolean; linked: boolean; need_grant?: boolean; email_masked?: string; requested?: boolean; member?: { expires?: string } | null; is_admin: boolean; free_credits: number; member_daily: number; plan_price?: string; global_hit?: boolean; web_search?: boolean; membership?: boolean };
 
 const HKEY = "zipgenie-ask-history";
 const EXAMPLES = ["요즘 서울 아파트 전세 시장 분위기 어때?", "스트레스 DSR이 대출 한도에 어떤 영향을 줘?", "이번 주 부동산 흐름을 3줄로 요약해줘", "청약·분양 노트만 모아줘"];
@@ -29,7 +29,7 @@ export default function Ask() {
   // 홈 맛보기의 예시 질문(?q=)은 입력칸에 채워만 둔다 — 질문 한도를 쓰는 전송은 본인이 누른다
   const [q, setQ] = useState(() => (new URLSearchParams(window.location.search).get("q") || "").slice(0, 500));
   // 내 공간 자료(관심 단지 시세·관심 공고·프로필·저장한 노트·메모)를 함께 넘길지 — 기본 켬 (2026-11-02)
-  const [mine, setMine] = useState(true);
+  const [mine, setMine] = useState(false);
   const [busy, setBusy] = useState<"ask" | "web" | null>(null);
   const [warn, setWarn] = useState<string | null>(null);
   const [pending, setPending] = useState<string | null>(null); // 답을 기다리는 중인 질문
@@ -190,7 +190,9 @@ export default function Ask() {
 
           {warn && <Alert kind="warn">{warn}</Alert>}
 
-          <label className="check ask-mine" title="관심 단지 시세·관심 공고·내 프로필·저장한 노트·메모를 함께 참고합니다 (내 공간)">
+          <p className="caption ask-ai">보미AI 답변은 생성형 AI가 만든 결과물이라 틀릴 수 있어요. 중요한 결정 전에는 원문·공고로 확인하세요. 주민번호·계좌번호 같은 민감한 정보는 적지 마세요.</p>
+
+          <label className="check ask-mine" title="관심 단지 시세·관심 공고·내 프로필·저장한 노트·메모를 질문과 함께 Google Gemini로 보냅니다 (켤 때만)">
             <input type="checkbox" checked={mine} onChange={(e) => setMine(e.target.checked)} /> 내 공간 자료(관심 단지·공고·프로필·메모)도 참고해서 답하기
           </label>
           <form className="chat-in" onSubmit={(e) => { e.preventDefault(); send(q); }}>
@@ -226,7 +228,7 @@ export default function Ask() {
               <button className="btn primary" type="button" onClick={() => openContact(`[보미AI 사용 신청]\n계정: ${usage.email_masked}\n사용 목적: \n희망 횟수: `)}>📨 관리자에게 사용 신청</button>
             </div>
           ) : null}
-          {!member && !isAdmin && (
+          {!member && !isAdmin && usage.membership && (
             <details className="expander">
               <summary>월 구독 코드가 있나요?</summary>
               <div className="body">

@@ -88,6 +88,7 @@ def ask_usage(c: Caller = CallerDep) -> dict:
             "linked": u["linked"], "email_masked": u["email_masked"], "requested": u["requested"], "need_grant": u["need_grant"],
             "member": {"id": member["id"], "expires": member["expires"]} if member else None, "is_admin": c.is_admin,
             "free_credits": int(cfg.get("free_credits", 3)), "member_daily": int(cfg["member_daily"]),
+            "membership": bool(cfg.get("membership")),
             "plan_price": cfg.get("plan_price") or "", "global_hit": u["global_hit"], "web_search": bool(cfg.get("web_search")),
             "examples": ["스트레스 DSR 시행 후 대출 한도 변화 알려줘", "무주택자 청약 가점 올리는 방법은?",
                          "이번 주 부동산 흐름을 3줄로 요약해줘", "서울 재건축 노트만 모아줘"]}
@@ -275,7 +276,9 @@ def redeem(payload: dict = Body(...), c: Caller = CallerDep) -> dict:
 
 @router.post("/membership/request")
 def membership_request(payload: dict = Body(...), c: Caller = CallerDep) -> dict:
-    """결제는 사이트 밖에서 — 신청을 문의함에 남기면 담당자가 안내하고 코드를 보낸다."""
+    """결제는 사이트 밖에서 — 신청을 문의함에 남기면 담당자가 안내하고 코드를 보낸다. 월 구독을 끄면(기본) 받지 않는다."""
+    if not _cfg().get("membership"):
+        raise HTTPException(status_code=404, detail="월 구독 신청을 받지 않습니다.")
     if payload.get("agree") is not True:
         raise HTTPException(status_code=400, detail="개인정보 수집·이용에 동의해야 신청할 수 있습니다.")
     name = str(payload.get("name") or "").strip()[:100]
