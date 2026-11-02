@@ -35,6 +35,7 @@ def list_accounts(q: str = "") -> dict:
     c = db.connect()
     try:
         rows = c.execute("SELECT a.id, a.email, a.created_at, a.last_login_at, v.data, v.updated_at, "
+                         "COALESCE(a.ask_credits, 1) AS ask_credits, COALESCE(a.ask_used, 0) AS ask_used, "
                          "(SELECT 1 FROM subscribers s WHERE s.email = a.email AND s.active = 1 AND s.confirmed_at IS NOT NULL) AS subscribed "
                          "FROM accounts a LEFT JOIN visitor_state v ON v.visitor = 'c:' || a.raw ORDER BY a.last_login_at DESC").fetchall()
         since = (datetime.now() - timedelta(days=1)).isoformat(timespec="seconds")
@@ -43,7 +44,8 @@ def list_accounts(q: str = "") -> dict:
         c.close()
     ql = q.strip().lower()
     out = [{"id": r["id"], "email": r["email"], "created_at": r["created_at"], "last_login_at": r["last_login_at"],
-            "last_seen": r["updated_at"], "subscribed": bool(r["subscribed"]), **_counts(r["data"])}
+            "last_seen": r["updated_at"], "subscribed": bool(r["subscribed"]), "ask_credits": r["ask_credits"], "ask_used": r["ask_used"],
+            **_counts(r["data"])}
            for r in rows if not ql or ql in r["email"].lower()]
     week = (datetime.now() - timedelta(days=7)).isoformat(timespec="seconds")
     return {"rows": out, "total": len(rows), "active_7d": sum(1 for r in rows if (r["last_login_at"] or "") >= week),
@@ -77,3 +79,16 @@ def delete_account(acc_id: int, request: Request) -> dict:
     accounts.delete_by_raw(a["raw"])
     log_action(request, "계정 삭제", f"id={acc_id}")
     return {"ok": True, "erased": n}
+
+
+@router.post("/accounts/{acc_id}/ask-grant")
+def ask_grant(acc_id: int, request: Request, payload: dict | None = None) -> dict:
+    """보미AI 횟수 늘리기 (문의로 신청받은 경우). n 기본 5, -20~100."""
+    from fastapi import Body  # noqa: F401
+    n = int((payload or {}).get("n", 5))
+    if not -20 <= n <= 100:
+        raise HTTPException(400, "n 은 -20~100 사이입니다.")
+    _acc(acc_id)
+    credits, used = accounts.ask_grant(acc_id, n)
+    log_action(request, "보미AI 횟수 변경", f"id={acc_id} {n:+d} → {credits}")
+    return {"ok": True, "ask_credits": credits, "ask_used": used}

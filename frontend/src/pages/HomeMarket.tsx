@@ -173,6 +173,20 @@ function TopDeals() {
         </div>
       </div>
       {loading && !data ? <p className="caption">불러오는 중…</p> : !data?.rows.length ? <p className="caption">이 조건의 거래 자료가 아직 없어요.</p> : (
+        <>
+        {/* 왼쪽 거래 요약 칸과 높이를 맞추는 요약 2칸 (2026-11-02) */}
+        {(() => {
+          const top = data.rows[0];
+          const avg = data.rows.reduce((a, r) => a + r.amount, 0) / data.rows.length;
+          const pps = data.rows.filter((r) => r.area).map((r) => (r.amount / (r.area as number)) * 3.305785);
+          const pp = pps.length ? pps.reduce((a, v) => a + v, 0) / pps.length : null;
+          return (
+            <div className="mkt-big" style={{ marginBottom: 8 }}>
+              <div><span className="k">최고 거래가</span><b>{man(top.amount)}</b><span className="d">{top.name} · {top.region.split(" ").slice(-1)[0]}</span></div>
+              <div><span className="k">상위 {data.rows.length}건 평균</span><b>{man(Math.round(avg))}</b><span className="d">{pp ? `3.3㎡당 평균 ${man(Math.round(pp))}` : `${data.kind} 매매`}</span></div>
+            </div>
+          );
+        })()}
         <ol className="top-list">
           {data.rows.map((x, i) => (
             <li key={i} className={i < 3 ? "top3" : ""}>
@@ -183,6 +197,7 @@ function TopDeals() {
             </li>
           ))}
         </ol>
+        </>
       )}
       {data?.source && <p className="caption" style={{ margin: "6px 0 0" }}>출처: {data.source} (해제 신고 제외)</p>}
     </div>

@@ -15,7 +15,9 @@
 .mp-jump{width:auto;min-width:200px;padding:7px 10px;font-size:.95rem}
 @media (min-width:901px){.mp-bar-r{flex-wrap:nowrap}}
 /* 다크 테마 — OSM 타일을 뒤집어 어두운 바탕으로 (색조는 따뜻하게) */
-.mp-dark .leaflet-tile-pane{filter:invert(1) hue-rotate(180deg) brightness(.92) contrast(.88) sepia(.18)}
+/* 다크: 반전하되 채도를 크게 낮춰 분홍 도로·초록 산이 튀지 않게 (2026-11-02 가독성) */
+.mp-dark .leaflet-tile-pane{filter:invert(1) hue-rotate(180deg) saturate(.25) brightness(.9) contrast(.85)}
+.mp-map-box:not(.mp-dark) .leaflet-tile-pane{filter:saturate(.55) contrast(.95)}
 
 .mp-wrap{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:12px;align-items:stretch}
 .mp-map-box{position:relative;border:1px solid var(--line);border-radius:16px;overflow:hidden;background:var(--surface-2)}
@@ -125,3 +127,6 @@
 .xm-pop{background:#fff;color:#1a1405;border-radius:10px;padding:10px 12px;font-size:12.5px;max-width:280px;box-shadow:0 6px 18px rgba(0,0,0,.3)}
 .mp-base.seg button:disabled{opacity:.4;cursor:not-allowed}
 .mp-map-box{position:relative}
+
+/* 메뉴(드롭다운)가 지도 위로 — 지도 부품의 z-index 를 이 상자 안에 가둔다 */
+.mp-map-box{isolation:isolate;z-index:0}

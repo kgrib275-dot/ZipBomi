@@ -68,3 +68,16 @@
 .in-row input[type=text]{flex:1;min-width:120px}
 .my-card{position:relative}
 .my-memo-box{display:flex;flex-direction:column;gap:6px;border-top:1px solid var(--line);padding-top:10px;margin-top:4px}
+/* 할 일 · 백업 (MyTools.tsx) */
+.td-add{display:flex;gap:6px;margin-bottom:8px}.td-add input[type=text]{flex:1;min-width:0}.td-add input[type=date]{width:auto}
+.td-preset{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px}
+.td-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:4px}
+.td-list li{display:flex;align-items:center;gap:8px;padding:7px 10px;border:1px solid var(--line);border-radius:10px;background:var(--surface)}
+.td-list li label{flex:1;display:flex;gap:8px;align-items:center;cursor:pointer;min-width:0}
+.td-list li.done span{text-decoration:line-through;color:var(--muted)}
+.td-due{font-size:.75rem;padding:2px 8px;border-radius:999px;border:1px solid var(--line);color:var(--ink-2)}
+.td-due.today{background:var(--accent);color:#1A1405;border-color:var(--accent)}.td-due.late{color:var(--err-ink);border-color:var(--err-ink)}
+.bk-row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.lr-th{all:unset;cursor:pointer;white-space:nowrap}.lr-th.on{color:var(--accent-2)}
+.lr-v.up{color:var(--err-ink)}.lr-v.down{color:#3b82f6}
+.lr-bar{display:block;height:4px;background:var(--surface-2);border-radius:3px;margin-top:3px;overflow:hidden}.lr-bar i{display:block;height:100%;background:var(--accent)}

@@ -239,7 +239,7 @@ export default function PrivacyPage() {
           )}
         </div>
         <div>
-          <button className="btn" onClick={openContact}>✉ 문의하기 (열람·정정·삭제·처리정지 요구)</button>
+          <button className="btn" onClick={() => openContact()}>✉ 문의하기 (열람·정정·삭제·처리정지 요구)</button>
         </div>
       </div>
     </>

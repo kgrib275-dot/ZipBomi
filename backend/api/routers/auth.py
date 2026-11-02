@@ -14,7 +14,7 @@ from fastapi import APIRouter, Body, HTTPException, Request, Response
 from api.deps import COOKIE, COOKIE_MAX_AGE, Caller, CallerDep, throttle
 from api.routers import me as me_state
 from api.routers.subscribe import _email, _mask, _may_mail, send_later
-from pipeline import accounts, db, email_check, engage, mailer
+from pipeline import accounts, db, email_check, engage, gate, mailer
 
 router = APIRouter(tags=["auth"])
 _TOKEN_RE = re.compile(r"^[0-9a-f]{32}$")
@@ -46,7 +46,10 @@ def _merge(into_visitor: str, from_visitor: str) -> None:
         elif k not in dst:
             changes[k] = v
     if changes:
-        me_state.save_state(into_visitor, changes)
+        try:
+            me_state.save_state(into_visitor, changes)
+        except me_state.StateTooBig:  # 합치면 한도를 넘는 경우 — 계정 쪽 값을 그대로 두고 로그인은 계속한다
+            pass
 
 
 NONCE_COOKIE = "zgl"  # 로그인 링크를 요청한 브라우저 표시 (HttpOnly, 30분) — 같은 브라우저면 코드 없이 확정
@@ -86,6 +89,7 @@ def verify(request: Request, response: Response, payload: dict = Body(...), c: C
     if not email:
         raise HTTPException(status_code=400, detail="링크가 만료됐거나 이미 사용됐습니다. 다시 로그인해 주세요.")
     acc, new, revoke = accounts.login(email, c.raw)
+    gate.forget(c.raw); gate.forget(acc["raw"])
     target = "c:" + acc["raw"]
     if target != c.visitor:
         _merge(target, c.visitor)
@@ -100,6 +104,7 @@ def verify(request: Request, response: Response, payload: dict = Body(...), c: C
 
 @router.post("/auth/logout")
 def logout(request: Request, response: Response, c: Caller = CallerDep) -> dict:
+    gate.forget(c.raw)
     _set_cookie(request, response, c, uuid.uuid4().hex)
     return {"ok": True}
 

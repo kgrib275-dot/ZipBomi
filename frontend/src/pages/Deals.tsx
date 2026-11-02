@@ -481,11 +481,25 @@ function Drilldown({ lawd, regionName, isWatched, toggleWatch }: {
         <>
           <TrendChart points={d.points} markers={d.markers} value="avg_pyeong" valueLabel="3.3㎡당 평균가" title={`${levelName} 월별 거래량·3.3㎡당 평균가`} />
           {!!d.markers.length && (
-            <ul className="re-mk-list">
-              {d.markers.map((m) => (
-                <li key={m.ymd}>{ymLabel(m.ymd)} 거래량 {pctText(m.change_pct)}{m.note ? <> · <Link to={`/notes?id=${m.note.id}`}>{m.note.title}</Link> <span className="caption">({m.note.scope === "region" ? "이 지역 노트" : "전국 정책 노트"})</span></> : <span className="caption"> · 같은 달 관련 노트 없음</span>}</li>
-              ))}
-            </ul>
+            <div className="re-mk">
+              {/* 거래량 급변 달 — 칩으로 짧게, 관련 노트가 있는 달만 노트 줄을 따로 (2026-11-02) */}
+              <div className="re-mk-chips">
+                <span className="caption">거래량 급변</span>
+                {d.markers.map((m) => (
+                  <span key={m.ymd} className={`re-mk-chip${(m.change_pct ?? 0) > 0 ? " up" : " down"}${m.note ? " has" : ""}`} title={m.note ? m.note.title : "같은 달 관련 노트 없음"}>
+                    {m.ymd.slice(2, 4)}.{m.ymd.slice(4)} <b>{(m.change_pct ?? 0) > 0 ? "▲" : "▼"}{Math.abs(m.change_pct ?? 0).toFixed(0)}%</b>
+                  </span>
+                ))}
+              </div>
+              {d.markers.some((m) => m.note) && (
+                <ul className="re-mk-notes">
+                  {d.markers.filter((m) => m.note).map((m) => (
+                    <li key={m.ymd}><span className="re-mk-chip">{ymLabel(m.ymd)}</span><Link to={`/notes?id=${m.note!.id}`}>{m.note!.title}</Link>
+                      <span className="caption">{m.note!.scope === "region" ? "이 지역 노트" : "전국 정책 노트"}</span></li>
+                  ))}
+                </ul>
+              )}
+            </div>
           )}
           <p className="calc-note">노트 표시: {d.rule}. 이번 달·지난달은 신고 기한(계약 후 30일) 안이라 건수가 더 늘 수 있어 표시에서 뺍니다.</p>
         </>

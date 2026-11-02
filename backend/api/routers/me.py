@@ -14,10 +14,10 @@ import os
 import uuid
 from datetime import datetime
 
-from fastapi import APIRouter, Body, Request, Response
+from fastapi import APIRouter, Body, HTTPException, Request, Response
 
 from api.deps import COOKIE, COOKIE_MAX_AGE, Caller, CallerDep
-from pipeline import accounts, agent_chat, db, engage, membership, my_space, privacy, settings_store
+from pipeline import accounts, agent_chat, db, engage, gate, membership, my_space, privacy, settings_store
 from pipeline import profile as profile_mod
 
 router = APIRouter(tags=["me"])
@@ -32,9 +32,14 @@ STATE_KEYS = {"axt_step", "axt_answers", "axt_recorded",  # 유형 테스트 진
               "re_watch", "calc_inputs",  # 실거래가 관심 목록·내 집 계산기 입력 (이 방문자에게만 보이는 개인 메모)
               "profile", "notes_mine",
               "apply_fav", "note_bm", "calc_saves", "my_memo",
-              "my_items", "my_events"}  # 항목별 메모·알림 날짜 {키: {memo, remind, remind_note}}, 직접 넣은 일정 [{id, date, title, memo}]  # 내 공간 (2026-11-02): 관심 공고·저장한 노트·저장한 계산·메모 — 로그인하면 기기 사이에 이어진다  # 내 프로필(/me, pipeline/profile.clean 으로 정리)과 노트 목록의 '내 조건 노트만' 토글
-MAX_BYTES = 32_000  # 방문자 한 명의 저장값 전체 (2026-11-02: 200KB → 32KB, 실제 최대 사용자는 수 KB)
-MAX_STR, MAX_LIST, MAX_DQ = 2_000, 100, 60  # 값 하나의 글자 수·목록 길이, 자가진단 문항(dq_*) 키 개수
+              "my_items", "my_events", "my_todos"}  # my_todos: 할 일 [{id, text, done, due}] (2026-11-02)  # 항목별 메모·알림 날짜 {키: {memo, remind, remind_note}}, 직접 넣은 일정 [{id, date, title, memo}]  # 내 공간 (2026-11-02): 관심 공고·저장한 노트·저장한 계산·메모 — 로그인하면 기기 사이에 이어진다  # 내 프로필(/me, pipeline/profile.clean 으로 정리)과 노트 목록의 '내 조건 노트만' 토글
+MAX_BYTES = 32_000          # 로그인하지 않은 방문자 한 명의 저장값 전체
+MAX_BYTES_ACCOUNT = 400_000  # 로그인 계정 — 내 공간 메모·알림·일정·계산 기록이 쌓여도 넉넉하게 (2026-11-02)
+MAX_STR, MAX_LIST, MAX_DQ = 4_000, 300, 60  # 값 하나의 글자 수·목록 길이, 자가진단 문항(dq_*) 키 개수
+
+
+class StateTooBig(Exception):
+    """저장 한도를 넘음 — 조용히 버리지 않고 화면에 알린다."""
 
 _SQL = "CREATE TABLE IF NOT EXISTS visitor_state (visitor TEXT PRIMARY KEY, data TEXT NOT NULL, updated_at TEXT NOT NULL)"
 _ready: list = []  # 테이블 확인은 프로세스당 한 번
@@ -70,8 +75,10 @@ def load_state(visitor: str) -> dict:
     return {k: v for k, v in data.items() if kept(k)} if isinstance(data, dict) else {}
 
 
-def save_state(visitor: str, changes: dict) -> dict:
+def save_state(visitor: str, changes: dict, limit: int | None = None) -> dict:
     """허용 키만 기존 값에 합쳐 저장한다. 값이 null 이면 그 키를 지운다. 빈 스냅샷은 저장하지 않는다."""
+    if limit is None:  # 로그인 계정이면 넉넉한 한도 (구독 신청·로그인 병합 등 다른 곳에서 불러도 같은 기준)
+        limit = MAX_BYTES_ACCOUNT if visitor.startswith("c:") and accounts.by_raw(visitor[2:]) else MAX_BYTES
     conn = _conn()
     conn.isolation_level = None
     try:
@@ -88,7 +95,7 @@ def save_state(visitor: str, changes: dict) -> dict:
             if not kept(k):
                 continue
             if isinstance(v, str) and len(v) > MAX_STR or isinstance(v, (list, dict)) and len(v) > MAX_LIST:
-                continue  # 비정상적으로 큰 값 — 화면은 이렇게 보내지 않는다
+                raise StateTooBig(f"'{k}' 항목이 너무 큽니다 (글자 {MAX_STR}자·목록 {MAX_LIST}개까지).")
             if k.startswith(WIDGET_PREFIXES) and k not in snap and sum(1 for x in snap if x.startswith(WIDGET_PREFIXES)) >= MAX_DQ:
                 continue
             if v is None:
@@ -102,7 +109,9 @@ def save_state(visitor: str, changes: dict) -> dict:
         # 고른 값이 없는 새 방문(봇 포함)은 저장하지 않는다 — 빈 행이 쌓이지 않게.
         if visitor and (snap or row):
             data = json.dumps(snap, ensure_ascii=False)
-            if len(data) < MAX_BYTES:
+            if len(data) >= limit:
+                raise StateTooBig("저장 공간이 가득 찼습니다. 내 공간에서 오래된 메모·일정·계산 기록을 정리해 주세요.")
+            if len(data) < limit:
                 conn.execute("INSERT INTO visitor_state (visitor, data, updated_at) VALUES (?,?,?) "
                              "ON CONFLICT(visitor) DO UPDATE SET data=excluded.data, updated_at=excluded.updated_at",
                              (visitor, data, datetime.now().isoformat(timespec="seconds")))
@@ -127,9 +136,10 @@ def member_of(visitor: str, state: dict | None = None) -> dict | None:
 
 
 @router.get("/me")
-def me(c: Caller = CallerDep) -> dict:
+def me(request: Request, c: Caller = CallerDep) -> dict:
     cfg = settings_store.load()["ask"]
     state = load_state(c.visitor)
+    acct = _acct(c)  # 한 번만 조회 (2026-11-02)
     m = member_of(c.visitor, state)
     if not m:
         state.pop("member_id", None)
@@ -142,7 +152,9 @@ def me(c: Caller = CallerDep) -> dict:
         "visitor": hashlib.sha256(c.visitor.encode()).hexdigest()[:12], "is_admin": c.is_admin, "member": member, "state": state,
         "privacy_active": privacy.active(),
         "subscribed": bool(db.subscriber_by_visitor(c.visitor)),
-        "account": _acct(c),  # 로그인한 계정 (가린 주소) — 없으면 None  # 알림 메일은 확인된 구독자 브라우저일 때만 실제로 간다 (Phase 4)
+        "account": acct,  # 로그인한 계정 (가린 주소) — 없으면 None
+        # 1분 둘러보기 남은 초 (로그인·관리자면 null) — 화면이 0 이 되면 소개 페이지로 옮겨 로그인을 요청한다 (pipeline/gate.py)
+        "trial_left": None if (c.is_admin or acct) else gate.left(request.cookies.get(gate.COOKIE), settings_store.rate_key(c.ip)),  # 알림 메일은 확인된 구독자 브라우저일 때만 실제로 간다 (Phase 4)
         "ask_enabled": bool(cfg["enabled"]) and agent_chat.has_api_keys(),
         "kakao_key": os.environ.get("KAKAO_JS_KEY", ""),
         # 지도 SDK 키 (2026-11-02) — 브라우저용 공개 키, 각 콘솔에서 사이트 주소 등록으로 보호
@@ -210,6 +222,9 @@ def my_alerts(c: Caller = CallerDep) -> dict:
     for key, v in (st.get("my_items") or {}).items() if isinstance(st.get("my_items"), dict) else []:
         if isinstance(v, dict) and v.get("remind"):
             _add_custom(str(key), str(v.get("title") or "내 알림"), str(v["remind"]), str(v.get("remind_note") or v.get("memo") or ""), "/my")
+    for td in st.get("my_todos") or [] if isinstance(st.get("my_todos"), list) else []:
+        if isinstance(td, dict) and td.get("due") and not td.get("done"):
+            _add_custom("td:" + str(td.get("id") or ""), "할 일 · " + str(td.get("text") or ""), str(td["due"]), "마감", "/my")
     for ev in st.get("my_events") or [] if isinstance(st.get("my_events"), list) else []:
         if isinstance(ev, dict) and ev.get("date"):
             _add_custom("ev:" + str(ev.get("id") or ""), str(ev.get("title") or "내 일정"), str(ev["date"]), str(ev.get("memo") or ""), "/my")
@@ -231,7 +246,10 @@ def put_state(changes: dict = Body(...), c: Caller = CallerDep) -> dict:
         changes["profile"] = profile_mod.clean(changes["profile"])  # 허용한 항목·범위만 (남는 게 없으면 지운다)
     if "re_watch" in changes and changes["re_watch"] is not None:
         changes["re_watch"] = profile_mod.clean_watch(changes["re_watch"])  # 관심 단지: 허용 키·50개까지
-    snap = save_state(c.visitor, changes)
+    try:
+        snap = save_state(c.visitor, changes)
+    except StateTooBig as e:
+        raise HTTPException(status_code=413, detail=str(e))
     if "profile" in changes or "re_watch" in changes:
         # 확인된 구독자와 이어진 브라우저면 구독자 사본(subscriber_profile = 프로필 + 관심 단지)도 맞춘다 — 뉴스레터 개인화용
         profile_mod.sync_visitor(c.visitor, snap.get("profile"), watch=snap.get("re_watch") or [])

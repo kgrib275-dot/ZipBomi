@@ -18,7 +18,8 @@ export type Me = {
   kakao_key: string;
   site_url: string;
   account?: { email: string; since: string } | null;
-  map_keys?: { naver: string; kakao: string; google: string }; // 메일 링크 로그인 (2026-11-02)
+  map_keys?: { naver: string; kakao: string; google: string };
+  trial_left?: number | null; // 1분 둘러보기 남은 초 (로그인·관리자면 null — backend/pipeline/gate.py) // 메일 링크 로그인 (2026-11-02)
 };
 
 type Ctx = {
@@ -72,6 +73,7 @@ export function MeProvider({ children }: { children: React.ReactNode }) {
       const body = pending.current;
       pending.current = {};
       window.clearTimeout(timer.current);
+      try { localStorage.setItem("zg-unsaved", JSON.stringify(body)); } catch { /* 무시 — 다음 방문 때 다시 보낼 사본 */ }
       try {
         fetch("/api/me/state", { method: "PUT", keepalive: true, credentials: "same-origin",
           headers: { "Content-Type": "application/json", "X-Requested-With": "zipgenie" }, body: JSON.stringify(body) });
@@ -87,6 +89,39 @@ export function MeProvider({ children }: { children: React.ReactNode }) {
     };
   }, [reload]);
 
+  // 저장 — 실패하면 버리지 않는다 (2026-11-02 개인화 데이터 유실 방지): 네트워크·서버 오류는 대기열로 되돌려 2·5·15초 뒤 다시,
+  // 한도 초과(413) 같은 거절은 화면 위 알림으로 알린다. 브라우저에도 사본을 둬서 창을 닫았다 다시 열어도 다시 보낸다.
+  const retry = useRef(0);
+  const save = useCallback((body: Record<string, unknown>): Promise<unknown> =>
+    put("me/state", body).then(() => {
+      retry.current = 0;
+      try { localStorage.removeItem("zg-unsaved"); } catch { /* 무시 */ }
+      chan.current?.postMessage(body);
+    }).catch((e: unknown) => {
+      const status = (e as { status?: number })?.status ?? 0;
+      if (status === 413 || status === 400) {
+        window.dispatchEvent(new CustomEvent("zg-save-error", { detail: e instanceof Error ? e.message : "저장하지 못했습니다." }));
+        return;
+      }
+      pending.current = { ...body, ...pending.current };
+      try { localStorage.setItem("zg-unsaved", JSON.stringify(pending.current)); } catch { /* 무시 */ }
+      const wait = [2000, 5000, 15000, 30000][Math.min(retry.current++, 3)];
+      window.setTimeout(() => {
+        if (!Object.keys(pending.current).length) return;
+        const b = pending.current; pending.current = {};
+        inflight.current = save(b);
+      }, wait);
+      if (retry.current === 3) window.dispatchEvent(new CustomEvent("zg-save-error", { detail: "인터넷 연결이 불안정해 저장을 다시 시도하고 있어요. 창을 닫아도 다음에 다시 보내요." }));
+    }), []);
+  // 지난번에 못 보낸 변경이 브라우저에 남아 있으면 다시 보낸다
+  useEffect(() => {
+    if (!me) return;
+    try {
+      const left = JSON.parse(localStorage.getItem("zg-unsaved") || "null");
+      if (left && typeof left === "object" && Object.keys(left).length) { inflight.current = save(left); }
+    } catch { /* 무시 */ }
+  }, [me?.visitor]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const setState = useCallback((patch: Record<string, unknown>) => {
     setLocal((s) => ({ ...s, ...patch }));
     pending.current = { ...pending.current, ...patch };
@@ -94,7 +129,7 @@ export function MeProvider({ children }: { children: React.ReactNode }) {
     timer.current = window.setTimeout(() => {
       const body = pending.current;
       pending.current = {};
-      inflight.current = put("me/state", body).then(() => chan.current?.postMessage(body)).catch(() => undefined);
+      inflight.current = save(body);
     }, 400); // 연타해도 한 번에 저장
   }, []);
 
@@ -103,7 +138,7 @@ export function MeProvider({ children }: { children: React.ReactNode }) {
     if (Object.keys(pending.current).length) {
       const body = pending.current;
       pending.current = {};
-      inflight.current = put("me/state", body).then(() => chan.current?.postMessage(body)).catch(() => undefined);
+      inflight.current = save(body);
     }
     await inflight.current;
   }, []);

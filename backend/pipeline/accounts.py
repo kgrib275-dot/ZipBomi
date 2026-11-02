@@ -28,7 +28,7 @@ _SQL = (
     "CREATE TABLE IF NOT EXISTS login_tokens (token_hash TEXT PRIMARY KEY, email TEXT NOT NULL, expires_at TEXT NOT NULL, used_at TEXT)",
 )
 _COLS = (("login_tokens", "code_hash", "TEXT"), ("login_tokens", "nonce_hash", "TEXT"), ("login_tokens", "tries", "INTEGER DEFAULT 0"),
-         ("accounts", "revoke_hash", "TEXT"))
+         ("accounts", "revoke_hash", "TEXT"), ("accounts", "ask_credits", "INTEGER DEFAULT 1"), ("accounts", "ask_used", "INTEGER DEFAULT 0"))
 _ready: list = []
 
 
@@ -186,3 +186,45 @@ def count() -> int:
         return c.execute("SELECT COUNT(*) FROM accounts").fetchone()[0]
     finally:
         c.close()
+
+
+# ───────── 보미AI 횟수 (2026-11-02) — 계정마다 처음 1회 무료, 더 쓰려면 관리자가 늘려 준다 ─────────
+def ask_state(acc_id: int) -> tuple[int, int]:
+    c = _conn()
+    try:
+        r = c.execute("SELECT COALESCE(ask_credits, 1), COALESCE(ask_used, 0) FROM accounts WHERE id=?", (acc_id,)).fetchone()
+        return (r[0], r[1]) if r else (0, 0)
+    finally:
+        c.close()
+
+
+def ask_consume(acc_id: int) -> bool:
+    """남은 횟수가 있을 때만 1 쓴다 (조건부 UPDATE — 동시에 두 번 와도 넘지 않게)."""
+    c = _conn()
+    try:
+        n = c.execute("UPDATE accounts SET ask_used = COALESCE(ask_used, 0) + 1 WHERE id=? AND COALESCE(ask_used, 0) < COALESCE(ask_credits, 1)",
+                      (acc_id,)).rowcount
+        c.commit()
+        return n == 1
+    finally:
+        c.close()
+
+
+def ask_refund(acc_id: int) -> None:
+    c = _conn()
+    try:
+        c.execute("UPDATE accounts SET ask_used = MAX(COALESCE(ask_used, 0) - 1, 0) WHERE id=?", (acc_id,))
+        c.commit()
+    finally:
+        c.close()
+
+
+def ask_grant(acc_id: int, n: int) -> tuple[int, int]:
+    """관리자가 횟수를 늘린다 (음수면 줄인다, 쓴 수보다 아래로는 안 내려간다)."""
+    c = _conn()
+    try:
+        c.execute("UPDATE accounts SET ask_credits = MAX(COALESCE(ask_credits, 1) + ?, COALESCE(ask_used, 0)) WHERE id=?", (n, acc_id))
+        c.commit()
+    finally:
+        c.close()
+    return ask_state(acc_id)

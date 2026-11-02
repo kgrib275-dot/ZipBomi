@@ -290,6 +290,8 @@ function NoteList() {
       <h2 className="sec-h">모든 <span className="grad">노트</span></h2>
       <p className="sec-p" style={{ marginBottom: 12 }}>노트 {meta?.total ?? hits.length}편. 검색하거나 분야를 고르면 바로 걸러져요. ☆로 저장한 노트는 '저장한 노트'에서 모아 봅니다.</p>
 
+      <Top3 />
+
       {/* 2026-11-02 단순화: 검색·정렬·내 조건·저장한 노트를 한 줄에, 분야는 칩 한 줄, 나머지(유형·읽는 방식·지역)는 '필터 더 보기' 안에 */}
       <div className="nf-bar">
         <div className="nf-search">
@@ -371,4 +373,33 @@ function jumpTo(root: HTMLElement | null, want: string) {
   const hs = root?.querySelectorAll("h3") || [];
   const h = Array.from(hs).find((x) => (x.textContent || "").trim().startsWith(want));
   h?.scrollIntoView({ behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "start" });
+}
+
+/** 나에게 맞는 TOP 3 (2026-11-02) — 프로필(유형·관심 지역)이 있으면 /api/home/mine 의 맞춤 3편, 없으면 많이 본 3편 */
+function Top3() {
+  const { data } = useLoad(async () => {
+    const mine = await get<{ has_profile: boolean; items: (NoteCardData & { reason?: string })[]; regions?: string[]; type?: string }>("home/mine");
+    if (mine.has_profile && mine.items.length) return { mine: true, items: mine.items.slice(0, 3), who: [mine.type, ...(mine.regions || [])].filter(Boolean).join(" · ") };
+    const pop = await get<{ notes: NoteCardData[] }>("notes?sort=popular");
+    return { mine: false, items: (pop.notes || []).slice(0, 3), who: "" };
+  }, []);
+  if (!data || !data.items.length) return null;
+  return (
+    <section className="top3">
+      <div className="top3-h">
+        <b>{data.mine ? "나에게 맞는 TOP 3" : "많이 본 TOP 3"}</b>
+        <span className="caption">{data.mine ? `${data.who} 기준` : <><Link to="/me">내 프로필</Link>을 정하면 관심사에 맞춰 골라 드려요</>}</span>
+      </div>
+      <div className="top3-g">
+        {data.items.map((n, i) => (
+          <Link key={n.id} to={`/notes?id=${n.id}`} className="top3-c">
+            <span className="rk">{i + 1}</span>
+            <span className="cat">{n.category}</span>
+            <b>{n.title}</b>
+            {"reason" in n && (n as { reason?: string }).reason && <span className="why">✓ {(n as { reason?: string }).reason}</span>}
+          </Link>
+        ))}
+      </div>
+    </section>
+  );
 }

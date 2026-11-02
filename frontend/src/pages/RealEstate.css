@@ -298,3 +298,13 @@ tr.re-cancel td:last-child{text-decoration:none}
 .ap-rchips{display:flex;flex-wrap:wrap;gap:5px;align-items:center;justify-content:flex-end}
 .ap-rchips small{color:var(--muted);font-size:.7rem}
 a.ap-card-t{color:var(--ink);text-decoration:none}
+/* 거래량 급변 달 — 칩 (2026-11-02) */
+.re-mk{margin:10px 0 0;display:flex;flex-direction:column;gap:8px}
+.re-mk-chips{display:flex;flex-wrap:wrap;gap:5px;align-items:center}
+.re-mk-chip{font-size:.76rem;padding:3px 8px;border-radius:999px;border:1px solid var(--line);background:var(--surface-2);color:var(--ink-2);white-space:nowrap}
+.re-mk-chip b{font-family:var(--f-display)}
+.re-mk-chip.up b{color:var(--err-ink)}.re-mk-chip.down b{color:#3b82f6}
+.re-mk-chip.has{border-color:var(--accent)}
+.re-mk-notes{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:5px}
+.re-mk-notes li{display:flex;flex-wrap:wrap;gap:8px;align-items:center;font-size:.88rem}
+.re-mk-notes a{font-weight:700;color:var(--ink)}

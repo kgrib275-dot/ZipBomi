@@ -10,8 +10,11 @@ if not exist frontend\dist\index.html (
   popd
 )
 cd backend
+rem 2026-11-02 동시 접속 대비: 공개 서버(5030)는 프로세스 3개, 예약 작업·관리는 관리·배치 서버(5031, run-admin.bat) 하나에서.
 set ZIPGENIE_PORT=5030
-set ZIPGENIE_SCHEDULER=1
+set ZIPGENIE_SCHEDULER=0
+set ZIPGENIE_WORKERS=3
+set ZIPGENIE_ADMIN_UPSTREAM=http://127.0.0.1:5031
 rem 이미 다른 창에서 5030 이 떠 있으면 재시작 반복(Errno 10048) 대신 안내하고 끝낸다
 netstat -ano | findstr /r /c:"127.0.0.1:5030 .*LISTENING" >nul
 if not errorlevel 1 (
@@ -32,6 +35,8 @@ if exist "%TS_DIR%\tailscaled.state" (
     start "zipgenie-tailscaled" /min "%TS_EXE%\tailscaled.exe" --windows-mode=dev --tun=userspace-networking --statedir="%TS_DIR%" --socket=%TS_SOCK% --port=41642
   )
 )
+netstat -ano | findstr /r /c:"127.0.0.1:5031 .*LISTENING" >nul
+if errorlevel 1 start "집보미 관리·배치 서버 (5031)" /min "%~dp0backend\run-admin.bat"
 echo 집보미 ZIPBOMI: http://localhost:5030  (관리: http://localhost:5030/admin)
 if exist "%TS_DIR%\tailscaled.state" echo 공개 주소: https://zipbomi.tail6bd481.ts.net
 :loop

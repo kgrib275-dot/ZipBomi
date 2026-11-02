@@ -6,7 +6,9 @@ import { DialogProvider, useDialogs } from "../components/Dialogs";
 import { useMe } from "../me";
 import { hasCore, useProfile, useProfileSync } from "../profile";
 import AlertBell from "./AlertBell";
+import AskPanel from "./AskPanel";
 import Nudge from "./Nudge";
+import TrialGate, { SaveError } from "./TrialGate";
 import { ThemeToggle } from "./Theme";
 import { LangToggle } from "./Translate";
 
@@ -14,15 +16,13 @@ const PLAY = [["/type", "부동산 성향 16유형"], ["/career", "내 집 마�
 // 메뉴 (2026-11-02 정리) — 할 일 기준으로 묶었다: 시세 보기 · 청약 · 계산 · 묻기. 퀴즈·테스트·데이터 랩·소개는 '더 보기'로.
 // 위 칸 7개라 960~1100px 에서도 한 줄에 들어간다 (예전 11개는 넘쳤다).
 type MenuItem = { to?: string; label: string; items?: readonly (readonly [string, string])[] };
+// 2026-11-02 메뉴 정리: 밀고 가는 3개(시세·청약·소식) + 더 보기. 보미AI 는 오른쪽 패널(✦ 버튼)로.
 const MENU: MenuItem[] = [
-  { to: "/", label: "✦ 이번 주" },
-  { to: "/notes", label: "노트" },
-  { to: "/deals", label: "시세", items: [["/deals", "실거래가 · 지역 흐름"], ["/map", "지도 · 분양·매물"], ["/my-homes", "★ 관심 단지"]] },
+  { to: "/deals", label: "시세", items: [["/deals", "실거래가 · 지역 흐름"], ["/map", "지도 · 분양·매물"], ["/lab", "데이터 랩 · 지역 순위"], ["/my-homes", "★ 관심 단지"]] },
   { to: "/calendar", label: "청약", items: [["/calendar", "분양 일정 · 당첨 가점"], ["/deals?tab=apply", "청약 공고 목록"]] },
-  { to: "/calc", label: "계산기", items: [["/calc", "내 집 계산기"], ["/now", "현행 수치 · 규제·금리"]] },
-  { to: "/ask", label: "질문하기" },
-  { label: "더 보기", items: [["/today", "오늘의 퀴즈"], ...PLAY, ["/lab", "데이터 랩"], ["/about", "소개"]] },
-];
+  { to: "/notes", label: "소식", items: [["/", "✦ 이번 주 시장"], ["/notes", "노트 · 시장 해설"], ["/now", "현행 수치 · 규제·금리"]] },
+  { label: "더 보기", items: [["/calc", "내 집 계산기"], ["/today", "오늘의 퀴즈"], ...PLAY, ["/about", "소개"]] },
+]
 
 export default function Layout({ children }: { children: React.ReactNode }) {
   return (
@@ -78,6 +78,7 @@ function Shell({ children }: { children: React.ReactNode }) {
             {me?.is_admin && <NavLink to="/admin" className={() => (isAdminArea ? "on" : "")}>관리</NavLink>}
           </nav>
           <div className="hdr-right">
+            <button type="button" className="btn sm bomi-btn" onClick={() => window.dispatchEvent(new Event("zg-open-ask"))} title="보미AI — 보던 화면 옆에서 질문">✦ <span className="lbl">보미AI</span></button>
             <AlertBell />
             <NavLink to="/my" className={({ isActive }) => `btn sm ghost me-link${isActive ? " on" : ""}`} title={me?.account ? `내 공간 — ${me.account.email}` : "내 공간 — 관심 단지·알림·저장한 노트·계산"}>
               <span aria-hidden="true">{me?.account ? "●" : hasCore(profile) ? "◉" : "○"}</span> <span className="lbl">내 공간</span>
@@ -88,11 +89,14 @@ function Shell({ children }: { children: React.ReactNode }) {
           </div>
         </div>
       </header>
+      <TrialGate />
+      <SaveError />
       <main>
         <div className="container page">{children}</div>
       </main>
       <Footer />
-      <a className="fab fab-ask notranslate" translate="no" href="/ask" title="질문하기">✦</a>
+      <button type="button" className="fab fab-ask notranslate" translate="no" title="보미AI" onClick={() => window.dispatchEvent(new Event("zg-open-ask"))}>✦</button>
+      <AskPanel />
       <button className="fab fab-top notranslate" translate="no" title="맨 위로" onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}>↑</button>
       {!isAdminArea && !state.subscribed && (!me?.is_admin || params.get("nudge") === "1") && <Nudge onSubscribe={() => openSubscribe("sticky_bar")} />}
     </>

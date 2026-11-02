@@ -1,4 +1,5 @@
 // 소개 (/about) — Streamlit 판 app_pages/about.py 이식. 숫자 띠·흐름선 스타일은 Home.css 를 같이 쓴다.
+import { useEffect } from "react";
 import { Link } from "react-router-dom";
 import { get } from "../api";
 import { useDialogs } from "../components/Dialogs";
@@ -23,7 +24,7 @@ const STEPS: [string, string][] = [
 
 // 기능이 바뀌면 이 목록도 같이 고친다 (2026-11-02 내 공간·메일 로그인·상단 알림·지도 바탕 선택 추가 / 지도·청약 공고·데이터 종류·내 프로필, Phase 2 관심 단지·지역 흐름, Phase 3 현행 수치·계산 연결, Phase 4 분양 일정·알림·노트 형식, 홈 시장 요약 반영)
 const FEATURES: [string, string, string, string][] = [
-  ["/my", "🏠", "내 공간", "관심 단지 최근 거래·관심/알림 청약·저장한 노트·계산·메모와 내 일정 달력을 한 화면에. 항목마다 메모·알림 날짜를 달면 맨 위 🔔에 떠요. 메일 링크로 로그인하면 휴대폰·PC 어디서든 그대로, 내 자료를 근거로 질문할 수 있어요"],
+  ["/my", "🏠", "내 공간", "관심 단지 최근 거래·비교 표·관심/알림 청약·저장한 노트·계산·메모·할 일과 내 일정 달력을 한 화면에. 내 데이터는 파일로 백업도 돼요. 항목마다 메모·알림 날짜를 달면 맨 위 🔔에 떠요. 메일 링크로 로그인하면 휴대폰·PC 어디서든 그대로, 내 자료를 근거로 질문할 수 있어요"],
   ["/lab", "🧪", "데이터 랩", "2년 거래량과 금리·심리 지표, 내 예산으로 갈 수 있는 동네, 시군구 상승률 순위, 세 동네 가격 비교를 직접 골라 보기"],
   ["/me", "👤", "내 프로필", "유형·관심 지역·예산을 넣으면 홈과 노트가 내 조건에 맞춰집니다. 로그인하면 기기 사이에 이어져요."],
   ["/my-homes", "⭐", "관심 단지", "실거래가에서 ☆로 담은 단지의 평형별 최근가·변동률·전세가율과 월별 추이, 관련 정책 노트를 한 화면에"],
@@ -41,12 +42,15 @@ const MORE: [string, string, string, string][] = [
   ["/today", "🧩", "오늘의 퀴즈", "매일 3문제와 내일 예측 투표"],
   ["/type", "🧭", "부동산 성향 16유형", "12문항으로 내 성향과 잘 맞는 전략 찾기"],
   ["/diagnosis", "☑", "준비도 자가진단", "12문항으로 자금·정보·실행 준비도 점검"],
-  ["/ask", "💬", "질문하기", "쌓인 노트를 근거로 묻고 답하기"],
+  ["/ask", "✦", "보미AI", "보던 화면 옆 패널에서 묻기 — 내 관심 단지·공고·프로필을 근거로 답해요. 로그인하면 처음 1번 무료, 더 쓰려면 관리자에게 신청"],
   ["/lab", "🕸", "데이터 랩", "키워드 네트워크·히트맵으로 흐름 탐색"],
 ];
 
 export default function AboutPage() {
-  const { openSubscribe, openContact } = useDialogs();
+  const { openSubscribe, openContact, openLogin } = useDialogs();
+  // 1분 둘러보기가 끝나 넘어온 경우 — 로그인 창을 바로 연다 (layout/TrialGate.tsx)
+  const needLogin = typeof window !== "undefined" && new URLSearchParams(window.location.search).get("login") === "1";
+  useEffect(() => { if (needLogin) openLogin(); }, [needLogin, openLogin]);
   const { data } = useLoad(() => get<About>("about"));
   const c = data?.counts || {};
   const nSources = c.sources ?? Object.values(data?.sources || {}).reduce((a, v) => a + v.length, 0);
@@ -158,7 +162,7 @@ export default function AboutPage() {
 
       <div className="btn-row" style={{ marginTop: 28 }}>
         <button className="btn primary" onClick={() => openSubscribe("about")}>월요일 아침 맞춤 브리핑 받기 →</button>
-        <button className="btn" onClick={openContact}>문의하기</button>
+        <button className="btn" onClick={() => openContact()}>문의하기</button>
       </div>
     </>
   );

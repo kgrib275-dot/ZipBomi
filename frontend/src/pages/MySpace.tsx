@@ -9,6 +9,7 @@ import { useMe } from "../me";
 import { man } from "../policy";
 import { useRegions } from "../profile";
 import { ItemNote, MyCalendar } from "./MyCalendar";
+import { CompareTable, DataBackup, TodoBox } from "./MyTools";
 import "./MySpace.css";
 import "./RealEstate.css";
 
@@ -59,6 +60,7 @@ export default function MySpace() {
               <textarea className="my-memo" rows={5} maxLength={2000} value={memo} placeholder="임장 메모, 은행 상담 내용, 체크할 것… (질문하기에서도 참고해요)"
                 onChange={(e) => setMemo(e.target.value)} onBlur={() => { if (memo !== data.memo) { setState({ my_memo: memo }); reload(); } }} />
               <span className="caption">칸 밖을 누르면 저장돼요.</span></div>} />
+          <TodoBox />
           {empty && <Alert kind="info">아직 모아 둔 것이 없어요. <Link to="/deals">실거래가</Link>에서 단지 앞 ☆, <Link to="/calendar">분양 일정</Link>에서 🔔, <Link to="/notes">노트</Link>에서 ☆를 누르면 여기에 모여요.</Alert>}
           <section className="my-sec">
             <div className="my-h"><h3>관심 단지·지역 <small>{data.watch.length}</small></h3><Link to="/my-homes">관리 →</Link></div>
@@ -78,6 +80,8 @@ export default function MySpace() {
               </div>
             )}
           </section>
+
+          <CompareTable watch={data.watch} />
 
           <section className="my-sec">
             <div className="my-h"><h3>관심·알림 청약 <small>{data.apply.length}</small></h3><Link to="/calendar">분양 일정 →</Link></div>
@@ -120,6 +124,7 @@ export default function MySpace() {
           </section>
 
           <AllSettings />
+          <DataBackup />
 
 
         </>

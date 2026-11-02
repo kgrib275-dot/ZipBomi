@@ -339,3 +339,42 @@ input[type="month"],input[type="date"]{font:inherit;padding:9px 12px;border-radi
   .bell-btn{padding:5px 8px}
 }
 @media (max-width:380px){.hdr-in{gap:6px}.hdr-right{gap:4px}.lang-btn{padding:4px 6px;font-size:.78rem}.hdr .logo{font-size:.95em}}
+/* 1분 둘러보기 띠 (layout/TrialGate.tsx) */
+.trial-bar{position:sticky;top:60px;z-index:90;display:flex;flex-wrap:wrap;gap:6px 12px;align-items:center;justify-content:center;padding:8px 14px;
+  background:linear-gradient(90deg,rgba(245,184,0,.18),rgba(245,184,0,.08));border-bottom:1px solid var(--tint-line);font-size:.88rem;color:var(--ink)}
+.trial-bar .sp{color:var(--ink-2)}
+.trial-bar.done{background:linear-gradient(90deg,rgba(220,38,38,.18),rgba(245,184,0,.1))}
+@media (max-width:640px){.trial-bar .sp{display:none}}
+/* 보미AI 옆 패널 (layout/AskPanel.tsx) */
+.bomi-btn{border-color:var(--accent)!important;color:var(--accent-2)!important;font-weight:800}
+@media (max-width:480px){.bomi-btn .lbl{display:none}}
+.ask-panel{position:fixed;top:72px;right:16px;bottom:16px;width:min(420px,calc(100vw - 32px));z-index:170;display:flex;flex-direction:column;
+  background:var(--surface);border:1px solid var(--line);border-radius:18px;box-shadow:0 24px 60px rgba(0,0,0,.45);overflow:hidden;animation:apIn .2s ease-out}
+@keyframes apIn{from{opacity:0;transform:translateX(18px)}to{opacity:1;transform:none}}
+.ap-h{display:flex;align-items:center;gap:8px;padding:12px 14px;border-bottom:1px solid var(--line)}
+.ap-logo{display:grid;place-items:center;width:28px;height:28px;border-radius:8px;background:linear-gradient(135deg,#F5B800,#FFD54A);color:#1A1405;font-weight:900}
+.ap-h .sp{flex:1}
+.ap-ic{all:unset;cursor:pointer;width:28px;height:28px;display:grid;place-items:center;border-radius:8px;color:var(--muted);font-size:1.05rem;text-decoration:none}
+.ap-ic:hover{background:var(--surface-2);color:var(--ink)}
+.ap-sub{padding:7px 14px;font-size:.76rem;color:var(--muted);border-bottom:1px solid var(--line);background:var(--surface-2)}
+.ap-sub span{opacity:.85}
+.ap-body{flex:1;overflow:auto;padding:14px;display:flex;flex-direction:column;gap:10px}
+.ap-empty{display:flex;flex-direction:column;align-items:center;text-align:center;gap:8px;margin:auto 0}
+.ap-big{width:52px;height:52px;border-radius:14px;display:grid;place-items:center;font-size:1.6rem;background:linear-gradient(135deg,#F5B800,#FFD54A);color:#1A1405}
+.ap-empty p{font-size:.82rem;color:var(--ink-2);margin:0 0 6px}
+.ap-sug{all:unset;cursor:pointer;box-sizing:border-box;width:100%;display:flex;justify-content:space-between;gap:8px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;font-size:.86rem;text-align:left;color:var(--ink)}
+.ap-sug:hover{border-color:var(--accent)}
+.ap-sug:disabled{opacity:.5;cursor:default}
+.ap-msg{max-width:92%;padding:9px 12px;border-radius:14px;font-size:.9rem;line-height:1.6;overflow-wrap:anywhere}
+.ap-msg p{margin:0}
+.ap-msg.user{align-self:flex-end;background:rgba(245,184,0,.18);border:1px solid var(--tint-line)}
+.ap-msg.assistant{align-self:flex-start;background:var(--surface-2);border:1px solid var(--line)}
+.ap-msg.typing{color:var(--muted)}
+.ap-err{font-size:.82rem;color:var(--err-ink)}
+.ap-foot{padding:12px 14px;border-top:1px solid var(--line);display:flex;flex-direction:column;gap:6px}
+.ap-in{display:flex;gap:8px;padding:10px 12px;border-top:1px solid var(--line);align-items:flex-end}
+.ap-in textarea{flex:1;resize:none;min-height:42px;max-height:120px}
+.ap-in .btn{width:42px;height:42px;padding:0;border-radius:12px;font-size:1.1rem}
+@media (max-width:640px){.ask-panel{top:0;right:0;bottom:0;width:100vw;border-radius:0}}
+/* 좁은 화면 — 보미AI 버튼이 늘어 상단이 넘치지 않게 (2026-11-02) */
+@media (max-width:420px){.hdr-right .lang-btn{display:none}.hdr-right{gap:4px}.bomi-btn{padding:5px 8px}}

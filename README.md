@@ -136,7 +136,9 @@ ZIPGENIE_PORT=5030 ZIPGENIE_SCHEDULER=1 venv/bin/python serve.py
 | `ZIPGENIE_HOST` | 127.0.0.1 | 바인드 주소 (외부 직접 공개 시 0.0.0.0 — 보통은 리버스 프록시 뒤에 둔다) |
 | `ZIPGENIE_SCHEDULER` | (없음) | `1` 이면 배치 스케줄러 실행 |
 | `ZIPGENIE_NO_SCHEDULER` | (없음) | `1` 이면 어떤 경우에도 스케줄러 끔 |
-| `ZIPGENIE_WORKERS` | 1 | uvicorn 프로세스 수 (최대 8). 늘리면 관리 화면 작업 로그가 프로세스마다 따로 보임 |
+| `ZIPGENIE_WORKERS` | 1 | uvicorn 프로세스 수 (최대 8). `start-zipbomi.bat` 은 공개 서버를 3 으로 띄운다 |
+| `ZIPGENIE_ADMIN_UPSTREAM` | (없음) | 공개 서버가 `/api/admin/*` 를 넘길 관리·배치 서버 주소 (bat: `http://127.0.0.1:5031`) |
+| `ZIPGENIE_TRIAL_SEC` | 60 | 로그인 전 둘러보기 시간(초). 부하 시험 때만 늘린다 |
 | `ZIPGENIE_DB` | `backend/data/zipbomi.db` | 다른 DB 파일 사용 (시험용 사본 등 — 이때 자동 백업은 건너뜀) |
 | `ZIPGENIE_DEBUG` | (없음) | `1` 이면 `/api/openapi.json` 공개 |
 
@@ -359,6 +361,33 @@ ZipBomi/
 - 청약 신청·당첨자 통계 (`pipeline/apply_stats.py`, 공공데이터 15110812 ApplyhomeStatSvc 6종 → `re_apply_stat`, 매일 re_data 끝에) →
   `GET /api/re/apply-stats` → `/calendar?tab=scores` 위쪽 (지역 가점 당첨선 추이·지역 경쟁률·연령대별 당첨). 15126242(경쟁률·가점 파일)는 활용신청 승인 필요.
 - 출처 326곳 (`config/sources.yaml`): 정부·공공·경제지·종합·전문지·Google 뉴스·유튜브 78·블로그·커뮤니티·해외 언론·해외 연구. 영어 기사용 키워드 규칙 `housing market (EN)`.
+
+
+## 11-3. 서비스 구성 · 로그인 전 제한 · 보미AI · 데이터 보존 (2026-11-02)
+**서버 구성 (동시 접속 1천 명 대비)**
+- `start-zipbomi.bat` → 공개 서버 **5030 (프로세스 3개, 예약 작업 없음)** + `backend/run-admin.bat` → 관리·배치 서버 **5031 (프로세스 1개, 예약 작업 실행)**.
+- 공개 서버는 `/api/admin/*` 를 관리·배치 서버로 그대로 넘긴다(`ZIPGENIE_ADMIN_UPSTREAM`) — 관리 화면 주소는 그대로(`/admin`), 작업 상태·실행 로그는 한곳.
+- 모두에게 같은 공개 자료(`/api/now`·`/api/home/market`·`/api/lab/*` 등)는 `Cache-Control: public, max-age=60`. 개인 응답은 캐시하지 않는다.
+- 실측(이 PC, i7-1165G7 8스레드): 프로세스 1개 → 3개에서 `/api/home` 142 → 269 req/s, `/api/me` 169 → 288 req/s, `/api/now` 269 → 751 req/s.
+  동시 1천 명이 보통 만드는 요청은 초당 100~200건.
+- ⚠ 실행 중인 bat 파일을 고치지 않는다(cmd 가 줄 위치로 다시 읽어 꼬인다). 바꾼 뒤에는 창을 닫고 다시 실행.
+
+**로그인 전 1분 둘러보기** (`pipeline/gate.py`, `layout/TrialGate.tsx`)
+- 처음 방문 시각을 서명 쿠키(`zgt`)와 IP(`trial_ip` 표, 2일 뒤 삭제)로 기억. 1분이 지나면 공개 API 가 401 `{login_required}` → 화면은 `/about?login=1` 로 옮겨 로그인 창.
+- 늘 열린 API: `/api/me*`, `/api/auth/*`, 소개·처리방침·구독·문의·방문 기록. 화면(HTML)·공유 미리보기·사이트맵은 막지 않는다. 관리자는 막지 않는다.
+
+**보미AI** (옛 질문하기) — 오른쪽 패널(`layout/AskPanel.tsx`, ✦ 버튼)로 보던 화면 옆에서 질문, `/ask` 는 전체 화면.
+- 로그인 계정마다 **처음 1회 무료**(`accounts.ask_credits/ask_used`). 다 쓰면 "관리자에게 사용 신청" → 문의. 관리 > 회원 계정에서 +5/+30회.
+- 내 공간 자료(관심 단지 시세·공고·프로필·메모)를 근거로 넘긴다(`mine`).
+
+**개인 데이터 보존**
+- 로그인 계정의 저장값은 오래 접속하지 않아도 지우지 않는다(탈퇴 = '내 기록 지우기' 때만). 비로그인 방문자는 395일 미접속 시 정리.
+- 저장 한도: 계정 400KB·방문자 32KB, 값 하나 4,000자·목록 300개. 넘으면 **조용히 버리지 않고 413** → 화면 위 알림.
+- 저장 실패(연결 끊김)는 2·5·15·30초 뒤 다시 보내고, 못 보낸 변경은 브라우저(`zg-unsaved`)에 남겨 다음 방문 때 다시 보낸다.
+- 내 공간 '내 데이터 백업' — JSON 내려받기·되살리기. DB 는 매일 자동 백업(14일).
+
+**메뉴** — 시세(실거래가·지도·데이터 랩·관심 단지) · 청약(분양 일정·공고) · 소식(이번 주·노트·현행 수치) · 더 보기(계산기·퀴즈·테스트·소개) + ✦ 보미AI.
+**내 공간** — 내 일정 달력(공고·전세 만기·알림·일정·할 일), 할 일 체크리스트, 관심 단지 비교 표, 항목별 메모·알림, 설정 전체 보기, 데이터 백업.
 
 ## 12. Databricks 적재
 - `pipeline/warehouse.py` — 운영 DB 는 로컬 SQLite 로 두고, 바뀐 행만 `<catalog>.<schema>`(기본 `workspace.zipgenie`) Delta 테이블로 MERGE.

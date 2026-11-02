@@ -12,7 +12,7 @@ import "./Ask.css";
 
 type Source = { title: string; url: string; kind: string; sim: number };
 type Turn = { role: "user" | "assistant"; content: string; sources?: Source[]; weak?: boolean };
-type Usage = { enabled: boolean; quota: number; used: number; limit_hit: boolean; linked: boolean; email_masked?: string; requested?: boolean; member?: { expires?: string } | null; is_admin: boolean; free_credits: number; member_daily: number; plan_price?: string; global_hit?: boolean; web_search?: boolean };
+type Usage = { enabled: boolean; quota: number; used: number; limit_hit: boolean; linked: boolean; need_grant?: boolean; email_masked?: string; requested?: boolean; member?: { expires?: string } | null; is_admin: boolean; free_credits: number; member_daily: number; plan_price?: string; global_hit?: boolean; web_search?: boolean };
 
 const HKEY = "zipgenie-ask-history";
 const EXAMPLES = ["요즘 서울 아파트 전세 시장 분위기 어때?", "스트레스 DSR이 대출 한도에 어떤 영향을 줘?", "이번 주 부동산 흐름을 3줄로 요약해줘", "청약·분양 노트만 모아줘"];
@@ -23,7 +23,7 @@ function loadHistory(): Turn[] {
 
 export default function Ask() {
   const { me, reload: reloadMe } = useMe();
-  const { openMembership, openSubscribe } = useDialogs();
+  const { openMembership, openLogin, openContact } = useDialogs();
   const { data: usage, error, loading, reload, setData } = useLoad<Usage>(() => get<Usage>("ask/usage"), []);
   const [history, setHistory] = useState<Turn[]>(() => loadHistory());
   // 홈 맛보기의 예시 질문(?q=)은 입력칸에 채워만 둔다 — 질문 한도를 쓰는 전송은 본인이 누른다
@@ -124,7 +124,7 @@ export default function Ask() {
 
   return (
     <div className="ask-page">
-      <div className="eyebrow">질문하기</div>
+      <div className="eyebrow">보미AI</div>
       <h2 className="sec-h">부동산, <span className="grad">무엇이든 물어보세요</span></h2>
       <p className="sec-p">집보미에 쌓인 노트와 기사를 근거로 답해요. 답변의 링크로 원문 노트를 확인하세요. 투자 조언이 아닌 참고 정보입니다.</p>
       <Guide title="이렇게 물어보세요" items={[
@@ -135,7 +135,7 @@ export default function Ask() {
       <p className="caption">질문과 대화 일부는 답변 생성을 위해 Google(미국, Gemini API)로 전송되며 이 사이트에는 저장되지 않습니다. 이름·연락처 같은 개인정보는 입력하지 마세요. <Link to="/privacy">개인정보 처리방침</Link></p>
 
       {error && <Alert kind="err">{error}</Alert>}
-      {usage && !usage.enabled && <Alert kind="info">ℹ️ 지금은 질문하기를 사용할 수 없습니다.</Alert>}
+      {usage && !usage.enabled && <Alert kind="info">ℹ️ 지금은 보미AI를 사용할 수 없습니다.</Alert>}
 
       {usage?.enabled && (
         <>
@@ -217,21 +217,13 @@ export default function Ask() {
             <p className="caption">오늘 질문을 모두 썼습니다. 내일 다시 이용해 주세요.</p>
           ) : !isAdmin && !linked ? (
             <div className="box ask-upsell">
-              <p><b>질문하기는 뉴스레터 구독자에게 무료 {usage.free_credits}회(이후 관리자 충전) 제공됩니다.</b><br />구독은 무료이고, 확인 메일의 버튼을 누르면 이 브라우저에서 바로 질문할 수 있습니다.</p>
-              <button className="btn primary" type="button" onClick={() => openSubscribe("ask")}>✉️ 무료로 구독하기</button>
-              <details className="expander" style={{ marginTop: 10 }}>
-                <summary>이미 구독 중이라면 구독한 이메일로 이 브라우저를 연결</summary>
-                <div className="body"><LinkForm /></div>
-              </details>
+              <p><b>보미AI는 메일로 로그인하면 처음 1번 무료로 쓸 수 있어요.</b><br />내 관심 단지·공고·프로필을 근거로 답해 드려요. 그 뒤로는 관리자에게 사용을 신청해 주세요.</p>
+              <button className="btn primary" type="button" onClick={openLogin}>✉️ 메일로 로그인</button>
             </div>
           ) : limitHit && linked ? (
             <div className="box ask-upsell">
-              <p><b>질문 횟수를 모두 썼습니다.</b> ({used}/{quota}회 · {usage.email_masked})<br />관리자 승인 후 충전됩니다. 충전되면 메일로 알려 드립니다.</p>
-              {usage.requested ? (
-                <button className="btn" type="button" disabled>요청됨 · 충전되면 메일로 알려 드립니다</button>
-              ) : (
-                <button className="btn primary" type="button" disabled={reqBusy} onClick={requestCredits}>{reqBusy ? "요청하는 중..." : "🔋 충전 요청하기"}</button>
-              )}
+              <p><b>무료 1회를 모두 쓰셨어요.</b> ({used}/{quota}회 · {usage.email_masked})<br />더 쓰시려면 관리자에게 보미AI 사용을 신청해 주세요. 확인 후 횟수를 늘려 드리고 메일로 알려 드려요.</p>
+              <button className="btn primary" type="button" onClick={() => openContact(`[보미AI 사용 신청]\n계정: ${usage.email_masked}\n사용 목적: \n희망 횟수: `)}>📨 관리자에게 사용 신청</button>
             </div>
           ) : null}
           {!member && !isAdmin && (

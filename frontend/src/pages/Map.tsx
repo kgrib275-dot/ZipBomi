@@ -309,7 +309,8 @@ export default function MapPage() {
     const maxDeals = Math.max(1, ...items.map((i) => i.deals));
     for (const p of items) {
       const m = L.circleMarker([p.lat, p.lng], {
-        radius: 8 + 22 * Math.sqrt(p.deals / maxDeals), color: "#5c4300", weight: 1, fillColor: binColor(bins, p.median_per_3_3m2_manwon), fillOpacity: 0.72,
+        radius: 6 + 14 * Math.sqrt(p.deals / maxDeals), color: binColor(bins, p.median_per_3_3m2_manwon), weight: 1.5, opacity: 0.9,
+        fillColor: binColor(bins, p.median_per_3_3m2_manwon), fillOpacity: 0.38,
       }).bindPopup(pricePopup(p, regions.data?.months || 3), { maxWidth: 280 })
         .bindTooltip(`${p.region} ${p.sigungu} · ${man(p.median_per_3_3m2_manwon)}/3.3㎡`, { direction: "top" });
       m.addTo(g);
@@ -325,10 +326,11 @@ export default function MapPage() {
     markers.current.apply.clear();
     for (const n of apply.data?.items || []) {
       const m = L.circleMarker([n.lat, n.lng], {
-        radius: 9, color: dark ? "#120F08" : "#ffffff", weight: 2, fillColor: STATUS_COLOR[n.status], fillOpacity: n.status === "마감" ? 0.6 : 0.95,
-        dashArray: n.approx ? "3 3" : undefined,
+        radius: n.status === "마감" ? 4 : 8, color: dark ? "#120F08" : "#ffffff", weight: n.status === "마감" ? 1 : 2,
+        fillColor: STATUS_COLOR[n.status], fillOpacity: n.status === "마감" ? 0.45 : 1,
       }).bindPopup(noticePopup(n), { maxWidth: 300 }).bindTooltip(n.name, { direction: "top" });
       m.addTo(g);
+      if (n.status !== "마감") m.bringToFront();
       markers.current.apply.set(n.id, m);
     }
   }, [apply.data, dark]);

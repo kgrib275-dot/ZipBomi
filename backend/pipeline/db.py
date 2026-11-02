@@ -907,6 +907,13 @@ DATA_RETENTION_DAYS = {"articles": 180, "run_logs": 180}
 
 def purge_expired() -> dict[str, int]:
     """보관 기간이 지난 기록을 지운다 (스케줄러 하루 정리). {이름: 지운 행 수}."""
+    try:
+        from . import accounts as _acc
+        _acc.count()  # accounts 표 준비 (visitor_state 정리 문장이 참조)
+        from .gate import _SQL as _TRIAL_SQL
+        _c = connect(); _c.execute(_TRIAL_SQL); _c.commit(); _c.close()
+    except Exception:  # noqa: BLE001
+        pass
     now = datetime.now()
     ago = lambda d: (now - timedelta(days=d)).isoformat(timespec="seconds")  # noqa: E731
     kst_ago = lambda d: (datetime.now(KST) - timedelta(days=d)).isoformat(timespec="seconds")  # noqa: E731
@@ -914,8 +921,10 @@ def purge_expired() -> dict[str, int]:
     R, D = RETENTION_DAYS, DATA_RETENTION_DAYS
     stmts = {
         "접속 기록": ("DELETE FROM access_logs WHERE created_at < ?", (ago(R["access_logs"]),)),
+        "둘러보기 판정 IP": ("DELETE FROM trial_ip WHERE first_at < ?", (time.time() - 86400 * 2,)),
         "참여 기록": ("DELETE FROM engagements WHERE created_at < ?", (kst_ago(R["engagements"]),)),
-        "화면 선택값": ("DELETE FROM visitor_state WHERE updated_at < ?", (ago(R["visitor_state"]),)),
+        # 로그인 계정(accounts)의 저장값은 지우지 않는다 — 탈퇴('내 기록 지우기') 때만 (2026-11-02 개인화 데이터 유실 방지)
+        "화면 선택값": ("DELETE FROM visitor_state WHERE updated_at < ? AND visitor NOT IN (SELECT 'c:' || raw FROM accounts)", (ago(R["visitor_state"]),)),
         "선택 프로필": ("DELETE FROM profiles WHERE updated_at < ? AND visitor NOT IN "
                     "(SELECT DISTINCT visitor FROM engagements WHERE created_at >= ?)", (kst_ago(R["profiles"]), kst_ago(R["profiles"]))),
         "문의": ("DELETE FROM contacts WHERE created_at < ?", (ago(R["contacts"]),)),

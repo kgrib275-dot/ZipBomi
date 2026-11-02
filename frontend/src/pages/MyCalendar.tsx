@@ -3,6 +3,7 @@
 // 항목 메모·알림(my_items): {키: {title, memo, remind(YYYY-MM-DD), remind_note}} — 알림 날짜가 다가오면 상단 🔔에 뜬다(/api/me/alerts).
 import { useMemo, useState } from "react";
 import { useMe } from "../me";
+import { useTodos } from "./MyTools";
 
 export type MyItem = { title?: string; memo?: string; remind?: string; remind_note?: string };
 type Ev = { date: string; label: string; kind: "start" | "end" | "win" | "lease" | "remind" | "event"; title: string; key?: string };
@@ -63,6 +64,7 @@ export function ItemNote({ k, title }: { k: string; title: string }) {
 /** 통합 달력 */
 export function MyCalendar({ apply, alerts, lease, side }: { apply: NoticeLite[]; alerts: string[]; lease?: string; side?: React.ReactNode }) {
   const { items, events, addEvent, delEvent } = useMyItems();
+  const todos = useTodos().list;
   const [ym, setYm] = useState(() => new Date().toISOString().slice(0, 7));
   const [day, setDay] = useState<string | null>(null);
   const [title, setTitle] = useState("");
@@ -77,8 +79,9 @@ export function MyCalendar({ apply, alerts, lease, side }: { apply: NoticeLite[]
     if (lease) out.push({ date: lease, label: "만기", kind: "lease", title: "전세 만기" });
     for (const [k, v] of Object.entries(items)) if (v.remind) out.push({ date: v.remind, label: "알림", kind: "remind", title: `${v.title || "내 항목"}${v.remind_note ? ` — ${v.remind_note}` : ""}`, key: k });
     for (const e of events) out.push({ date: e.date, label: "일정", kind: "event", title: e.title, key: e.id });
+    for (const t of todos) if (t.due && !t.done) out.push({ date: t.due, label: "할 일", kind: "remind", title: t.text });
     return out;
-  }, [apply, alerts, lease, items, events]);
+  }, [apply, alerts, lease, items, events, todos]);
   const [y, m] = ym.split("-").map(Number);
   const first = new Date(y, m - 1, 1).getDay(), days = new Date(y, m, 0).getDate();
   const cells: (string | null)[] = [...Array(first).fill(null), ...Array.from({ length: days }, (_, i) => `${ym}-${String(i + 1).padStart(2, "0")}`)];

@@ -23,7 +23,7 @@ from fastapi import APIRouter, Body, HTTPException
 from api.deps import Caller, CallerDep, throttle
 from api.routers import me as me_state
 from api.routers.subscribe import _email, _mask, _may_mail, send_later
-from pipeline import agent_chat, alerts, db, engage, mailer, membership, my_space, settings_store
+from pipeline import accounts, agent_chat, alerts, db, engage, mailer, membership, my_space, settings_store
 
 router = APIRouter(tags=["ask"])
 log = logging.getLogger("zipgenie.ask")
@@ -32,7 +32,8 @@ MAX_QUESTION = 500
 MAX_TURN = 4000
 HISTORY_TURNS = 6  # 최근 3턴만 (비용·길이 제한)
 _TOKEN_RE = re.compile(r"^[0-9a-f]{32}$")
-NOT_LINKED = "질문하기는 뉴스레터 구독자에게 제공됩니다. 무료로 구독한 뒤(또는 이미 구독 중이라면 구독한 이메일로 이 브라우저를 연결한 뒤) 질문해 주세요."
+NOT_LINKED = "보미AI는 메일로 로그인한 뒤 쓸 수 있어요. 로그인하면 처음 1번은 무료예요."
+NEED_GRANT = {"message": "무료 1회를 모두 쓰셨어요. 더 쓰시려면 관리자에게 보미AI 사용을 신청해 주세요.", "contact": True}
 
 
 def _cfg() -> dict:
@@ -41,6 +42,11 @@ def _cfg() -> dict:
 
 def _enabled(cfg: dict) -> bool:
     return bool(cfg["enabled"]) and agent_chat.has_api_keys()
+
+
+def _account(c: Caller) -> dict | None:
+    """보미AI 는 로그인 계정 기준 (2026-11-02) — 계정마다 처음 1회 무료, 그 뒤는 관리자가 늘려 준 만큼."""
+    return accounts.by_raw(c.raw) if c.visitor.startswith("c:") else None
 
 
 def _subscriber(c: Caller) -> dict | None:
@@ -59,15 +65,14 @@ def usage(c: Caller, cfg: dict, member: dict | None, sub: dict | None) -> dict:
         q, u = int(cfg["member_daily"]), membership.used_today(member["id"])
         over = u >= q
     elif sub:
-        q, u = int(sub["ask_credits"]), int(sub["ask_used"])
+        q, u = accounts.ask_state(sub["id"])
         over = u >= q or ip_hit
     else:
-        q, u, over = 0, 0, True  # 구독자가 아니면 질문할 수 없다
+        q, u, over = 0, 0, True  # 로그인하지 않으면 질문할 수 없다
     global_hit = total >= int(cfg.get("global_daily", 40))
     return {"quota": q, "used": u, "limit_hit": not c.is_admin and (over or global_hit), "used_all": total,
             "global_hit": global_hit and not c.is_admin, "linked": bool(sub), "email_masked": _mask(sub["email"]) if sub else "",
-            # 충전 요청을 남겼고 아직 충전되지 않은 상태(충전하면 ask_requested_at 이 지워진다)
-            "requested": bool(sub and sub.get("ask_requested_at") and u >= q and not member)}
+            "requested": False, "need_grant": bool(sub and u >= q and not member and not c.is_admin)}
 
 
 def _member(c: Caller) -> dict | None:
@@ -78,9 +83,9 @@ def _member(c: Caller) -> dict | None:
 def ask_usage(c: Caller = CallerDep) -> dict:
     cfg = _cfg()
     member = _member(c)
-    u = usage(c, cfg, member, _subscriber(c))
+    u = usage(c, cfg, member, _account(c))
     return {"enabled": _enabled(cfg), "quota": u["quota"], "used": u["used"], "limit_hit": u["limit_hit"],
-            "linked": u["linked"], "email_masked": u["email_masked"], "requested": u["requested"],
+            "linked": u["linked"], "email_masked": u["email_masked"], "requested": u["requested"], "need_grant": u["need_grant"],
             "member": {"id": member["id"], "expires": member["expires"]} if member else None, "is_admin": c.is_admin,
             "free_credits": int(cfg.get("free_credits", 3)), "member_daily": int(cfg["member_daily"]),
             "plan_price": cfg.get("plan_price") or "", "global_hit": u["global_hit"], "web_search": bool(cfg.get("web_search")),
@@ -112,7 +117,7 @@ def _reserve(c: Caller, cfg: dict, member: dict | None, detail: str) -> str | No
     구독자 횟수를 차감했으면 그 이메일을 돌려준다 (실패 시 _done 이 돌려줄 수 있게)."""
     if not _enabled(cfg):
         raise HTTPException(status_code=503, detail="지금은 질문하기를 사용할 수 없습니다.")
-    sub = None if (c.is_admin or member) else _subscriber(c)
+    sub = None if (c.is_admin or member) else _account(c)
     if not (c.is_admin or member or sub):
         raise HTTPException(status_code=403, detail=NOT_LINKED)
     with agent_chat.QUOTA_LOCK:
@@ -120,14 +125,14 @@ def _reserve(c: Caller, cfg: dict, member: dict | None, detail: str) -> str | No
         if not c.is_admin and (c.visitor in agent_chat.INFLIGHT or _ip_busy.get(c.ip, 0) >= IP_INFLIGHT_MAX):
             raise HTTPException(status_code=409, detail="앞선 질문의 답을 만드는 중입니다. 잠시 후 다시 물어 주세요.")
         if usage(c, cfg, member, sub)["limit_hit"]:
-            raise HTTPException(status_code=429, detail="질문 한도에 도달했습니다.")
-        if sub and not db.ask_consume(sub["email"]):  # 조건부 UPDATE — 두 프로세스가 동시에 와도 한도를 넘지 못한다
-            raise HTTPException(status_code=429, detail="질문 한도에 도달했습니다.")
+            raise HTTPException(status_code=429, detail=NEED_GRANT if sub else "질문 한도에 도달했습니다.")
+        if sub and not accounts.ask_consume(sub["id"]):  # 조건부 UPDATE — 두 프로세스가 동시에 와도 한도를 넘지 못한다
+            raise HTTPException(status_code=429, detail=NEED_GRANT)
         db.record_access(c.ip, "질문하기", "ask", detail)  # 질문 원문은 남기지 않는다
         engage.record("ask", membership.ask_item(member["id"]) if member else "", visitor=c.visitor)
         agent_chat.INFLIGHT.add(c.visitor)
         _ip_busy[c.ip] = _ip_busy.get(c.ip, 0) + 1
-    return sub["email"] if sub else None
+    return sub["id"] if sub else None
 
 
 IP_INFLIGHT_MAX = 4
@@ -144,7 +149,7 @@ def _done(c: Caller, refund: str | None = None) -> None:
         else:
             _ip_busy.pop(c.ip, None)
     if refund:
-        db.ask_refund(refund)
+        accounts.ask_refund(refund)
 
 
 @router.post("/ask")

@@ -110,6 +110,11 @@ def _too_many_writes(ip: str) -> bool:
         return False
 
 
+_SHARED_GET = {"/api/now", "/api/home/market", "/api/home/top", "/api/home/volume", "/api/lab/market", "/api/lab/region", "/api/re/apply-stats",
+               "/api/re/calendar", "/api/re/scores", "/api/re/indicators", "/api/re/map/regions", "/api/re/map/apply", "/api/re/regions",
+               "/api/re/datasets", "/api/site", "/api/about", "/api/type"}  # /api/today 는 방문자별 답이 섞여 뺐다
+
+
 @app.middleware("http")
 async def _guard(request: Request, call_next):
     # 위조 요청(CSRF) 차단 — 상태를 바꾸는 /api 요청은 우리 화면(api.ts)이 붙이는 X-Requested-With 가 있어야 한다.
@@ -141,9 +146,65 @@ async def _guard(request: Request, call_next):
     response = await call_next(request)
     for k, v in _SECURITY_HEADERS.items():
         response.headers.setdefault(k, v)
+    # 모두에게 같은 공개 자료는 브라우저가 1분 동안 다시 쓰게 — 화면을 오갈 때 같은 요청을 줄인다 (2026-11-02 동시 접속 대비).
+    # 사람마다 다른 응답(/api/me·/api/home·/api/home/mine·/api/notes 등)은 넣지 않는다.
+    if request.method == "GET" and response.status_code == 200 and request.url.path in _SHARED_GET:
+        response.headers["Cache-Control"] = "public, max-age=60"
     if request.headers.get("x-forwarded-proto") == "https" or request.headers.get("tailscale-funnel-request"):
         response.headers.setdefault("Strict-Transport-Security", "max-age=31536000")
     return response
+
+
+@app.middleware("http")
+async def _trial_gate(request: Request, call_next):
+    """1분 둘러보기 뒤 메일 로그인 요구 (pipeline/gate.py, 2026-11-02). 관리자·열어 둔 API·화면(HTML)은 막지 않는다."""
+    from api.deps import COOKIE as VISITOR_COOKIE, is_admin
+    from pipeline import engage, gate
+    path = request.url.path
+    is_api = path.startswith("/api/")
+    if is_api and not path.startswith("/api/admin/") and not gate.is_open(path):
+        raw, _ = engage.check_cookie(request.cookies.get(VISITOR_COOKIE))
+        ip, _ = settings_store.client_ip(request.client.host if request.client else None, dict(request.headers))
+        if (not gate.logged_in(raw) and gate.left(request.cookies.get(gate.COOKIE), settings_store.rate_key(ip)) <= 0
+                and not is_admin(request)):
+            return JSONResponse({"detail": {"message": "계속 이용하려면 메일 인증(로그인)이 필요해요. 1분이면 끝나요.", "login_required": True}},
+                                status_code=401)
+    response = await call_next(request)
+    if is_api and gate.first_seen(request.cookies.get(gate.COOKIE)) is None:
+        response.set_cookie(gate.COOKIE, gate.make_cookie(), max_age=365 * 24 * 3600, httponly=True, samesite="lax",
+                            secure=request.url.scheme == "https" or bool(request.headers.get("tailscale-funnel-request")), path="/")
+    return response
+
+
+# ───────── 관리 요청을 관리·배치 서버로 넘기기 (2026-11-02 동시 접속 대비) ─────────
+# 공개 서버를 여러 프로세스로 돌리면 관리 화면의 작업 상태·실행 로그(메모리)가 프로세스마다 갈라진다. 그래서 공개 서버(5030, 여러 프로세스)는
+# /api/admin/* 를 관리·배치 서버(5031, 프로세스 1개, 예약 작업 실행)로 그대로 넘긴다. Host·쿠키·Funnel 헤더·X-Forwarded-For 를 그대로 넘기므로
+# 관리자 판정(로컬 브라우저·관리 토큰)은 관리·배치 서버가 지금과 같은 규칙으로 한다. ZIPGENIE_ADMIN_UPSTREAM 이 없으면 넘기지 않는다.
+_ADMIN_UPSTREAM = os.environ.get("ZIPGENIE_ADMIN_UPSTREAM", "").rstrip("/")
+_HOP = {"connection", "keep-alive", "transfer-encoding", "te", "upgrade", "proxy-authorization", "proxy-authenticate", "trailer", "content-length"}
+_admin_client = None
+
+
+@app.middleware("http")
+async def _admin_proxy(request: Request, call_next):
+    if not _ADMIN_UPSTREAM or not request.url.path.startswith("/api/admin/"):
+        return await call_next(request)
+    global _admin_client
+    import httpx
+    from fastapi.responses import Response as _Resp
+    if _admin_client is None:
+        _admin_client = httpx.AsyncClient(base_url=_ADMIN_UPSTREAM, timeout=httpx.Timeout(600.0, connect=5.0))
+    headers = [(k, v) for k, v in request.headers.items() if k.lower() not in _HOP]
+    try:
+        r = await _admin_client.request(request.method, request.url.path, params=request.url.query or None,
+                                        headers=headers, content=await request.body())
+    except httpx.HTTPError:
+        return JSONResponse({"detail": "관리·배치 서버(5031)에 연결할 수 없습니다. start-zipbomi.bat 창을 확인해 주세요."}, status_code=502)
+    out = [(k, v) for k, v in r.headers.multi_items() if k.lower() not in _HOP and k.lower() != "content-encoding"]
+    resp = _Resp(content=r.content, status_code=r.status_code)
+    for k, v in out:
+        resp.headers.append(k, v)
+    return resp
 
 
 from fastapi.exceptions import RequestValidationError  # noqa: E402

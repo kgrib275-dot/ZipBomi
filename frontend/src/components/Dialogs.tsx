@@ -14,7 +14,7 @@ const BENEFITS: [string, string, string][] = [
   ["📎", "주간 PDF 리포트", "저장해 두고 다시 보기 좋은 카드형 요약 리포트"],
 ];
 
-type Ctx = { openSubscribe: (source: string) => void; openContact: () => void; openMembership: () => void; openLogin: () => void };
+type Ctx = { openSubscribe: (source: string) => void; openContact: (preset?: string) => void; openMembership: () => void; openLogin: () => void };
 const DlgCtx = createContext<Ctx>({ openSubscribe: () => undefined, openContact: () => undefined, openMembership: () => undefined, openLogin: () => undefined });
 export const useDialogs = () => useContext(DlgCtx);
 
@@ -28,7 +28,8 @@ export function DialogProvider({ children }: { children: React.ReactNode }) {
     track("subscribe_open", source);
     setSub(source);
   }, []);
-  const openContact = useCallback(() => setContact(true), []);
+  const [contactPreset, setContactPreset] = useState("");
+  const openContact = useCallback((preset?: string) => { setContactPreset(typeof preset === "string" ? preset : ""); setContact(true); }, []);
   const openMembership = useCallback(() => {
     track("member_request_open");
     setMember(true);
@@ -37,7 +38,7 @@ export function DialogProvider({ children }: { children: React.ReactNode }) {
     <DlgCtx.Provider value={{ openSubscribe, openContact, openMembership, openLogin }}>
       {children}
       {sub && <SubscribeDialog source={sub} onClose={() => setSub(null)} />}
-      {contact && <ContactDialog onClose={() => setContact(false)} />}
+      {contact && <ContactDialog preset={contactPreset} onClose={() => setContact(false)} />}
       {member && <MembershipDialog onClose={() => setMember(false)} />}
       {login && <LoginDialog onClose={() => setLogin(false)} />}
     </DlgCtx.Provider>
@@ -132,8 +133,8 @@ function SubscribeDialog({ source, onClose }: { source: string; onClose: () => v
   );
 }
 
-function ContactDialog({ onClose }: { onClose: () => void }) {
-  const [f, setF] = useState({ name: "", email: "", company: "", message: "", agree: false });
+function ContactDialog({ onClose, preset = "" }: { onClose: () => void; preset?: string }) {
+  const [f, setF] = useState({ name: "", email: "", company: "", message: preset, agree: false });
   const [msg, setMsg] = useState<{ kind: "ok" | "err"; text: string } | null>(null);
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
