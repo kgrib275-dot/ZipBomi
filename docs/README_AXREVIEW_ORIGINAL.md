@@ -3,7 +3,7 @@
 Streamlit 판(집보미)을 **React(화면) + FastAPI(Python API)** 로 나눠 다시 만든 독립 프로젝트입니다.
 **2026-10-29부터 운영·개발은 이 프로젝트에서만 합니다** — Streamlit 판은 더 고치지 않습니다(필요할 때만 따로).
 
-- 저장소: https://github.com/kgrib275-dot/ZipGenine
+- 저장소: https://github.com/kgrib275-dot/ZipBomi
 - 공개 주소: Tailscale Funnel 10000 (`start-public.bat` 창에 표시)
 
 폴더·가상환경·DB·설정·Databricks 스키마·실행 스크립트·로컬 포트가 모두 따로입니다.

@@ -6,7 +6,7 @@
 부동산 뉴스·정책·실거래가·청약·금리 자료를 모아 **노트(해설)**, **실거래가 조회**, **분양 일정·알림**, **대출·세금·청약 계산기**,
 **현행 수치**, **질문하기**로 보여 주는 웹 서비스입니다. 백엔드는 FastAPI + SQLite, 화면은 React(Vite)이며 한 프로세스가 API 와 화면을 함께 내보냅니다.
 
-- 저장소: https://github.com/kgrib275-dot/ZipGenine
+- 저장소: https://github.com/kgrib275-dot/ZipBomi
 - 설계 기준 `docs/ZIPBOMI_SPEC.md` · 단계별 계획 `docs/ROADMAP_PHASES.md` · API 메모 `docs/API.md`, `docs/API-notes-backend-public.md`
 - 최종 갱신 2026-11-02
 
@@ -47,8 +47,8 @@
 
 ### 설치
 ```bat
-git clone https://github.com/kgrib275-dot/ZipGenine.git
-cd ZipGenine
+git clone https://github.com/kgrib275-dot/ZipBomi.git
+cd ZipBomi
 
 rem 1) 백엔드 가상환경 + 패키지
 cd backend
@@ -91,7 +91,7 @@ start-dev.bat
 
 ## 2. 빠른 시작 (macOS · Linux)
 ```bash
-git clone https://github.com/kgrib275-dot/ZipGenine.git && cd ZipGenine
+git clone https://github.com/kgrib275-dot/ZipBomi.git && cd ZipBomi
 
 cd backend
 python3.12 -m venv venv
@@ -226,7 +226,7 @@ Docker(Dockerfile 없음), 별도 벡터 DB, Redis, 외부 큐 — 모두 단일
 
 ## 7. 폴더 구조
 ```
-ZipGenine/
+ZipBomi/
 ├─ start-zipbomi.bat        운영 실행 (스케줄러 켜짐, 자동 재시작)
 ├─ start-dev.bat             개발 실행 (백엔드 --reload + Vite)
 ├─ docs/                     설계·로드맵·API 메모
