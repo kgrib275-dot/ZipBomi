@@ -6,6 +6,7 @@ import { JobStatus, RunLogTable, StartJob, useJobs } from "./JobRunner";
 
 const COUNT_LABELS: Record<string, string> = {
   articles: "수집 기사", candidates: "초안 후보 (3점↑)", drafts: "검토 대기 초안", published: "게시 노트", subscribers: "활성 구독자",
+  contacts_open: "처리 안 한 문의", contacts: "전체 문의",
 };
 const JOBS: [string, string, boolean, (cfg: Row) => string][] = [
   ["collect", "수집 실행", true, () => "활성 소스 수집 → 중복 제거 → 키워드 필터 → 부동산 중요도 채점"],
@@ -24,9 +25,10 @@ export default function Dashboard() {
   const counts = isObj(d.counts) ? d.counts : {};
   const gemini = pick<unknown>(d, "gemini", "gemini_keys");
   const geminiRows = asArray(gemini, "rows", "keys", "status");
-  const geminiOk = pick<unknown>(d, "gemini_ok", "llm_ok") ?? (isObj(gemini) ? pick(gemini, "configured", "ok") : geminiRows.length > 0);
+  const geminiOk = pick<unknown>(d, "llm_ok", "gemini_ok") ?? (isObj(gemini) ? pick(gemini, "configured", "ok") : geminiRows.length > 0);
+  const llmName = str(pick(d, "llm_name")) || "Gemini";
   const smtpOk = bool(pick(d, "smtp_ok", "smtp", "mailer"));
-  const scheduleOn = asArray<string | Row>(pick(d, "schedule_on", "schedules", "enabled_jobs")).map((x) => (isObj(x) ? str(pick(x, "label", "name", "kind")) : String(x)));
+  const scheduleOn = asArray<string | Row>(pick(d, "schedules_on", "schedule_on", "schedules", "enabled_jobs")).map((x) => (isObj(x) ? str(pick(x, "label", "name", "kind")) : String(x)));
   const schedule = isObj(d.schedule) ? (d.schedule as Record<string, Row>) : {};
   const drafting = isObj(schedule.drafting) ? schedule.drafting : isObj(d.drafting) ? (d.drafting as Row) : {};
   const runLogs = pick<unknown>(d, "run_logs", "logs");
@@ -44,7 +46,7 @@ export default function Dashboard() {
       </div>
       <div className="badges">
         {geminiOk !== undefined && (
-          <Badge color={bool(geminiOk) ? "green" : "red"}>🤖 {bool(geminiOk) ? "Gemini 연결됨" : "Gemini 키 없음 — 채점·초안 불가"}</Badge>
+          <Badge color={bool(geminiOk) ? "green" : "red"}>🤖 {bool(geminiOk) ? `${llmName} 연결됨` : `${llmName} 키 없음 — 채점·초안 불가`}</Badge>
         )}
         {pick(d, "smtp_ok", "smtp", "mailer") !== undefined && (
           <Badge color={smtpOk ? "green" : "orange"}>✉ {smtpOk ? "SMTP 설정됨" : "SMTP 미설정 — 뉴스레터 발송 불가"}</Badge>

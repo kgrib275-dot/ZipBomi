@@ -99,16 +99,19 @@ export default function Review() {
   const open = items.find((n) => str(n.id) === openId) || null;
 
   const apply = async (id: unknown, action: "publish" | "save" | "reject", payload: ReturnType<typeof toPayload>) => {
-    const msg = { publish: "게시했습니다.", save: "저장했습니다.", reject: "반려했습니다." }[action];
-    await act(async () => {
+    const wasPublished = str(items.find((n) => n.id === id)?.status) === "published";
+    const msg = { publish: "게시했습니다.", save: "저장했습니다.", reject: wasPublished ? "게시를 내렸습니다." : "반려했습니다." }[action];
+    const ok = await act(async () => {
       if (id === undefined || id === null) {
         await A.post("notes", { ...payload, status: action === "publish" ? "published" : "draft" }); // 직접 작성
         return;
       }
       await A.put(`notes/${id}`, action === "reject" ? { ...payload, status: "rejected" } : payload);
       if (action === "publish") await A.post(`notes/${id}/publish`);
+      return true;
     }, msg);
-    if (action !== "save") setOpenId("");  // 게시·반려하면 이 목록에서 빠지므로 편집 창을 닫는다
+    // 성공했을 때만 닫는다 (2026-11-03 — 실패해도 닫혀 고친 내용이 사라졌다). 게시·반려하면 이 목록에서 빠지므로 닫는다.
+    if (ok && action !== "save") setOpenId("");
     reload();
   };
   const remove = async (n: Row) => {
@@ -169,7 +172,7 @@ export default function Review() {
           {pg.pager}
           {open && (
             // 표 아래로 펼치면 내려가서 봐야 해서 팝업으로 띄운다 (2026-11-02). 편집 중 실수로 닫히지 않게 바깥 클릭·Esc 는 무시
-            <Dialog title={`✎ ${str(open.title)}`} onClose={() => setOpenId("")} xl keep>
+            <Dialog title={`✎ ${str(open.title)}`} onClose={() => { if (window.confirm("편집 창을 닫을까요? 저장하지 않은 고친 내용은 사라집니다.")) setOpenId(""); }} xl keep>
               <div className="board-edit-h">
                 <span className="grow caption">{str(open.category)} · {str(open.kind)} · {str(open.source)} · {str(open.published).slice(0, 10)}</span>
                 <a className="btn sm" href={`/notes?id=${str(open.id)}`} target="_blank" rel="noreferrer">👁 사이트 미리보기</a>

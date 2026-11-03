@@ -1,4 +1,5 @@
 // 뉴스레터 미리보기 (/letter) — Streamlit 판 app_pages/letter.py 이식. 메일 HTML 은 iframe srcdoc 으로 띄운다.
+import { useNewsletter } from "../newsletter";
 import { useState } from "react";
 import { get } from "../api";
 import { SubscribeCTA } from "../components/Dialogs";
@@ -8,6 +9,7 @@ import "./Home.css";
 type Letters = { letters: { label: string; html: string }[] };
 
 export default function LetterPage() {
+  const nl = useNewsletter();
   const { data, error, loading } = useLoad(() => get<Letters>("letter"));
   const [pick, setPick] = useState(0);
   const letters = data?.letters || [];
@@ -18,7 +20,7 @@ export default function LetterPage() {
       <div className="eyebrow">뉴스레터 미리 보기</div>
       <h2 className="sec-h">받게 될 <span className="grad">메일</span> 미리 보기</h2>
       <p className="sec-p" style={{ maxWidth: 760 }}>
-        매주 월요일 아침, 아래 모양 그대로 메일함에 도착합니다. 한 주의 흐름 → <b>이번 주 꼭 알아야 할 3가지</b> → 새 노트 순서예요.
+        {nl.enabled && nl.when ? `매주 ${nl.when}, ` : "발송을 시작하면 "}아래 모양 그대로 메일함에 도착합니다. 한 주의 흐름 → <b>이번 주 꼭 알아야 할 3가지</b> → 새 노트 순서예요.
       </p>
 
       {error && <Alert kind="err">{error}</Alert>}

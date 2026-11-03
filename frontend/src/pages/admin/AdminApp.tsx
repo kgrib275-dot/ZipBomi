@@ -1,5 +1,5 @@
 // 관리 영역 틀 — 왼쪽 메뉴(15개 화면) + 중첩 라우트. 관리자가 아니거나 API 가 403 을 돌려주면 토큰 입력 화면을 띄운다.
-import { lazy, Suspense, useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { NavLink, Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { ApiError, get, post } from "../../api";
 import { Alert } from "../../components/ui";
@@ -28,6 +28,7 @@ const PAGES: { path: string; label: string; grp?: string; C: React.LazyExoticCom
   { path: "warehouse", label: "Databricks 적재", C: L(() => import("./Warehouse")) },
   { path: "subscribers", label: "구독·발송", grp: "사람", C: L(() => import("./Subscribers")) },
   { path: "accounts", label: "회원 계정", C: L(() => import("./Accounts")) },
+  { path: "contacts", label: "문의함", C: L(() => import("./Contacts")) },
   { path: "access", label: "관리자·접속", C: L(() => import("./Access")) },
   { path: "privacy", label: "개인정보 처리방침", C: L(() => import("./PrivacySettings")) },
 ];
@@ -39,7 +40,9 @@ function SideNav() {
   const { pathname } = useLocation();
   const current = PAGES.find((p) => pathname.startsWith(`/admin/${p.path}`)) || PAGES[0];
   const [st, setSt] = useState<{ collapsed: boolean; closed: string[] }>(() => {
-    try { return { collapsed: false, closed: [], ...JSON.parse(localStorage.getItem(NAV_KEY) || "{}") }; } catch { return { collapsed: false, closed: [] }; }
+    // 휴대폰에서는 처음에 메뉴를 접어 둔다 (2026-11-03 — 메뉴가 550px 를 차지해 본문이 아래로 밀렸다)
+    const narrow = typeof window !== "undefined" && window.innerWidth <= 860;
+    try { return { collapsed: narrow, closed: [], ...JSON.parse(localStorage.getItem(NAV_KEY) || "{}"), ...(narrow ? { collapsed: true } : {}) }; } catch { return { collapsed: narrow, closed: [] }; }
   });
   useEffect(() => { try { localStorage.setItem(NAV_KEY, JSON.stringify(st)); } catch { /* 사생활 보호 모드 */ } }, [st]);
   // 그룹 나누기: grp 가 있는 항목이 새 그룹을 연다
@@ -97,7 +100,7 @@ function AdminLogin({ reason, onDone }: { reason: string; onDone: () => Promise<
       <div className="eyebrow">Admin</div>
       <h2 className="sec-h" style={{ fontSize: "1.4rem" }}>🔒 관리자 로그인</h2>
       <Alert kind="warn">{reason}</Alert>
-      <p className="caption">backend .env 의 ADMIN_TOKEN{st?.otp ? " 과 OTP 앱의 6자리" : ""}로 로그인해요. 토큰은 브라우저에 저장하지 않고,
+      <p className="caption">관리자 토큰{st?.otp ? "과 OTP 앱의 6자리" : ""}으로 로그인해요(토큰은 서버 설정 파일 .env 의 ADMIN_TOKEN 값). 토큰은 브라우저에 저장하지 않고,
         {st ? ` ${st.idle_min}분 동안 쓰지 않거나 ${st.max_hours}시간이 지나면` : " 일정 시간이 지나면"} 다시 로그인해야 해요. 5번 틀리면 30분 동안 잠겨요.</p>
       {st && !st.configured && <Alert kind="err">.env 에 ADMIN_TOKEN 이 없어 관리자 로그인을 할 수 없습니다.</Alert>}
       <form onSubmit={(e) => { e.preventDefault(); if (tok.trim()) save(); }}>
@@ -133,26 +136,45 @@ export default function AdminApp() {
   const { me, reload } = useMe();
   const [forbidden, setForbidden] = useState<string | null>(null);
   const [dockH, setDockH] = useState(0);  // 실행 로그 독 높이 — 본문 아래 여백으로 써서 끝 내용이 가려지지 않게
+  const [entered, setEntered] = useState(false);  // 한 번 들어온 뒤에는 로그인이 끝나도 화면을 지우지 않는다 (쓰던 내용 보존)
+  const [idleWarn, setIdleWarn] = useState(false);
+  const lastAct = useRef(Date.now());
 
   useEffect(() => {
     onForbidden(() => setForbidden("로그인이 끝났거나(30분 미사용·8시간 경과) 권한이 없습니다. 다시 로그인해 주세요."));
     return () => onForbidden(() => undefined);
   }, []);
+  useEffect(() => { if (me?.is_admin && !forbidden) setEntered(true); }, [me?.is_admin, forbidden]);
+
+  // 쓰는 동안은 세션을 이어 준다 (2026-11-03) — 키보드·마우스를 쓰고 있으면 4분마다 서버에 알려 '30분 미사용'에 걸리지 않게.
+  // 정말 자리를 비우면 25분에 경고, 30분에 끊긴다 (ISMS-P: 일정 시간 미사용 시 차단).
+  useEffect(() => {
+    if (!entered) return;
+    const mark = () => { lastAct.current = Date.now(); };
+    const evs = ["keydown", "mousedown", "input", "touchstart", "wheel"];
+    evs.forEach((e) => window.addEventListener(e, mark, { passive: true }));
+    let lastPing = Date.now();
+    const id = window.setInterval(() => {
+      const idle = Date.now() - lastAct.current;
+      setIdleWarn(idle > 25 * 60_000);
+      if (idle < 4 * 60_000 && Date.now() - lastPing > 4 * 60_000) {
+        lastPing = Date.now();
+        get<{ admin: boolean }>("auth/admin-status").then((r) => { if (!r.admin) setForbidden("로그인이 끝났습니다. 다시 로그인해 주세요."); }).catch(() => undefined);
+      }
+    }, 30_000);
+    return () => { evs.forEach((e) => window.removeEventListener(e, mark)); window.clearInterval(id); };
+  }, [entered]);
 
   if (!me) return <div className="page-loading">불러오는 중…</div>;
-  if (!me.is_admin || forbidden) {
+  const loginDone = async () => { await reload(); setForbidden(null); setIdleWarn(false); lastAct.current = Date.now(); };
+  if (!entered && (!me.is_admin || forbidden)) {
     return (
       <div className="container page">
-        <AdminLogin
-          reason={forbidden || "관리 화면은 관리자 로그인이 필요합니다."}
-          onDone={async () => {
-            await reload();
-            setForbidden(null);
-          }}
-        />
+        <AdminLogin reason={forbidden || "관리 화면은 관리자 로그인이 필요합니다."} onDone={loginDone} />
       </div>
     );
   }
+  const needLogin = !!forbidden || !me.is_admin;
 
   return (
     <ToastProvider>
@@ -161,6 +183,10 @@ export default function AdminApp() {
           <SideNav />
           <main className="adm-main" style={dockH ? { paddingBottom: dockH + 12 } : undefined}>
             <div className="adm-topbar"><RevealToggle /><AdminLogout /></div>
+            {idleWarn && !needLogin && (
+              <Alert kind="warn">25분 동안 사용하지 않아 곧(5분 안에) 자동으로 로그아웃됩니다.{" "}
+                <button type="button" className="linkish" onClick={() => { lastAct.current = Date.now(); setIdleWarn(false); get("auth/admin-status").catch(() => undefined); }}>계속 쓰기</button></Alert>
+            )}
             <Suspense fallback={<div className="page-loading">불러오는 중…</div>}>
               <Routes>
                 <Route index element={<Navigate to="dashboard" replace />} />
@@ -171,6 +197,12 @@ export default function AdminApp() {
           </main>
         </div>
         <LogDock onHeight={setDockH} />
+        {/* 로그인이 끝나면 화면 위에 로그인 창만 겹쳐 띄운다 — 아래에 쓰던 내용은 그대로 남아, 다시 로그인한 뒤 저장을 한 번 더 누르면 된다 */}
+        {needLogin && (
+          <div className="adm-relogin" role="dialog" aria-modal="true" aria-label="관리자 다시 로그인">
+            <AdminLogin reason={(forbidden || "로그인이 끝났습니다.") + " 쓰던 내용은 그대로 있어요 — 다시 로그인한 뒤 저장을 한 번 더 눌러 주세요."} onDone={loginDone} />
+          </div>
+        )}
       </JobsProvider>
     </ToastProvider>
   );

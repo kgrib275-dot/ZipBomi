@@ -81,7 +81,7 @@ export default function MePage() {
         <h2 className="sec-h">나에게 맞춘 <span className="grad">부동산 흐름</span></h2>
         <p className="sec-p" style={{ margin: 0 }}>
           유형과 관심 지역을 정해 두면 홈에서 이번 주 나에게 영향 있는 노트를 먼저 골라 드리고, 노트마다 내 유형에 해당하는 부분을 먼저 펼쳐 둡니다.
-          로그인은 필요 없어요. 모든 칸은 선택이며, 이 브라우저에만 보입니다.
+          모든 칸은 선택이에요. {me?.account ? "로그인한 계정에 저장돼 휴대폰·PC 어디서든 같게 보여요." : "지금은 이 브라우저에 저장되고, 메일로 로그인하면 계정으로 옮겨져 다른 기기에서도 보여요."}
         </p>
       </div>
 
@@ -176,7 +176,7 @@ export default function MePage() {
           {hasCore(profile) && <Link className="btn" to="/#mine">이번 주 나에게 영향 있는 것 →</Link>}
         </div>
         <p className="caption" style={{ marginTop: 10 }}>
-          저장 위치: 이 브라우저(쿠키로 구분한 방문자 기록)와 브라우저 저장소. 구독을 확인한 브라우저라면 뉴스레터를 맞춤으로 구성하기 위해 구독 이메일 기준으로도
+          저장 위치: {me?.account ? "로그인한 계정(서버)." : "이 브라우저(쿠키로 구분한 방문자 기록) — 로그인하면 계정으로 옮겨져요."} 구독을 확인한 경우 뉴스레터를 맞춤으로 구성하기 위해 구독 이메일 기준으로도
           함께 보관하고, 구독을 해지하면 바로 지웁니다. 보관 기간·항목은 <Link to="/privacy">개인정보 처리방침</Link>을 확인하세요.
           {state.subscribed === true ? " 지금 이 브라우저는 구독자로 연결돼 있어요." : ""}
         </p>

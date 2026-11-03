@@ -178,7 +178,9 @@ function CalendarTab() {
                     </div>
                   </div>
                   <div className="cal-act">
-                    <button type="button" className={`cal-ico${on ? " on" : ""}`} aria-pressed={on} onClick={() => toggle(n.id)} title={on ? "알림 끄기" : "접수 3일 전 알림 받기"} aria-label={on ? "알림 끄기" : "알림 받기"}>🔔</button>
+                    {/* 접수가 끝난 공고에는 알림을 새로 켤 수 없다 (2026-11-03) — 이미 켜 둔 것은 끌 수 있게 남긴다 */}
+                    {(on || n.long_open || !n.dates.end || n.dates.end >= new Date().toLocaleDateString("sv-SE")) &&
+                      <button type="button" className={`cal-ico${on ? " on" : ""}`} aria-pressed={on} onClick={() => toggle(n.id)} title={on ? "알림 끄기" : "접수 3일 전 알림 받기"} aria-label={on ? "알림 끄기" : "알림 받기"}>🔔</button>}
                     {n.url && <a className="cal-ico" href={n.url} target="_blank" rel="noopener" title="공고 원문" aria-label="공고 원문">↗</a>}
                   </div>
                 </div>

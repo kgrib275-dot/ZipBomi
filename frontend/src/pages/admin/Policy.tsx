@@ -1,8 +1,9 @@
 // 관리 > 현행 수치 — /now·계산기·노트 상세에 나가는 규제·세율·금리 숫자 (backend/pipeline/policy.py).
 // 초안(draft)은 공개되지 않는다. 근거 링크를 열어 값·기준일을 확인한 뒤 '게시'로 바꾼다. 자동 항목(금리)은 수집 자료에서 읽으므로 값은 못 고친다.
+import { man } from "../../policy";
 import { Fragment, useEffect, useState } from "react";
 import { Alert, useLoad } from "../../components/ui";
-import { A, AdminHead, Field, Row, str, useAct } from "./common";
+import { A, AdminHead, Field, Row, str, today, useAct } from "./common";
 
 type Item = {
   key: string; grp: string; label: string; value: number | null; value_text: string; unit: string; scope: string; effective_on: string;
@@ -31,7 +32,7 @@ export default function Policy() {
                   <Fragment key={i.key}>
                     <tr>
                       <td>{i.label}<div className="caption">{i.key}{i.source_kind === "auto" ? " · 자동" : ""}</div></td>
-                      <td className="num">{i.value ?? i.value_text}{i.value !== null ? i.unit : ""}{i.changed && <div className="caption">이전 {i.prev_value ?? "-"}</div>}</td>
+                      <td className="num">{i.value !== null && i.unit === "만원" ? man(i.value) : <>{i.value ?? i.value_text}{i.value !== null ? i.unit : ""}</>}{i.changed && <div className="caption">이전 {i.prev_value ?? "-"}</div>}</td>
                       <td>{i.effective_on || <span className="caption">비어 있음</span>}</td>
                       <td>{i.source_url ? <a href={i.source_url} target="_blank" rel="noopener">{i.source_name || "링크"} ↗</a> : <span className="caption">없음</span>}</td>
                       <td>{i.status === "published" ? <span className="badge">게시</span> : <span className="re-tag warn">확인 대기</span>}</td>
@@ -60,8 +61,17 @@ function Editor({ item, onSaved }: { item: Item; onSaved: () => void }) {
     const body: Record<string, unknown> = auto
       ? { label: f.label, scope: f.scope, note: f.note, source_name: f.source_name, source_url: f.source_url }
       : { label: f.label, value: f.value === "" ? null : Number(f.value), value_text: f.value_text, unit: f.unit, scope: f.scope,
-          effective_on: f.effective_on, source_name: f.source_name, source_url: f.source_url, note: f.note, checked_on: new Date().toISOString().slice(0, 10) };
+          effective_on: f.effective_on, source_name: f.source_name, source_url: f.source_url, note: f.note, checked_on: today() };
     if (status) body.status = status;
+    // 공개 중인 값이 바뀌면 직전 값과 새 값을 보여 주고 확인받는다 (2026-11-03 — 40 을 4 로 잘못 넣어도 바로 계산기에 나갔다)
+    const live = (status ?? str(item.status)) === "published";
+    const oldV = item.value === null ? "" : String(item.value), newV = f.value;
+    if (live && !auto && (oldV !== newV || (f.value_text || "") !== (str(item.value_text) || ""))) {
+      const show = (v: string, t: string) => (t ? t : v === "" ? "(없음)" : f.unit === "만원" ? man(Number(v)) : `${Number(v).toLocaleString("ko-KR")}${f.unit || ""}`);
+      if (!window.confirm(`공개 중인 값을 바꿀까요?
+${f.label}: ${show(oldV, str(item.value_text))} → ${show(newV, f.value_text || "")}
+저장하면 /now·계산기·노트에 바로 반영됩니다.`)) return;
+    }
     const r = await act(() => A.put(`policy/${item.key}`, body), status === "published" ? "게시했습니다" : status === "draft" ? "초안으로 내렸습니다" : "저장했습니다");
     if (r) onSaved();
   };
@@ -71,7 +81,7 @@ function Editor({ item, onSaved }: { item: Item; onSaved: () => void }) {
       <div className="row2">
         <Field label="항목 이름"><input value={f.label} onChange={(e) => up({ label: e.target.value })} /></Field>
         <Field label="적용 범위"><input value={f.scope} onChange={(e) => up({ scope: e.target.value })} /></Field>
-        {!auto && <Field label={`값 (숫자, 단위 ${f.unit || "없음"})`}><input inputMode="decimal" value={f.value} onChange={(e) => up({ value: e.target.value.replace(/[^\d.]/g, "") })} /></Field>}
+        {!auto && <Field label={`값 (숫자, 단위 ${f.unit || "없음"})${f.unit === "만원" && f.value ? ` = ${man(Number(f.value))}` : ""}`}><input inputMode="decimal" value={f.value} onChange={(e) => up({ value: e.target.value.replace(/[^\d.]/g, "") })} /></Field>}
         {!auto && <Field label="값 (글로 — 숫자가 아닐 때)"><input value={f.value_text} onChange={(e) => up({ value_text: e.target.value })} /></Field>}
         {!auto && <Field label="기준일 (시행일, YYYY-MM-DD)"><input value={f.effective_on} placeholder="2026-01-01" onChange={(e) => up({ effective_on: e.target.value })} /></Field>}
         <Field label="근거 이름"><input value={f.source_name} onChange={(e) => up({ source_name: e.target.value })} /></Field>

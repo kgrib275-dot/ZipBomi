@@ -32,7 +32,7 @@ export function TodoBox() {
     <section className="my-sec">
       <div className="my-h"><h3>할 일 <small>{open.length}</small></h3>{done.length > 0 && <button type="button" className="linkish" onClick={clearDone}>끝낸 일 {done.length}개 지우기</button>}</div>
       <form className="td-add" onSubmit={(e) => { e.preventDefault(); if (text.trim()) { add(text.trim(), due); setText(""); setDue(""); } }}>
-        <input type="text" maxLength={120} value={text} onChange={(e) => setText(e.target.value)} placeholder="예: 은행 대출 상담, 등기부 확인" />
+        <input type="text" aria-label="할 일 추가" maxLength={120} value={text} onChange={(e) => setText(e.target.value)} placeholder="예: 은행 대출 상담, 등기부 확인" />
         <input type="date" value={due} onChange={(e) => setDue(e.target.value)} aria-label="마감일" title="마감일 (3일 전부터 🔔에 떠요)" />
         <button className="btn sm primary" disabled={!text.trim()}>추가</button>
       </form>
@@ -97,8 +97,9 @@ export function DataBackup() {
   };
   const inp = async (f: File) => {
     try {
-      const d = JSON.parse(await f.text());
-      if (!d || d._app !== "zipbomi") throw new Error("집보미에서 내려받은 파일이 아니에요.");
+      let d: Record<string, unknown> | null = null;
+      try { d = JSON.parse(await f.text()); } catch { d = null; }  // 영어 개발자 오류 문구가 그대로 보이지 않게 (2026-11-03)
+      if (!d || d._app !== "zipbomi") throw new Error("집보미 '내 데이터 내려받기'로 받은 파일(.json)이 아니에요. 그 파일을 골라 주세요.");
       if (!window.confirm("이 파일의 내용으로 내 공간을 덮어쓸까요? (지금 저장된 같은 항목은 파일 내용으로 바뀝니다)")) return;
       const patch: Record<string, unknown> = {};
       for (const k of KEYS) if (d[k] !== undefined) patch[k] = d[k];

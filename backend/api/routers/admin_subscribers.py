@@ -25,16 +25,31 @@ router = APIRouter(prefix="/admin", tags=["admin-subscribers"], dependencies=[De
 _SUB_PUBLIC = ("email", "created_at", "active", "industries", "ref_code", "referred_by", "ask_credits", "ask_used", "ask_requested_at")
 
 
+def _account_ask() -> dict[str, tuple[int, int]]:
+    """이메일 → (보미AI 쓸 수 있는 횟수, 쓴 횟수). 2026-11-02 부터 보미AI 횟수는 로그인 계정 기준이다 (accounts.ask_credits/ask_used)."""
+    from pipeline import accounts
+    c = accounts._conn()
+    try:
+        return {r[0].lower(): (r[1], r[2]) for r in c.execute("SELECT email, COALESCE(ask_credits, 1), COALESCE(ask_used, 0) FROM accounts")}
+    finally:
+        c.close()
+
+
 def _sub_rows(q: str = "") -> list[dict]:
     subs = db.subscribers()
+    acc = _account_ask()
     by_code = Counter(s["referred_by"] for s in subs if s.get("referred_by"))
     ql = q.strip().lower()
     out = []
     for s in subs:
         if ql and ql not in s["email"].lower():
             continue
-        out.append({**{k: s.get(k) for k in _SUB_PUBLIC}, "active": bool(s["active"]), "confirmed": bool(s.get("confirmed_at")),
-                    "referrals": by_code.get(s.get("ref_code") or "", 0) if s.get("ref_code") else 0})
+        row = {**{k: s.get(k) for k in _SUB_PUBLIC}, "active": bool(s["active"]), "confirmed": bool(s.get("confirmed_at")),
+               "referrals": by_code.get(s.get("ref_code") or "", 0) if s.get("ref_code") else 0}
+        # 보미AI 횟수는 계정 값으로 보여 준다 — 예전 구독자 횟수(subscribers.ask_*)는 실제 한도에 쓰이지 않아 '충전해도 그대로'였다 (2026-11-03)
+        a = acc.get(s["email"].lower())
+        row.update(account=bool(a), ask_credits=a[0] if a else None, ask_used=a[1] if a else None)
+        out.append(row)
     return out
 
 
@@ -62,17 +77,20 @@ def add_credits(request: Request, body: dict[str, Any]) -> dict:
         raise HTTPException(400, "충전 횟수는 1~100 사이 정수입니다")
     if not 1 <= n <= 100:
         raise HTTPException(400, "충전 횟수는 1~100 사이 정수입니다")
-    if not db.ask_add_credits(email, n):
-        raise HTTPException(404, "구독자가 없습니다")
-    log_action(request, "질문 횟수 충전", f"{email} +{n}")
+    from pipeline import accounts
+    acc = accounts.by_email(email)
+    if not acc:
+        raise HTTPException(400, "이 주소로 로그인한 계정이 없어 보미AI 횟수를 더할 수 없습니다. 보미AI 는 로그인 계정 기준이에요 — 사용자가 로그인한 뒤 충전해 주세요.")
+    credits, used = accounts.ask_grant(acc["id"], n)
+    db.ask_add_credits(email, 0)  # 충전 요청 표시만 지운다
+    log_action(request, "보미AI 횟수 충전", f"계정 {acc['id']} +{n}")
     mailed = False
     if mailer.is_configured():
         try:
-            mailed = mailer.send([(email, "")], f"[집보미] 질문 {n}회가 충전되었습니다", lambda _t: mailer.ask_credits_html(n))[0] == 1
+            mailed = mailer.send([(email, "")], f"[집보미] 보미AI {n}회가 충전되었습니다", lambda _t: mailer.ask_credits_html(n))[0] == 1
         except Exception:  # noqa: BLE001 - 안내 메일 실패가 충전을 되돌리지 않게
             mailed = False
-    s = db.subscriber_ask(email) or {}
-    return {"ok": True, "mailed": mailed, "ask_credits": s.get("ask_credits", 0), "ask_used": s.get("ask_used", 0)}
+    return {"ok": True, "mailed": mailed, "ask_credits": credits, "ask_used": used}
 
 
 @router.get("/subscribers/csv")
@@ -363,5 +381,15 @@ def teams_send(request: Request) -> dict:
 
 @router.get("/contacts")
 def contacts() -> dict:
-    rows = [{k: c.get(k) for k in ("id", "created_at", "name", "email", "company", "message")} for c in db.contacts()]
-    return {"contacts": rows, "count": len(rows)}
+    rows = [{k: c.get(k) for k in ("id", "created_at", "name", "email", "message", "handled_at")} for c in db.contacts()]
+    return {"contacts": rows, "count": len(rows), "open": sum(1 for r in rows if not r["handled_at"])}
+
+
+@router.post("/contacts/{cid}/handled")
+def contact_handled(cid: int, request: Request, body: dict[str, Any]) -> dict:
+    """문의 처리 완료 표시 {done: true|false} (2026-11-03 문의함)."""
+    done = body.get("done") is not False
+    if not db.contact_handled(cid, done):
+        raise HTTPException(404, "문의가 없습니다")
+    log_action(request, "문의 처리" if done else "문의 처리 취소", f"#{cid}")
+    return {"ok": True}

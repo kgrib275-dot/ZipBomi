@@ -26,7 +26,7 @@ def _view() -> dict:
         "settings": privacy.settings(), "required": privacy.REQUIRED, "missing": privacy.missing(),
         "current": {"id": cur["id"], "effective_date": cur["effective_date"], "announced_at": cur["announced_at"],
                     "summary": cur["summary"]} if cur else None,
-        "upcoming": len(privacy.upcoming()), "outdated": privacy.outdated() if vs else False, "first": first,
+        "upcoming": len(privacy.upcoming()), "outdated": privacy.outdated() if vs else False, "changed": privacy.changed_parts() if vs else [], "first": first,
         "versions": [{k: v[k] for k in ("id", "announced_at", "effective_date", "summary", "status")} for v in vs],
         "notice_days": privacy.NOTICE_DAYS, "major_notice_days": privacy.MAJOR_NOTICE_DAYS,
         "default_effective_date": (date.today() if first else date.today() + timedelta(days=privacy.NOTICE_DAYS)).isoformat(),

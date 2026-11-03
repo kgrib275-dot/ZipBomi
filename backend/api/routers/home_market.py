@@ -100,23 +100,37 @@ def _apply() -> list[dict]:
     return out[:6]
 
 
+def _kst(at: str | None) -> datetime | None:
+    """기사 시각 → 한국 시각. 수집처마다 UTC(+00:00)·한국 시각(+09:00)·시각대 없음이 섞여 있어, 글자 그대로 자르면 9시간 어긋났다 (2026-11-03)."""
+    if not at:
+        return None
+    try:
+        d = datetime.fromisoformat(str(at).replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    return (d.replace(tzinfo=db.KST) if d.tzinfo is None else d).astimezone(db.KST)
+
+
 def _articles() -> list[dict]:
-    since = (datetime.now(db.KST) - timedelta(days=3)).isoformat()
+    # 글자 비교는 시각대가 섞여 틀리므로 넉넉히(4일) 고른 뒤 한국 시각으로 바꿔 거르고 정렬한다
+    since_dt = datetime.now(db.KST) - timedelta(days=3)
     rows = _rows("SELECT title, source, url, published_at, llm_score FROM articles WHERE llm_score >= 3 AND published_at >= ? "
-                 "ORDER BY published_at DESC LIMIT 40", (since,))
+                 "ORDER BY published_at DESC LIMIT 120", ((since_dt - timedelta(days=1)).isoformat(),))
+    rows = [dict(r, _k=_kst(r["published_at"])) for r in rows]
+    rows = sorted((r for r in rows if r["_k"] and r["_k"] >= since_dt), key=lambda r: r["_k"], reverse=True)
     seen, out = set(), []
     for r in rows:
         key = (r["title"] or "")[:18]
         if key in seen or not str(r.get("url") or "").startswith("http"):
             continue
         seen.add(key)
-        out.append({"title": r["title"], "source": r["source"], "url": r["url"], "at": r["published_at"], "score": r["llm_score"]})
+        out.append({"title": r["title"], "source": r["source"], "url": r["url"], "at": r["_k"].strftime("%Y-%m-%d %H:%M"), "score": r["llm_score"]})
         if len(out) >= 8:
             break
     return out
 
 
-def _series_kpi(series: str, label: str, mode: str, href: str = "/now") -> dict | None:
+def _series_kpi(series: str, label: str, mode: str, src: str, href: str = "/now") -> dict | None:
     """ECOS 시계열 한 개 → 지표 칸. mode: idx(지수, 전월 대비 %) · pt(지수, 전월 대비 p) · pct(값이 %)."""
     rs = _rows("SELECT period, value FROM re_econ_series WHERE series=? AND value IS NOT NULL ORDER BY period DESC LIMIT 2", (series,))
     if len(rs) < 2:
@@ -125,12 +139,12 @@ def _series_kpi(series: str, label: str, mode: str, href: str = "/now") -> dict 
     per = f"{rs[0]['period'][:4]}.{rs[0]['period'][4:]}"
     if mode == "idx":
         ch = round((v / pv - 1) * 100, 2) if pv else 0
-        return {"label": label, "value": f"{v:.1f}", "sub": f"전월 대비 {ch:+.2f}% · {per}", "dir": "up" if ch > 0 else "down" if ch < 0 else "", "href": href}
+        return {"label": label, "value": f"{v:.1f}", "sub": f"전월 대비 {ch:+.2f}% · {per}", "dir": "up" if ch > 0 else "down" if ch < 0 else "", "href": href, "src": src}
     if mode == "pt":
         ch = round(v - pv, 1)
-        return {"label": label, "value": f"{v:.1f}", "sub": f"전월 대비 {ch:+.1f}p · {per}", "dir": "up" if ch > 0 else "down" if ch < 0 else "", "href": href}
+        return {"label": label, "value": f"{v:.1f}", "sub": f"전월 대비 {ch:+.1f}p · {per}", "dir": "up" if ch > 0 else "down" if ch < 0 else "", "href": href, "src": src}
     ch = round(v - pv, 2)
-    return {"label": label, "value": f"{v:+.2f}%", "sub": f"전월 {pv:+.2f}% · {per}", "dir": "up" if v > 0 else "down" if v < 0 else "", "href": href}
+    return {"label": label, "value": f"{v:+.2f}%", "sub": f"전월 {pv:+.2f}% · {per}", "dir": "up" if v > 0 else "down" if v < 0 else "", "href": href, "src": src}
 
 
 def _cmpet_kpi() -> dict | None:
@@ -152,13 +166,14 @@ def _cmpet_kpi() -> dict | None:
         return None
     cur, prev = by[ms[-1]][0] / by[ms[-1]][1], by[ms[-2]][0] / by[ms[-2]][1]
     return {"label": "전국 아파트 청약 경쟁률", "value": f"{cur:.1f} : 1", "sub": f"전월 {prev:.1f} : 1 · {ms[-1][:4]}.{ms[-1][4:]}",
-            "dir": "up" if cur > prev else "down" if cur < prev else "", "href": "/calendar?tab=scores"}
+            "dir": "up" if cur > prev else "down" if cur < prev else "", "href": "/calendar?tab=scores", "src": "청약홈"}
 
 
 def _extra_kpis() -> list[dict]:
     """지표 5칸 추가 (2026-11-02) — 집 살 사람·팔 사람·중개 실무자가 자주 보는 숫자."""
-    out = [_series_kpi("kb_sale_apt", "KB 전국 아파트 매매지수", "idx"), _series_kpi("kb_jeonse_apt", "KB 전국 아파트 전세지수", "idx"),
-           _series_kpi("consumer_csi", "소비자심리지수", "pt"), _series_kpi("land_chg_seoul", "서울 지가변동률", "pct"), _cmpet_kpi()]
+    # 칸마다 출처 (2026-11-03 — 운영 기준 '숫자에는 출처·기준일', KB 는 '자료: KB부동산')
+    out = [_series_kpi("kb_sale_apt", "KB 전국 아파트 매매지수", "idx", "자료: KB부동산"), _series_kpi("kb_jeonse_apt", "KB 전국 아파트 전세지수", "idx", "자료: KB부동산"),
+           _series_kpi("consumer_csi", "소비자심리지수", "pt", "한국은행"), _series_kpi("land_chg_seoul", "서울 지가변동률", "pct", "한국부동산원"), _cmpet_kpi()]
     return [x for x in out if x]
 
 

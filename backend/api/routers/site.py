@@ -8,7 +8,7 @@ from __future__ import annotations
 from fastapi import APIRouter
 
 from api.common import cached
-from pipeline import db, jobs, privacy
+from pipeline import db, jobs, privacy, settings_store
 
 router = APIRouter(tags=["site"])
 
@@ -34,7 +34,20 @@ def counts() -> dict:
 
 @router.get("/site")
 def site() -> dict:
-    return {"counts": counts(), "sources": source_groups(), "privacy_active": privacy.active()}
+    return {"counts": counts(), "sources": source_groups(), "privacy_active": privacy.active(), "newsletter": _newsletter()}
+
+
+def _newsletter() -> dict:
+    """화면의 구독 안내 문구가 쓰는 실제 발송 일정 (관리 > 배치 스케줄, 2026-11-03)."""
+    c = settings_store.load().get("newsletter") or {}
+    try:
+        hh, mm = map(int, str(c.get("time") or "09:00").split(":"))
+        day = "월화수목금토일"[int(c.get("weekday") or 0) % 7]
+    except ValueError:
+        return {"enabled": False, "when": ""}
+    ampm = "오전" if hh < 12 else "오후"
+    h12 = hh if 1 <= hh <= 12 else (hh - 12 if hh > 12 else 12)
+    return {"enabled": bool(c.get("enabled")), "when": f"{day}요일 {ampm} {h12}시" + (f" {mm}분" if mm else "")}
 
 
 @router.get("/about")

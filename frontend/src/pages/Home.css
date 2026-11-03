@@ -113,10 +113,6 @@
 .cols2{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(300px,100%),1fr));gap:14px}
 .two-col{display:grid;grid-template-columns:1.6fr 1fr;gap:32px;align-items:start}
 @media (max-width:900px){.two-col{grid-template-columns:1fr;gap:20px}}
-.seg{display:inline-flex;gap:2px;border:1px solid var(--line);border-radius:12px;padding:3px;background:var(--surface);flex-wrap:wrap;max-width:100%}
-.seg button{all:unset;cursor:pointer;padding:7px 14px;border-radius:9px;font-size:.95rem;color:var(--ink-2);white-space:nowrap}
-.seg button.on{background:rgba(217,161,0,.25);color:var(--ink);font-weight:600}
-.seg button:focus-visible{outline:2px solid var(--accent-2)}
 .sub-h{font-size:1.25rem;font-weight:700;margin:26px 0 10px}
 
 /* ---------- 반응형 ---------- */
@@ -189,6 +185,7 @@ a.try-tile:hover{border-color:var(--accent);transform:translateY(-2px)}
 .mkt-kpi .k{font-size:.8rem;color:var(--muted)}
 .mkt-kpi .v{font-size:1.45rem;font-weight:800;font-family:var(--f-display)}
 .mkt-kpi .d{font-size:.78rem;color:var(--muted)}
+.mkt-kpi .src{font-size:.7rem;color:var(--muted);opacity:.85}  /* 출처 (2026-11-03) */
 .mkt .up{color:var(--err-ink)}
 .mkt .down{color:var(--ok-ink)}
 .mkt-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
@@ -292,9 +289,6 @@ a.ap-row:hover{border-color:var(--accent);transform:translateX(2px)}
 
 /* ---------- 가장 비싼 거래 10건 (TopDeals) ---------- */
 .top-filters{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 10px}
-.seg.sm{display:inline-flex;gap:2px;border:1px solid var(--line);border-radius:10px;padding:2px;background:var(--surface-2)}
-.seg.sm button{all:unset;cursor:pointer;padding:5px 10px;border-radius:8px;font-size:.8rem;color:var(--ink-2);white-space:nowrap}
-.seg.sm button.on{background:rgba(217,161,0,.28);color:var(--ink);font-weight:700}
 .top-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
 .top-list li{display:grid;grid-template-columns:22px minmax(0,1fr) auto;gap:0 8px;align-items:baseline;padding:6px 0;border-bottom:1px dashed var(--line)}
 .top-list li:last-child{border-bottom:0}

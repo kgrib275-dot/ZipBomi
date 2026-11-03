@@ -85,14 +85,24 @@ def new_totp_secret() -> str:
 
 
 # ───────── 로그인 ─────────
-def locked(ip: str | None) -> bool:
+def locked_until(ip: str | None) -> str | None:
+    """잠겨 있으면 풀리는 시각('HH:MM'), 아니면 None. 마지막으로 로그인에 성공한 뒤의 실패만 센다 (2026-11-03 — 성공해도 실패 수가 남았다)."""
     since = (datetime.now() - timedelta(minutes=FAIL_WINDOW_MIN)).isoformat(timespec="seconds")
     c = _conn()
     try:
-        n = c.execute("SELECT COUNT(*) FROM admin_audit WHERE kind='login_fail' AND ip IS ? AND at >= ?", (ip, since)).fetchone()[0]
+        ok_at = c.execute("SELECT MAX(at) FROM admin_audit WHERE kind='login' AND ip IS ?", (ip,)).fetchone()[0]
+        start = max(since, ok_at or "")
+        rows = c.execute("SELECT at FROM admin_audit WHERE kind='login_fail' AND ip IS ? AND at > ? ORDER BY at", (ip, start)).fetchall()
     finally:
         c.close()
-    return n >= FAIL_LIMIT
+    if len(rows) < FAIL_LIMIT:
+        return None
+    first = datetime.fromisoformat(rows[-FAIL_LIMIT][0])  # 창 안의 다섯 번째 최근 실패부터 30분
+    return (first + timedelta(minutes=FAIL_WINDOW_MIN)).strftime("%H:%M")
+
+
+def locked(ip: str | None) -> bool:
+    return locked_until(ip) is not None
 
 
 def login(token: str, otp: str | None, ip: str | None, ua: str) -> tuple[str | None, str]:

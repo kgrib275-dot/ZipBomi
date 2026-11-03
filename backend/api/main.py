@@ -169,7 +169,8 @@ async def _guard(request: Request, call_next):
             if _too_many_writes(settings_store.rate_key(ip) or raw or "-"):
                 return JSONResponse({"detail": "요청이 너무 잦습니다. 잠시 후 다시 시도해 주세요."}, status_code=429)
         site = request.headers.get("sec-fetch-site", "")
-        if request.headers.get("x-requested-with") != "zipgenie" or site not in ("", "same-origin", "none"):
+        one_click = request.url.path == "/api/unsubscribe/one-click"  # 메일 앱의 원클릭 수신 거부 (토큰이 열쇠, subscribe.py)
+        if not one_click and (request.headers.get("x-requested-with") != "zipgenie" or site not in ("", "same-origin", "none")):
             # 403 이 아니라 428 — 관리 화면은 403 을 '관리자 아님'으로 보고 토큰 입력 화면으로 넘어가 버려서,
             # 이 헤더가 없는 예전 화면(배포 전에 열어 둔 탭)에서는 저장이 조용히 안 되는 것처럼 보였다 (2026-10-29).
             return JSONResponse({"detail": "화면이 예전 버전입니다. 새로고침(F5)한 뒤 다시 시도해 주세요."}, status_code=428)
@@ -219,7 +220,9 @@ async def _trial_gate(request: Request, call_next):
     response = await call_next(request)
     # 둘러보기 쿠키는 API 응답과 화면(HTML) 응답에 심는다 — 화면을 받을 때 먼저 심어 두면 첫 API 요청들이 쿠키 없이 와서
     # IP 의 하루 둘러보기 수를 여러 개 쓰지 않는다
-    is_html = request.method == "GET" and response.headers.get("content-type", "").startswith("text/html")
+    # 서버가 그린 공유 페이지(/n/ 노트·/s/·/r/)는 둘러보기를 시작하지 않는다 — 공유받은 글을 읽다가 '이어 보기'를 누르자마자 막히지 않게 (2026-11-03)
+    is_html = (request.method == "GET" and response.headers.get("content-type", "").startswith("text/html")
+               and not path.startswith(("/n/", "/s/", "/r/", "/m/")))
     if (is_api or is_html) and response.status_code < 400 and gate.first_seen(request.cookies.get(gate.COOKIE)) is None:
         response.set_cookie(gate.COOKIE, await run_in_threadpool(_new_trial_cookie, request), max_age=365 * 24 * 3600, httponly=True,
                             samesite="lax", secure=request.url.scheme == "https" or bool(request.headers.get("tailscale-funnel-request")),
@@ -362,6 +365,10 @@ from app import og_meta  # noqa: E402
 async def spa(path: str):
     if path.startswith("api/"):
         raise HTTPException(status_code=404)
+    if path == "favicon.ico":  # 오래된 브라우저·검색 로봇이 찾는 주소 — 404 대신 SVG 아이콘으로 (2026-11-03)
+        icon = DIST / "favicon.svg"
+        if icon.is_file():
+            return FileResponse(icon, media_type="image/svg+xml", headers={"Cache-Control": "public, max-age=86400"})
     file = DIST / path
     if path and file.is_file() and DIST in file.resolve().parents:
         return FileResponse(file, headers={"Cache-Control": "public, max-age=86400"})  # 로고·파비콘 등

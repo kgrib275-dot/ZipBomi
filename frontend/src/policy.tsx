@@ -36,7 +36,9 @@ export function man(v: number): string {
   if (!isFinite(v)) return "-";
   const n = Math.round(v), a = Math.abs(n), eok = Math.floor(a / 10000), rest = a % 10000, sign = n < 0 ? "-" : "";
   if (!eok) return `${sign}${rest.toLocaleString("ko-KR")}만원`;
-  return `${sign}${eok}억${rest ? ` ${rest.toLocaleString("ko-KR")}만` : ""}원`;
+  // 1조 이상은 조 단위로 (2026-11-03 — '6999억 9,999만원'처럼 보였다)
+  if (eok >= 10000) { const jo = Math.floor(eok / 10000), e2 = eok % 10000; return `${sign}${jo.toLocaleString("ko-KR")}조${e2 ? ` ${e2.toLocaleString("ko-KR")}억` : ""}원`; }
+  return `${sign}${eok.toLocaleString("ko-KR")}억${rest ? ` ${rest.toLocaleString("ko-KR")}만` : ""}원`;
 }
 const dateLabel = (d: string) => (d ? d.replace(/-/g, ".") : "");
 
@@ -116,7 +118,7 @@ export function ParamCard({ p, basis, map, compact }: { p: Param; basis: Basis; 
       {ex && <div className="now-ex">{ex}</div>}
       {!compact && p.note && <div className="caption">{p.note}</div>}
       <div className="now-src">
-        {p.effective_on && <span>기준일 {dateLabel(p.effective_on)}</span>}
+        {p.effective_on ? <span>기준일 {dateLabel(p.effective_on)}</span> : <span className="now-unk">기준일 확인 중{p.checked_on ? ` · ${dateLabel(p.checked_on.slice(0, 10))} 확인` : ""}</span>}
         {p.source_url ? <a href={p.source_url} target="_blank" rel="noopener">{p.source_name || "근거"} ↗</a> : <span>{p.source_name}</span>}
         {link && <Link to={link}>계산기에 넣기 →</Link>}
       </div>
@@ -125,4 +127,9 @@ export function ParamCard({ p, basis, map, compact }: { p: Param; basis: Basis; 
       )}
     </div>
   );
+}
+
+/** 키워드 규칙 이름을 화면용으로 — 영어 기사용 규칙('housing market (EN)')이 그대로 보이지 않게 (2026-11-03) */
+export function kwLabel(k: string): string {
+  return / \(EN\)$/.test(k) ? "해외 부동산 뉴스" : k;
 }

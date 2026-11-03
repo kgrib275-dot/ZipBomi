@@ -70,7 +70,7 @@ _SQL = "CREATE TABLE IF NOT EXISTS trial_ip (ip TEXT PRIMARY KEY, first_at REAL 
 # 같은 IP 에서 하루에 새로 시작할 수 있는 둘러보기 수 (2026-11-03). 예전엔 IP 하나에 1분 하나뿐이라, 사무실·통신사 공유 IP 뒤의
 # 두 번째 사람은 들어오자마자 로그인 화면을 봤다. 이제 쿠키(zgt)를 새로 줄 때만 IP 를 세고, 하루 이 수를 넘으면 그 IP 의 첫 시각으로 준다
 # (쿠키를 지워 가며 1분을 계속 새로 받는 것은 여전히 막힌다).
-IP_TRIALS_PER_DAY = int(os.environ.get("ZIPGENIE_IP_TRIALS", "20") or 20)
+IP_TRIALS_PER_DAY = int(os.environ.get("ZIPGENIE_IP_TRIALS", "50") or 50)  # 2026-11-03 20 → 50 (이동통신망은 많은 사람이 IP 하나를 나눠 쓴다)
 
 
 def _ip_trials(ip_key: str, now: float, count: bool) -> tuple[float, int]:

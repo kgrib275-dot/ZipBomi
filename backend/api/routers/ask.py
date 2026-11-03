@@ -166,7 +166,7 @@ def ask(payload: dict = Body(...), c: Caller = CallerDep) -> dict:
     try:
         notes, articles = agent_chat.retrieve(question)
         context = agent_chat.build_context(notes, articles, site) if (notes or articles) else ""
-        mine = my_space.context_text(me_state.load_state(c.visitor)) if payload.get("mine", True) else ""  # 내 공간 자료 (2026-11-02)
+        mine = my_space.context_text(me_state.load_state(c.visitor)) if payload.get("mine") is True else ""  # 내 공간 자료 — 이용자가 켰을 때만 (2026-11-03 기본 꺼짐)
         if mine:
             context = f"{mine}\n\n{context}" if context else mine
         answer = agent_chat.clean_answer(agent_chat.ask(history, question, context))

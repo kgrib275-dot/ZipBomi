@@ -18,7 +18,7 @@ router = APIRouter(tags=["engage"])
 
 # 화면이 직접 남길 수 있는 종류 — 그 밖의 kind 는 거부한다 (통계를 오염시키지 못하게)
 KINDS = {"share", "share_visit", "subscribe_open", "ref_visit", "member_request_open", "try_click",  # try_click: 홈 맛보기 클릭 (어느 것이 잘 먹히는지)
-         "page_view"}  # page_view: 화면 이동 — 방문 시간대·이동 경로·재방문 패턴 분석용 (관리 > 참여 분석 > 방문 패턴)
+         "page_view", "login_open", "click"}  # 2026-11-03: 화면이 보내던 login_open·click 이 목록에 없어 400 이 쌓였다  # page_view: 화면 이동 — 방문 시간대·이동 경로·재방문 패턴 분석용 (관리 > 참여 분석 > 방문 패턴)
 # page_view 의 경로는 사이트 안 경로만, 쿼리(?t= 확인 토큰·?link= 연결 토큰·?k= 추천 열쇠 등)는 버린다 — 토큰이 기록에 남지 않게
 _PATH_RE = re.compile(r"^/[A-Za-z0-9/_-]{0,60}$")
 CONTENTS = {"today", "type_test", "terms", "diagnosis", "notes", "note_detail", "lab", "letter", "refer", "about",
@@ -43,6 +43,10 @@ def record(payload: dict = Body(...), c: Caller = CallerDep) -> dict:
             return {"ok": True}  # 관리자 자신의 이동은 방문 패턴을 흐리므로 남기지 않는다
         item = item.split("?", 1)[0].split("#", 1)[0].rstrip("/") or "/"
         if not _PATH_RE.match(item) or item.startswith("/admin"):
+            return {"ok": True}
+        # 없는 주소(404)는 방문 패턴에 섞지 않는다 (2026-11-03 — '/nope-xyz' 같은 주소가 참여 분석에 보였다)
+        from api.main import _APP_ROUTES
+        if item.strip("/").split("/", 1)[0] not in _APP_ROUTES:
             return {"ok": True}
         value, extra = "", None  # 경로 외에는 받지 않는다
     elif kind == "ref_visit":  # 추천 링크(?ref=)로 온 방문 — 코드 형식이 맞을 때만

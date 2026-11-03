@@ -1,6 +1,7 @@
 // 홈 (/) — Streamlit 판 app_pages/home.py 이식.
 // 히어로(숫자 카운트업) → 급상승 키워드 띠 → For you → 처음이라면 3가지 → 이번 주 흐름 → 이번 주 꼭 알아야 할 3가지
 // → 쌓이는 노트(카테고리 내비 + 최신 9편, 60초마다 새로 받아 새 카드는 빛남) → 소스 → 뉴스레터 CTA.
+import { kwLabel } from "../policy";
 import { useEffect, useRef, useState } from "react";
 import { Link, useLocation, useSearchParams } from "react-router-dom";
 import { get, track } from "../api";
@@ -100,7 +101,7 @@ function Ticker({ t }: { t: Home["ticker"] }) {
   const render = (copy: boolean) => rows.map((r, i) => (
     <Link key={(copy ? "b" : "a") + i} to={r.href || `/notes?q=${encodeURIComponent(r.keyword)}`} tabIndex={copy ? -1 : undefined}
       title={r.note_title ? `대표 노트: ${r.note_title}` : `${r.keyword} 노트 찾아보기`}>
-      <i className={r.rising ? "up" : ""} aria-hidden="true">{r.is_new ? "●" : r.rising ? "▲" : "▼"}</i>{r.keyword}
+      <i className={r.rising ? "up" : ""} aria-hidden="true">{r.is_new ? "●" : r.rising ? "▲" : "▼"}</i>{kwLabel(r.keyword)}
       <b className={r.is_new ? "new" : r.rising ? "" : "down"}>{r.label || (r.is_new ? "신규" : `${r.growth ?? 0}%`)}</b>
     </Link>
   ));
@@ -304,7 +305,7 @@ export default function HomePage() {
           </div>
         )}
         <div className="hero-btns">
-          <button className="btn primary" onClick={() => openSubscribe("home_hero")}>월요일 맞춤 브리핑 받기 →</button>
+          <button className="btn primary" onClick={() => openSubscribe("home_hero")}>주간 맞춤 브리핑 받기 →</button>
           <Link className="btn ghost" to="/deals">실거래가 보기</Link>
         </div>
       </div>
@@ -445,7 +446,7 @@ export default function HomePage() {
       <section className="cta">
         <div>
           <div className="eyebrow" style={{ color: "#FFE89A" }}>뉴스레터</div>
-          <h2 className="sec-h" style={{ color: "#fff" }}>이번 주 부동산 소식,<br />월요일 아침 메일로</h2>
+          <h2 className="sec-h" style={{ color: "#fff" }}>이번 주 부동산 소식,<br />주간 메일로</h2>
           <p className="sec-p">시세·청약·대출·세금·정책 중 꼭 알아야 할 것만 골라 보내 드려요.</p>
         </div>
         <button className="btn cta-btn" onClick={() => openSubscribe("home_cta")}>무료로 받아 보기 →</button>

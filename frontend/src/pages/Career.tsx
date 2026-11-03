@@ -97,7 +97,7 @@ export default function Career() {
           <button className="btn" style={{ marginTop: 10 }} onClick={retry}>↻ 다시 하기</button>
           <ProfileCTA what="내 집 마련 전략" />
           <ProfileForm source="career" />
-          <SubscribeCTA source="career" headline={`${res.name}에게 맞는 부동산 노트를 매주 받아 보세요`} sub="내 전략에 꼭 필요한 시세·정책·청약 소식을 월요일 아침 3분 요약으로 보내 드려요." />
+          <SubscribeCTA source="career" headline={`${res.name}에게 맞는 부동산 노트를 매주 받아 보세요`} sub="내 전략에 꼭 필요한 시세·정책·청약 소식을 주간 3분 요약으로 보내 드려요." />
           {res.recommended_notes.length > 0 && (
             <>
               <div className="eyebrow" style={{ marginTop: 20 }}>{res.name}에게 추천</div>

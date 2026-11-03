@@ -5,7 +5,7 @@
 .re-row{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end}
 .re-row .field{margin-bottom:0;min-width:140px;flex:1 1 160px}
 .re-row .field.narrow{flex:0 1 150px;min-width:120px}
-.re-star{all:unset;cursor:pointer;font-size:1.15rem;line-height:1;color:var(--muted);padding:2px 4px;border-radius:6px}
+.re-star{all:unset;cursor:pointer;font-size:1.15rem;line-height:1;color:var(--muted);padding:2px 4px;border-radius:6px;min-width:32px;min-height:32px;display:inline-grid;place-items:center;box-sizing:border-box}  /* 2026-11-03 누르기 쉬운 크기(32px) */
 .re-star.on{color:var(--accent-2)}  /* 글자색은 --accent-2 — 라이트 테마에서 --accent(#B88600)는 크림 바탕 대비가 4.5:1 미만 */
 .re-star:hover{color:var(--label)}
 .re-star:focus-visible{outline:2px solid var(--accent-2)}

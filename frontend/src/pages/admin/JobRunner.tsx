@@ -104,7 +104,7 @@ export function JobsProvider({ children }: { children: React.ReactNode }) {
         toast(`${label(kind)} 작업을 시작했습니다.`, "ok");
         armed.current = 3;
         wasActive.current = true;
-        setStatus((s) => ({ ...s, active: { ...s.active, [kind]: new Date().toISOString().slice(11, 19) } }));
+        setStatus((s) => ({ ...s, active: { ...s.active, [kind]: new Date().toLocaleTimeString("ko-KR", { hour12: false }) } }));
         window.setTimeout(refresh, 300);
         return true;
       } catch (e) {
@@ -121,6 +121,16 @@ export function JobsProvider({ children }: { children: React.ReactNode }) {
 export const useJobs = () => useContext(JobsCtx);
 
 /** 작업 시작 버튼 — 같은 작업이 돌고 있으면 비활성. */
+// 되돌릴 수 없거나 바깥으로 나가는 작업은 한 번 더 묻는다 (2026-11-03 운영 점검) — 예전엔 '전체 발송'을 잘못 누르면 바로 모든 구독자에게 메일이 갔다.
+const CONFIRM: Record<string, (kw?: Row) => string | null> = {
+  newsletter: () => "뉴스레터를 활성 구독자 전체에게 지금 보낼까요? 보낸 메일은 되돌릴 수 없습니다.",
+  teams: () => "등록한 Teams 채널에 지금 발송할까요?",
+  re_data: (kw) => (kw && (kw.dry_run || kw.only) ? null : "부동산 데이터를 공공 API 로 지금 수집할까요? 호출 수가 많아 하루 한도를 쓸 수 있습니다."),
+  warehouse: (kw) => (kw && kw.full ? "Databricks 표를 전부 지우고 다시 적재할까요? 오래 걸립니다." : null),
+  collect: () => "지금 기사 수집을 시작할까요?",
+  draft: (kw) => (kw && kw.hashes ? null : "노트 초안 만들기를 시작할까요? 생성형 AI 사용량을 씁니다."),
+};
+
 export function StartJob({ kind, text, primary, kwargs, disabled, block, onStarted }: {
   kind: string; text?: string; primary?: boolean; kwargs?: Row; disabled?: boolean; block?: boolean; onStarted?: () => void;
 }) {
@@ -129,7 +139,11 @@ export function StartJob({ kind, text, primary, kwargs, disabled, block, onStart
     <button
       className={`btn ${primary ? "primary" : ""} ${block ? "block" : ""}`}
       disabled={disabled || isActive(kind)}
-      onClick={async () => (await start(kind, kwargs)) && onStarted?.()}
+      onClick={async () => {
+        const ask = CONFIRM[kind]?.(kwargs);
+        if (ask && !window.confirm(ask)) return;
+        if ((await start(kind, kwargs))) onStarted?.();
+      }}
     >
       {isActive(kind) ? "진행 중…" : text || `${label(kind)} 실행`}
     </button>

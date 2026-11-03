@@ -89,13 +89,42 @@ def _notices(ids: list[str]) -> dict[str, dict]:
         c.close()
 
 
+def _account_profiles() -> list[tuple[str, dict]]:
+    """(계정 이메일, 계정에 저장된 내 프로필) — 알림을 하나라도 켠 계정만."""
+    import json
+    c = db.connect()
+    try:
+        try:
+            rows = c.execute("SELECT a.email, v.data FROM accounts a JOIN visitor_state v ON v.visitor = 'c:' || a.raw").fetchall()
+        except Exception:  # noqa: BLE001 - 표가 아직 없으면 계정 알림 없음
+            return []
+    finally:
+        c.close()
+    out = []
+    for r in rows:
+        try:
+            prof = (json.loads(r[1]) or {}).get("profile") or {}
+        except (ValueError, TypeError):
+            continue
+        if isinstance(prof, dict) and (prof.get("alert_apply") or prof.get("alert_lease")):
+            out.append((r[0], prof))
+    return out
+
+
 def plan(today: date | None = None) -> list[dict]:
     """오늘 보낼 알림 목록 (보낸 기록은 아직 보지 않는다)."""
     today = today or date.today()
     out: list[dict] = []
     subs = {s["email"]: s for s in db.subscribers(active_only=True)}
-    for email, s in subs.items():
-        prof = profile.for_subscriber(email) or {}
+    # 로그인 계정도 받는다 (2026-11-03) — 예전엔 🔔·전세 만기 알림을 켜도 뉴스레터 구독자가 아니면 메일이 가지 않았다.
+    # 이용자가 직접 켠 알림이라 계정 메일로 보내고, 끄는 곳(내 프로필·🔔)을 메일 아래에 적는다. 구독 해지 링크는 없다(구독이 아니므로).
+    people: list[tuple[str, str, dict]] = [(email, s["token"], profile.for_subscriber(email) or {}) for email, s in subs.items()]
+    seen = {e.lower() for e in subs}
+    for email, prof in _account_profiles():
+        if email.lower() not in seen:
+            people.append((email, "", prof))
+    for email, token, prof in people:
+        s = {"token": token}
         ids = [i for i in (prof.get("alert_apply") or []) if isinstance(i, str)][:MAX_APPLY_ALERTS]
         for nid, n in _notices(ids).items():
             due, what = apply_target(n)
@@ -118,14 +147,15 @@ def plan(today: date | None = None) -> list[dict]:
 
 def _wrap(title: str, body: str, unsub_token: str) -> str:
     base = mailer.site_url()
-    unsub = f'<a href="{base}/unsubscribe?t={html.escape(unsub_token)}" style="color:#B8AB8A">구독 해지</a>' if unsub_token else ""
+    unsub = f'<a href="{base}/unsubscribe?token={html.escape(unsub_token)}" style="color:#B8AB8A">구독 해지</a>' if unsub_token else ""
     return f"""<!doctype html><html><body style="margin:0;background:#120F08;font-family:'Malgun Gothic',sans-serif;color:#FBF6E9">
-<div style="max-width:560px;margin:0 auto;padding:36px 28px">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#120F08" style="background:#120F08"><tr><td>
+<div style="max-width:560px;margin:0 auto;padding:36px 28px;background:#120F08;color:#FBF6E9">
   <div style="font-size:22px;font-weight:800">ZIP<span style="color:#FFD54A">BOMI</span> <span style="font-size:13px;font-weight:600;color:#B8AB8A">집보미</span></div>
   <h2 style="font-size:19px;margin:22px 0 10px">{title}</h2>
   {body}
   <p style="color:#B8AB8A;font-size:12px;line-height:1.6;margin-top:28px">내 프로필에서 알림을 켜 두셔서 보내 드렸어요. 알림은 <a href="{base}/me" style="color:#B8AB8A">내 프로필</a>에서 끌 수 있어요. {unsub}</p>
-</div></body></html>"""
+</div></td></tr></table></body></html>"""
 
 
 def _btn(href: str, text: str) -> str:

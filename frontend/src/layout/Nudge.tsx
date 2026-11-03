@@ -1,9 +1,11 @@
 // 하단 구독 띠 — 화면의 35%를 내리거나 25초가 지나면 올라온다. 닫으면 7일, 누르면 1일 동안 다시 띄우지 않는다 (localStorage).
+import { scheduleText, useNewsletter } from "../newsletter";
 import { useEffect, useState } from "react";
 
 const KEY = "zipgenie-nudge-until";
 
 export default function Nudge({ onSubscribe }: { onSubscribe: () => void }) {
+  const nl = useNewsletter();
   const [show, setShow] = useState(false);
   const [hidden, setHidden] = useState(() => {
     try { return Date.now() < (+localStorage.getItem(KEY)! || 0); } catch { return false; }
@@ -25,7 +27,7 @@ export default function Nudge({ onSubscribe }: { onSubscribe: () => void }) {
   if (hidden) return null;
   return (
     <div id="ax-nudge" className={show ? "show" : ""} role="region" aria-label="구독 안내">
-      <div className="t">🏠 월요일 아침 7시, 내 관심 단지와 내 조건 기준으로 3분<small>내 관심 단지 거래 흐름 + 내 유형에 영향 있는 노트 · 무료 · 언제든 해지</small></div>
+      <div className="t">🏠 {scheduleText(nl)}, 내 관심 단지와 내 조건 기준으로 3분<small>내 관심 단지 거래 흐름 + 내 유형에 영향 있는 노트 · 무료 · 언제든 해지</small></div>
       <button className="go" type="button" onClick={() => { onSubscribe(); hide(1); }}>맞춤 브리핑 받기</button>
       <button className="x" type="button" aria-label="닫기" onClick={() => hide(7)}>×</button>
     </div>

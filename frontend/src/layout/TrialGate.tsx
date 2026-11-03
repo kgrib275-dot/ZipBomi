@@ -1,7 +1,8 @@
-// 1분 둘러보기 (2026-11-02) — 로그인하지 않은 방문자는 처음 들어온 뒤 1분 동안 둘러보고, 그 뒤에는 소개 페이지로 옮겨 메일 로그인을 요청한다.
+// 1분 둘러보기 (2026-11-02) — 로그인하지 않은 방문자는 처음 들어온 뒤 1분 동안 둘러보고, 그 뒤에는 메일 로그인을 요청한다.
+// 2026-11-03: 소개 페이지로 옮기지 않고 보던 화면 위에 로그인 창을 띄운다 — 읽던 글·공유받은 화면이 사라지지 않고, 로그인하면 그 화면에서 이어진다.
 // 남은 시간은 서버가 /api/me 의 trial_left 로 알려 준다(쿠키·IP 기준, backend/pipeline/gate.py). 서버도 같은 기준으로 API 를 막는다(401).
-import { useEffect, useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useEffect, useRef, useState } from "react";
+import { useLocation } from "react-router-dom";
 import { useDialogs } from "../components/Dialogs";
 import { useMe } from "../me";
 
@@ -10,8 +11,8 @@ const OPEN = ["/about", "/privacy", "/login", "/confirm", "/unsubscribe", "/admi
 export default function TrialGate() {
   const { me } = useMe();
   const { openLogin } = useDialogs();
-  const nav = useNavigate();
   const loc = useLocation();
+  const asked = useRef(false);
   const [left, setLeft] = useState<number | null>(null);
   const [blocked, setBlocked] = useState(false);
   useEffect(() => {
@@ -30,8 +31,12 @@ export default function TrialGate() {
   }, []);
   const open = OPEN.some((p) => loc.pathname === p || loc.pathname.startsWith(p + "/"));
   useEffect(() => {
-    if (blocked && !open && !me?.account && !me?.is_admin) nav("/about?login=1", { replace: true });
-  }, [blocked, open, me, nav]);
+    if (blocked && !open && !me?.account && !me?.is_admin && !asked.current) {
+      asked.current = true;
+      (window as unknown as { __zgGateBlocked?: boolean }).__zgGateBlocked = true;  // 로그인 뒤 이 화면을 다시 불러온다 (LoginDialog)
+      openLogin();
+    }
+  }, [blocked, open, me, openLogin]);
   if (!me || me.account || me.is_admin || left === null) return null;
   if (!blocked) return (
     <div className="trial-bar" role="status">
@@ -43,7 +48,7 @@ export default function TrialGate() {
   return (
     <div className="trial-bar done" role="alert">
       <span>🔒 둘러보기 시간이 끝났어요.</span>
-      <span className="sp">메일 인증(로그인) 후 계속 이용할 수 있어요. 비밀번호 없이 메일 링크로 1분이면 끝나요.</span>
+      <span className="sp">메일 인증(로그인) 후 이 화면에서 바로 이어 볼 수 있어요. 비밀번호 없이 메일의 6자리 코드로 1분이면 끝나요.</span>
       <button type="button" className="btn sm primary" onClick={openLogin}>메일로 로그인</button>
     </div>
   );

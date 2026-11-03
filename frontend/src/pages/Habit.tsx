@@ -102,7 +102,7 @@ export default function Habit() {
           <button className="btn" style={{ marginTop: 10 }} onClick={retry}>↻ 다시 하기</button>
           <ProfileCTA what="공부 습관" />
           <ProfileForm source="habit" />
-          <SubscribeCTA source="habit" headline="부동산 공부, 매주 3분이면 충분해요" sub="꼭 봐야 할 시세·정책·청약 소식만 골라 월요일 아침 메일로 보내 드려요." />
+          <SubscribeCTA source="habit" headline="부동산 공부, 매주 3분이면 충분해요" sub="꼭 봐야 할 시세·정책·청약 소식만 골라 주간 메일로 보내 드려요." />
           {res.recommended_notes.length > 0 && (
             <>
               <div className="eyebrow" style={{ marginTop: 20 }}>이어서 읽기</div>

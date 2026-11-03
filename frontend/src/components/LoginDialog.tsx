@@ -14,12 +14,13 @@ export default function LoginDialog({ onClose }: { onClose: () => void }) {
   const [err, setErr] = useState("");
   const [suggest, setSuggest] = useState("");
   const [code, setCode] = useState("");
+  const [agree, setAgree] = useState(false);  // 만 14세 이상·수집 안내 확인 (2026-11-03 — 처리방침 제7조, 구독 창과 같게)
   const { me, reload } = useMe();
   const nav = useNavigate();
   // 메일 링크를 같은 브라우저의 다른 탭에서 눌러 로그인하면(그 탭이 announceAuth) 이 창은 저절로 닫고 내 공간으로
   const who = me?.account?.email || "";
   const startedAs = useRef(who);  // 창을 연 때의 계정 — 바뀌었을 때만 닫는다
-  useEffect(() => { if (msg && who && who !== startedAs.current) { onClose(); nav("/my"); } }, [msg, who]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (msg && who && who !== startedAs.current) afterLogin(); }, [msg, who]); // eslint-disable-line react-hooks/exhaustive-deps
   // 메일을 기다리는 동안 3초마다 로그인됐는지 확인 — 메일 앱이 링크를 같은 브라우저의 다른 창(크롬 맞춤 탭 등)으로 열어 그쪽에서
   // 로그인하면 탭 사이 알림이 오지 않는 경우가 있다 (2026-11-03 휴대폰에서 확인)
   useEffect(() => {
@@ -30,12 +31,22 @@ export default function LoginDialog({ onClose }: { onClose: () => void }) {
   const send = async (addr = email, typoOk = false) => {
     setBusy(true); setErr(""); setSuggest("");
     try {
-      const r = await post<{ message: string }>("auth/request", { email: addr.trim(), typo_ok: typoOk });
+      const r = await post<{ message: string }>("auth/request", { email: addr.trim(), typo_ok: typoOk, agree: true });
       setMsg(r.message); setCode("");
     } catch (e) {
       if (e instanceof ApiError && e.data?.suggest) setSuggest(String(e.data.suggest));
       setErr(e instanceof Error ? e.message : "보내지 못했습니다.");
     } finally { setBusy(false); }
+  };
+  // 로그인한 뒤에는 보던 화면에서 이어 간다 (2026-11-03) — 둘러보기가 끝나 막혔던 화면이면 자료를 다시 불러오고,
+  // 로그인 전용 화면(/login, /about?login=1)에서 왔으면 ?next= 주소나 내 공간으로.
+  const afterLogin = () => {
+    onClose();
+    const sp = new URLSearchParams(window.location.search);
+    const next = sp.get("next");
+    const loginPage = window.location.pathname === "/login" || (window.location.pathname === "/about" && sp.get("login") === "1");
+    if (loginPage) nav(next && next.startsWith("/") && !next.startsWith("//") ? next : "/my");
+    else if ((window as unknown as { __zgGateBlocked?: boolean }).__zgGateBlocked) window.location.reload();
   };
   const verify = async () => {
     setBusy(true); setErr("");
@@ -43,8 +54,7 @@ export default function LoginDialog({ onClose }: { onClose: () => void }) {
       await post("auth/verify-code", { code });
       announceAuth();
       await reload();
-      onClose();
-      nav("/my");
+      afterLogin();
     } catch (e) {
       await reload();  // 링크로 이미 이 브라우저가 로그인됐으면 코드가 쓰였어도 위 useEffect 가 창을 닫는다
       setErr(e instanceof Error ? e.message : "로그인하지 못했습니다.");
@@ -67,14 +77,16 @@ export default function LoginDialog({ onClose }: { onClose: () => void }) {
             메일이 오지 않으면 <button type="button" className="linkish" disabled={busy} onClick={() => { setMsg(""); setErr(""); }}>주소를 다시 넣기</button></p>
         </form>
       ) : (
-        <form onSubmit={(e) => { e.preventDefault(); if (email.trim()) send(); }}>
+        <form onSubmit={(e) => { e.preventDefault(); if (!agree) { setErr("만 14세 이상인지와 개인정보 수집·이용 안내를 확인해 주세요."); return; } if (email.trim()) send(); }}>
           <p className="caption" style={{ marginTop: 0 }}>비밀번호 없이 메일로 받은 6자리 코드(또는 링크)로 로그인해요. 관심 단지·알림·저장한 노트·계산 기록이 어느 기기에서든 그대로 이어집니다.</p>
           <div className="field"><label htmlFor="lg-email">이메일</label>
             <input id="lg-email" type="email" required autoFocus value={email} onChange={(e) => setEmail(e.target.value)} placeholder="name@example.com" maxLength={254} /></div>
           {err && <Alert kind="err">{err}{suggest && <> <button type="button" className="linkish" onClick={() => { setEmail(suggest); send(suggest); }}>{suggest} 로 보내기</button></>}</Alert>}
           {err && !suggest && /도메인|주소/.test(err) && <button type="button" className="linkish" onClick={() => send(email, true)}>이 주소 그대로 보내기</button>}
-          <button className="btn primary block" disabled={busy || !email.trim()} style={{ marginTop: 8 }}>{busy ? "보내는 중…" : "로그인 메일 받기"}</button>
-          <p className="caption">로그인하면 계정 이메일과 저장한 설정을 보관합니다. 자세한 내용은 <a href="/privacy" target="_blank" rel="noopener">개인정보 처리방침</a>을 확인하세요.</p>
+          <button className="btn primary block" disabled={busy || !email.trim() || !agree} style={{ marginTop: 8 }}>{busy ? "보내는 중…" : "로그인 메일 받기"}</button>
+          <p className="caption"><b>개인정보 수집·이용 안내</b> · 항목: 이메일(필수), 로그인 기기 정보(브라우저 종류·사용 일시) · 목적: 로그인, 여러 기기에서 내 설정·관심 목록 이어 보기, 로그인 알림 메일
+            · 보유: 탈퇴('내 기록 지우기')할 때까지 · 로그인에 꼭 필요한 정보만 받으며, 입력하지 않으면 로그인할 수 없습니다. 메일은 발송 업체에 위탁해 보냅니다. <a href="/privacy" target="_blank" rel="noopener">개인정보 처리방침</a></p>
+          <label className="check"><input type="checkbox" checked={agree} onChange={(e) => setAgree(e.target.checked)} /> 만 14세 이상이며, 위 개인정보 수집·이용 안내를 확인했습니다 (필수)</label>
         </form>
       )}
     </Dialog>

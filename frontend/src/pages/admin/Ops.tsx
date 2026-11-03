@@ -4,7 +4,9 @@ import { A, AdminHead, DataTable, Row, asArray, str, useAct } from "./common";
 
 const OK = "🟢", WARN = "🟡", BAD = "🔴";
 const ORDER: Record<string, number> = { [BAD]: 0, [WARN]: 1, [OK]: 2 };
-const statusOf = (r: Row) => str(r["상태"] ?? r.status);
+// 서버는 status 에 bad·warn·ok, icon 에 🔴🟡🟢 를 보낸다 — 예전엔 status 를 이모지와 비교해 요약이 늘 0/0/0, 상태 칸에 영어가 보였다 (2026-11-03)
+const ICON: Record<string, string> = { bad: BAD, warn: WARN, ok: OK };
+const statusOf = (r: Row) => str(r.icon) || ICON[str(r.status)] || str(r["상태"] ?? r.status);
 
 export default function Ops() {
   const { data, error, loading, reload } = useLoad(() => A.get<unknown>("ops"), []);

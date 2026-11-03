@@ -5,7 +5,7 @@
 // 키(DATA_GO_KR_KEY)가 없으면 숫자를 지어내지 않고 안내만 보여 준다 — 단, 저장된 자료(배치·파일 업로드)가 있는 시군구는 DB 로 보여 준다.
 // 2026-11-02 Phase 2: ☆ 관심 단지(re_watch: lawd·dong·apt·jibun) → /my-homes, '지역 흐름' 드릴다운(시군구 → 동 → 단지, 거래량 ±30% 달에 노트 표시).
 import { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { get } from "../api";
 import { Alert, useLoad } from "../components/ui";
 import { useMe } from "../me";
@@ -98,10 +98,14 @@ export default function Deals() {
   const [page, setPage] = useState(0);
   const [size, setSize] = usePageSize("deals");
   const [favOnly, setFavOnly] = useState(false);
-  // ?tab=apply 로 바로 '청약 공고' 탭을 열 수 있다 (공유 링크)
-  const [tab, setTab] = useState<"deals" | "apply">(() => {
-    const t = new URLSearchParams(window.location.search).get("tab") || saved.tab;
-    return t === "apply" && !qs.lawd ? "apply" : "deals";
+  // 탭은 주소(?tab=apply)로만 정한다 (2026-11-03) — 예전엔 마지막에 본 탭을 기억해, 메뉴 '실거래가 조회'(/deals)가 청약 공고 탭으로 열렸다.
+  // 탭을 바꾸면 주소도 바뀌어 공유 링크·뒤로 가기와 맞는다.
+  const [sp, setSp] = useSearchParams();
+  const tab: "deals" | "apply" = sp.get("tab") === "apply" && !qs.lawd ? "apply" : "deals";
+  const setTab = (t: "deals" | "apply") => setSp((prev) => {
+    const n = new URLSearchParams(prev);
+    if (t === "apply") n.set("tab", "apply"); else n.delete("tab");
+    return n;
   });
   const [ds, setDs] = useState(/^[a-z_]{3,30}$/.test(saved.ds || "") ? saved.ds : "apt_trade");
   const { me } = useMe();

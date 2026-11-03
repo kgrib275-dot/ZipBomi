@@ -7,7 +7,8 @@ import { Alert, useLoad } from "../components/ui";
 
 export default function UnsubscribePage() {
   const [params] = useSearchParams();
-  const token = (params.get("token") || "").slice(0, 100);
+  // ?token= (뉴스레터) · ?t= (2026-11-03 이전에 보낸 청약 알림 메일) 둘 다 받는다
+  const token = (params.get("token") || params.get("t") || "").slice(0, 100);
   const { data, error, loading } = useLoad(
     () => (token ? get<{ email_masked: string }>(`unsubscribe?token=${encodeURIComponent(token)}`) : Promise.resolve(null)),
     [token],

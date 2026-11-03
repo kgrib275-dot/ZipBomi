@@ -57,12 +57,15 @@ export const num = (v: unknown, d = 0) => (typeof v === "number" ? v : Number(v)
 export const str = (v: unknown) => (v === null || v === undefined ? "" : String(v));
 export const bool = (v: unknown) => v === true || v === 1 || v === "1" || v === "true";
 export const splitCsv = (s: string) => s.split(",").map((x) => x.trim()).filter(Boolean);
-export const today = () => new Date().toISOString().slice(0, 10);
+// 날짜는 이 PC(한국) 시각 기준 — 예전엔 toISOString(UTC)을 써서 오전 9시 전에는 어제가 되고, 주간 흐름이 일~금으로 하루씩 밀렸다 (2026-11-03)
+const ymd = (t: Date) => `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, "0")}-${String(t.getDate()).padStart(2, "0")}`;
+export const today = () => ymd(new Date());
 export const addDays = (d: string, n: number) => {
   const t = new Date(d + "T00:00:00");
   t.setDate(t.getDate() + n);
-  return t.toISOString().slice(0, 10);
+  return ymd(t);
 };
+export const nowTime = () => new Date().toLocaleTimeString("ko-KR", { hour12: false });
 /** 그 날이 속한 주의 월~일 (ISO 날짜). */
 export function weekBounds(d: string): [string, string] {
   const t = new Date(d + "T00:00:00");
@@ -286,7 +289,13 @@ export function DataTable({ rows, cols, labels, render, empty = "데이터 없�
   }, [rows, cols]);
   // 개인정보 표시 제한 (2026-11-03 ISMS-P) — 표에 나오는 이메일은 가려서 보인다. 전체 보기는 위쪽 RevealToggle(사유 기록, 10분)
   const reveal = useReveal();
-  const cell = (v: unknown) => (!reveal && typeof v === "string" && EMAIL_RE.test(v) ? maskEmail(v) : fmt(v));
+  // 칸 전체가 이메일인 경우뿐 아니라 문장 속 이메일, 'ip' 칸의 IP 끝자리도 가린다 (2026-11-03 관리 화면 점검)
+  const cell = (v: unknown, col?: string) => {
+    if (reveal || typeof v !== "string") return fmt(v);
+    if (EMAIL_RE.test(v)) return maskEmail(v);
+    if (col && /^(ip|IP)$/.test(col)) return maskIp(v);
+    return EMAIL_IN.test(v) ? v.replace(EMAIL_ALL, (m) => maskEmail(m)) : fmt(v);
+  };
   if (!rows.length) return <p className="caption">{empty}</p>;
   const keyOf = (r: Row, i: number) => (rowKey ? rowKey(r, i) : String(i));
   const allKeys = rows.map(keyOf);
@@ -317,7 +326,7 @@ export function DataTable({ rows, cols, labels, render, empty = "데이터 없�
                 )}
                 {columns.map((c) => (
                   <td key={c} className={typeof r[c] === "number" ? "num" : ""}>
-                    {render?.[c] ? render[c](r[c], r, i) : cell(r[c])}
+                    {render?.[c] ? render[c](r[c], r, i) : cell(r[c], c)}
                   </td>
                 ))}
               </tr>
@@ -329,6 +338,14 @@ export function DataTable({ rows, cols, labels, render, empty = "데이터 없�
   );
 }
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const EMAIL_IN = /[^\s@<>()"',;]+@[^\s@<>()"',;]+\.[A-Za-z]{2,}/;
+const EMAIL_ALL = /[^\s@<>()"',;]+@[^\s@<>()"',;]+\.[A-Za-z]{2,}/g;
+/** 1.2.3.xxx · IPv6 는 앞 네 마디만 */
+export function maskIp(ip: string): string {
+  if (/^\d+\.\d+\.\d+\.\d+$/.test(ip)) return ip.replace(/\.\d+$/, ".xxx");
+  if (ip.includes(":")) return ip.split(":").slice(0, 4).join(":") + ":…";
+  return ip;
+}
 /** ab***@example.com — 앞 2글자만 */
 export function maskEmail(e: string): string {
   const [local, domain] = e.split("@");

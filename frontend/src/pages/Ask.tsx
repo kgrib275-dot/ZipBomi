@@ -28,8 +28,8 @@ export default function Ask() {
   const [history, setHistory] = useState<Turn[]>(() => loadHistory());
   // 홈 맛보기의 예시 질문(?q=)은 입력칸에 채워만 둔다 — 질문 한도를 쓰는 전송은 본인이 누른다
   const [q, setQ] = useState(() => (new URLSearchParams(window.location.search).get("q") || "").slice(0, 500));
-  // 내 공간 자료(관심 단지 시세·관심 공고·프로필·저장한 노트·메모)를 함께 넘길지 — 기본 켬 (2026-11-02)
-  const [mine, setMine] = useState(false);
+  // 내 공간 자료(관심 단지 시세·관심 공고·프로필·저장한 노트·메모)를 함께 넘길지 — 기본 꺼짐, 내 공간의 '내 자료로 물어보기'(?mine=1)로 왔을 때만 켬 (2026-11-03)
+  const [mine, setMine] = useState(() => new URLSearchParams(window.location.search).get("mine") === "1");
   const [busy, setBusy] = useState<"ask" | "web" | null>(null);
   const [warn, setWarn] = useState<string | null>(null);
   const [pending, setPending] = useState<string | null>(null); // 답을 기다리는 중인 질문
@@ -192,7 +192,7 @@ export default function Ask() {
 
           <p className="caption ask-ai">보미AI 답변은 생성형 AI가 만든 결과물이라 틀릴 수 있어요. 중요한 결정 전에는 원문·공고로 확인하세요. 주민번호·계좌번호 같은 민감한 정보는 적지 마세요.</p>
 
-          <label className="check ask-mine" title="관심 단지 시세·관심 공고·내 프로필·저장한 노트·메모를 질문과 함께 Google Gemini로 보냅니다 (켤 때만)">
+          <label className="check ask-mine" title="관심 단지 시세·관심 공고·내 프로필·저장한 노트·메모를 질문과 함께 생성형 AI 업체(개인정보 처리방침의 국외 이전 항목)로 보냅니다 (켤 때만)">
             <input type="checkbox" checked={mine} onChange={(e) => setMine(e.target.checked)} /> 내 공간 자료(관심 단지·공고·프로필·메모)도 참고해서 답하기
           </label>
           <form className="chat-in" onSubmit={(e) => { e.preventDefault(); send(q); }}>
@@ -246,7 +246,7 @@ export default function Ask() {
           {history.some((t) => t.role === "assistant") && (
             <>
               <hr className="divider" />
-              <SubscribeCTA source="ask" headline="이런 소식을 매주 메일로 받아 보세요" sub="질문의 근거가 된 것 같은 부동산 노트 5편과 한 주의 흐름 요약을 월요일 아침 메일로 보내 드려요." />
+              <SubscribeCTA source="ask" headline="이런 소식을 매주 메일로 받아 보세요" sub="질문의 근거가 된 것 같은 부동산 노트 5편과 한 주의 흐름 요약을 주간 메일로 보내 드려요." />
             </>
           )}
         </>

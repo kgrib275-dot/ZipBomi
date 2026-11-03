@@ -1,6 +1,7 @@
 // 홈 '1분 안에 해 보기' — 각 페이지 인터랙션의 맛보기 (backend api/routers/try_it.py).
 // 화면에 보일 때 불러온다(첫 화면 속도 그대로). 원래 페이지의 인터랙션은 그대로 두고, 여기서는 입구만 만든다.
 // 퀴즈 1번은 홈에서 바로 풀 수 있고 오늘의 AX 와 같은 기록을 쓴다. 클릭은 try_click 으로 남겨 관리 > 참여 분석에서 본다.
+import { kwLabel } from "../policy";
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { ApiError, get, post, track } from "../api";
@@ -49,7 +50,7 @@ export default function TryIt() {
               <div className="try-h"><span>지금 뜨는 키워드 · 7일</span><em>데이터 랩 →</em></div>
               {data.spark.map((s) => (
                 <div className="spark-row" key={s.keyword}>
-                  <span>{s.rising ? "▲ " : ""}{s.keyword}</span><Spark values={s.series} /><b>{s.cur}</b>
+                  <span>{s.rising ? "▲ " : ""}{kwLabel(s.keyword)}</span><Spark values={s.series} /><b>{s.cur}</b>
                 </div>
               ))}
             </Link>

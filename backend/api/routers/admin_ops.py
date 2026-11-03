@@ -64,7 +64,7 @@ def _rows() -> list[dict]:
     conn = db.connect()
     try:
         # ---------- 공개 서버 ----------
-        ports = [DEV_PORT, *PUBLIC_PORTS]
+        ports = sorted({DEV_PORT, *PUBLIC_PORTS})  # 개발·공개 포트가 같으면(5030) 두 번 세어 '서버 2개 (5030, 5030)'로 보였다 (2026-11-03)
         with ThreadPoolExecutor(len(ports)) as pool:
             listening = [p for p, ok in zip(ports, pool.map(_listening, ports)) if ok]
         public = next((p for p in listening if p != DEV_PORT and _healthy(p)), None)
@@ -117,7 +117,7 @@ def _rows() -> list[dict]:
              ".env에 GEMINI_API_KEYS" + (" — 없으면 의미 검색·벡터화가 멈춥니다" if use_claude else "")))
         ask = cfg["ask"]
         add("AI", "질문하기 한도", OK if ask.get("global_daily", 40) <= 60 else WARN,
-            f"구독자 무료 {ask.get('free_credits', 3)}회(가입 시) · 월 구독 {ask['member_daily']}회/일 · IP {ask['per_ip_daily']}회 · "
+            f"계정당 처음 1회 무료(회원 계정에서 늘림) · 월 구독 {ask['member_daily']}회/일 · IP {ask['per_ip_daily']}회 · "
             f"전체 {ask.get('global_daily', 40)}회 / 일 · 활성 월 구독 {membership.active_count()}명",
             "" if ask.get("global_daily", 40) <= 60 else "질문 1건에 Gemini 1~3회 — 무료 키 한도(키당 하루 약 20회)에 비해 큽니다")
         unscored = len(db.unscored_articles(14))
@@ -205,6 +205,8 @@ def ops() -> dict:
 @router.post("/backup")
 def backup(request: Request) -> dict:
     try:
+        if os.environ.get("ZIPGENIE_DB"):  # 시험용 DB 로 띄운 서버에서 운영 백업 폴더를 시험 데이터로 덮지 않게 (2026-11-03)
+            raise HTTPException(400, "시험용 DB(ZIPGENIE_DB)로 띄운 서버에서는 백업하지 않습니다.")
         p = db.backup(force=True)
     except RuntimeError as e:  # 무결성 검사 실패
         raise HTTPException(500, str(e))

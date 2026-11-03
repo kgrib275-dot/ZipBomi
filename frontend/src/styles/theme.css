@@ -351,9 +351,9 @@ input[type="month"],input[type="date"]{font:inherit;padding:9px 12px;border-radi
 @media (max-width:380px){.hdr-in{gap:6px}.hdr-right{gap:4px}.lang-btn{padding:4px 6px;font-size:.78rem}.hdr .logo{font-size:.95em}}
 /* 1분 둘러보기 띠 (layout/TrialGate.tsx) */
 .trial-bar{position:sticky;top:60px;z-index:90;display:flex;flex-wrap:wrap;gap:6px 12px;align-items:center;justify-content:center;padding:8px 14px;
-  background:linear-gradient(90deg,rgba(245,184,0,.18),rgba(245,184,0,.08));border-bottom:1px solid var(--tint-line);font-size:.88rem;color:var(--ink)}
+  background:linear-gradient(90deg,rgba(245,184,0,.18),rgba(245,184,0,.08)),var(--surface);border-bottom:1px solid var(--tint-line);font-size:.88rem;color:var(--ink)}  /* 2026-11-03 불투명 바탕 — 스크롤하면 본문 글자와 겹쳤다 */
 .trial-bar .sp{color:var(--ink-2)}
-.trial-bar.done{background:linear-gradient(90deg,rgba(220,38,38,.18),rgba(245,184,0,.1))}
+.trial-bar.done{background:linear-gradient(90deg,rgba(220,38,38,.18),rgba(245,184,0,.1)),var(--surface)}
 @media (max-width:640px){.trial-bar .sp{display:none}}
 /* 보미AI 옆 패널 (layout/AskPanel.tsx) */
 .bomi-btn{border-color:var(--accent)!important;color:var(--accent-2)!important;font-weight:800}
@@ -393,3 +393,49 @@ input[type="month"],input[type="date"]{font:inherit;padding:9px 12px;border-radi
 @media (max-width:640px){.ask-panel{top:0;left:0;right:0;bottom:0;width:auto;border-radius:0;border:none}}
 /* 좁은 화면 — 보미AI 버튼이 늘어 상단이 넘치지 않게 (2026-11-02) */
 @media (max-width:420px){.hdr-right .lang-btn{display:none}.hdr-right{gap:4px}.bomi-btn{padding:5px 8px}}
+
+/* 구간 선택 단추 묶음 (.seg) — 2026-11-03 Home.css 에서 옮김: 홈을 거치지 않고 데이터 랩에 바로 들어오면 기본 회색 단추로 보였다 */
+.seg{display:inline-flex;gap:2px;border:1px solid var(--line);border-radius:12px;padding:3px;background:var(--surface);flex-wrap:wrap;max-width:100%}
+.seg button{all:unset;cursor:pointer;padding:7px 14px;border-radius:9px;font-size:.95rem;color:var(--ink-2);white-space:nowrap}
+.seg button.on{background:rgba(217,161,0,.25);color:var(--ink);font-weight:600}
+.seg button:focus-visible{outline:2px solid var(--accent-2)}
+.seg.sm{display:inline-flex;gap:2px;border:1px solid var(--line);border-radius:10px;padding:2px;background:var(--surface-2)}
+.seg.sm button{all:unset;cursor:pointer;padding:5px 10px;border-radius:8px;font-size:.8rem;color:var(--ink-2);white-space:nowrap}
+.seg.sm button.on{background:rgba(217,161,0,.28);color:var(--ink);font-weight:700}
+.now-unk{color:var(--warn-ink, #b45309)}  /* 기준일이 비어 있는 현행 수치 (2026-11-03) */
+/* 2026-11-03 품질 검수 — 휴대폰에서 둥근 버튼(✦·↑)이 버튼·숫자를 가리던 것: 작게, 본문 아래 여백 확보 */
+@media (max-width:640px){
+  .fab{width:40px;height:40px;font-size:17px;right:12px}
+  .fab-top{bottom:calc(14px + env(safe-area-inset-bottom,0px))}.fab-ask{bottom:calc(62px + env(safe-area-inset-bottom,0px))}
+  main .page{padding-bottom:96px}
+  /* 구독 안내 띠 — 글자가 폭 70px 에 다섯 줄로 꺾이던 것: 글은 한 줄 전체, 단추는 아래 줄 */
+  #ax-nudge{flex-wrap:wrap;width:calc(100vw - 24px);max-width:none;gap:8px 10px;padding:12px 14px}
+  #ax-nudge .t{flex:1 1 100%;font-size:.92rem}
+  #ax-nudge .go{flex:1 1 auto;text-align:center}
+}
+/* 대화상자를 연 동안 뒤 페이지 스크롤 잠금 (2026-11-03) */
+html.dlg-open,html.dlg-open body{overflow:hidden}
+/* PC 상단 메뉴·단추의 키보드 포커스 표시 (2026-11-03 — Tab 으로 지날 때 위치가 안 보였다) */
+.nav a:focus-visible,.nav .dd > button:focus-visible,.hdr-right .btn:focus-visible,.burger:focus-visible,.linkish:focus-visible,.btn:focus-visible{outline:2px solid var(--accent-2);outline-offset:2px}
+/* 휴대폰 메뉴는 묶음이 늘 펼쳐져 있으므로 접기 표시(▾)를 숨긴다 (2026-11-03) */
+.nav.open .caret{display:none}
+/* 내 공간 아이콘 — 로그인하면 작은 점 (2026-11-03: ○·◉·● 기호는 뜻을 알기 어려웠다) */
+.me-ico{position:relative}.me-ico.in::after{content:"";position:absolute;right:-3px;top:-1px;width:7px;height:7px;border-radius:50%;background:#22c55e;border:1px solid var(--surface)}
+/* 표 — 한국어 낱말이 글자 단위로 꺾이지 않게 ('송/파', '공/고/88/건') (2026-11-03) */
+.table th,.table td{word-break:keep-all}
+.re-list-h h3{white-space:nowrap}
+@media (max-width:480px){.mh-bands th,.mh-bands td{padding:6px 5px;font-size:.82rem}}
+/* 휴대폰 그래프 글자 (2026-11-03) — 그래프가 화면 폭에 맞춰 통째로 줄어 축 글자가 6~8px 로 읽을 수 없었다.
+   SVG 안 글자 크기(좌표 단위)를 키워 실제로 9~10px 정도가 되게 한다. */
+@media (max-width:640px){
+  .re-chart text,.lm-chart text{font-size:19px}
+  .re-chart text.axis-t{font-size:18px}
+}
+@media (max-width:420px){.re-chart text,.lm-chart text{font-size:21px}}
+/* 왼쪽 세로축 숫자(오른쪽 맞춤)는 왼쪽 여백이 좁아 조금 작게 — 잘리지 않게 */
+@media (max-width:640px){.re-chart text[text-anchor="end"],.lm-chart text[text-anchor="end"]{font-size:15px}}
+/* 화면 밀림(CLS) 줄이기 (2026-11-03) — 자료를 기다리는 자리를 미리 넉넉히 잡아, 늦게 들어온 내용이 아래 내용을 밀어내지 않게 */
+.page-loading{min-height:360px;box-sizing:border-box}
+.lab-page .doc-frame{min-height:1200px}
+.re-chart-wrap,.lm-chart{min-height:180px}
+.as{min-height:520px}

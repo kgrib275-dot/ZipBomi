@@ -44,7 +44,11 @@ function Sources() {
         {/* 전체 켜기·끄기 — 화면 값만 바꾼다. 저장 버튼을 눌러야 반영 (실수로 모든 소스가 꺼지지 않게) */}
         <button className="btn sm ghost" disabled={!sources.length || on.size === sources.length} onClick={() => setOn(new Set(sources.map((s) => str(s.name))))}>전체 켜기</button>
         <button className="btn sm ghost" disabled={!on.size} onClick={() => setOn(new Set())}>전체 끄기</button>
-        <button className="btn primary" onClick={async () => { await act(() => A.put("sources", { enabled: Array.from(on) }), "소스 설정을 저장했습니다."); reload(); }}>💾 저장</button>
+        <button className="btn primary" onClick={async () => {
+          // 소스를 모두 끄면 수집이 멈춘다 — 한 번 더 묻는다 (2026-11-03)
+          if (on.size === 0 && !window.confirm("켜진 소스가 하나도 없습니다. 이대로 저장하면 기사 수집이 멈춥니다. 저장할까요?")) return;
+          await act(() => A.put("sources", { enabled: Array.from(on) }), "소스 설정을 저장했습니다."); reload();
+        }}>💾 저장</button>
       </div>
     </div>
   );

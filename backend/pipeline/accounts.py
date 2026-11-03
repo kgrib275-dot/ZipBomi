@@ -256,6 +256,19 @@ def resolve(cookie_raw: str | None) -> tuple[str | None, str | None]:
     return (raw, cookie_raw) if raw else (cookie_raw, None)
 
 
+def purge_sessions() -> int:
+    """1년 동안 쓰지 않은 기기 로그인 값을 지운다 — 매일 정리(db.purge_expired)에서. 예전엔 그 기기가 다시 접속할 때만 지워져
+    처리방침의 '1년 동안 쓰지 않으면 파기'와 어긋났다 (2026-11-03)."""
+    cut = (datetime.now() - timedelta(days=SESSION_IDLE_DAYS)).isoformat(timespec="seconds")
+    c = _conn()
+    try:
+        n = c.execute("DELETE FROM account_sessions WHERE last_seen < ?", (cut,)).rowcount
+        c.commit()
+        return n
+    finally:
+        c.close()
+
+
 def end_session(sid: str | None) -> None:
     """이 기기만 로그아웃."""
     if not sid:

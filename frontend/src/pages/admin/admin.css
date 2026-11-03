@@ -159,3 +159,10 @@ pre.code{background:var(--code-bg);border:1px solid var(--line);border-radius:10
 
 /* 관리자 로그아웃 (2026-11-03 ISMS-P) */
 .adm-topbar{display:flex;justify-content:flex-end;gap:8px;margin:-6px 0 6px}
+.adm-relogin{position:fixed;inset:0;z-index:300;background:rgba(0,0,0,.45);display:grid;place-items:center;padding:16px;overflow:auto}
+.adm-relogin .adm-token{margin:0;width:min(460px,100%)}
+.contact-list .contact.done{opacity:.65}
+.badge.warn{background:rgba(245,158,11,.18);color:var(--ink)}
+/* 휴대폰 관리 화면 (2026-11-03) — 넓은 표·그래프는 본문 안에서만 옆으로 밀리게 */
+.adm-main{min-width:0;overflow-x:auto}
+@media (max-width:860px){.adm-main .table td .btn{white-space:nowrap}}

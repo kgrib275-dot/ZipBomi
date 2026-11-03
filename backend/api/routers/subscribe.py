@@ -171,6 +171,16 @@ def unsubscribe(payload: dict = Body(...), c: Caller = CallerDep) -> dict:
             "message": f"{_mask(email)} 주소의 구독을 해지했습니다. 다시 받고 싶으면 홈에서 언제든 구독할 수 있습니다."}
 
 
+@router.post("/unsubscribe/one-click")
+def unsubscribe_one_click(token: str = Query("")) -> dict:
+    """메일 앱의 '수신 거부' 단추 (RFC 8058 List-Unsubscribe-Post) — 메일 앱이 화면 없이 바로 보낸다 (2026-11-03).
+    우리 화면의 위조 요청 방지 머리글(X-Requested-With)을 붙일 수 없으므로 api/main.py _guard 에서 이 경로만 뺀다. 토큰이 열쇠다."""
+    email = db.unsubscribe(_unsub_token(token))
+    if not email:
+        raise HTTPException(status_code=404, detail="유효하지 않은 해지 링크입니다.")
+    return {"ok": True}
+
+
 @router.get("/refer")
 def refer(k: str = Query(""), c: Caller = CallerDep) -> dict:
     """내 추천 현황 — 메일 하단 링크(본인만 아는 열쇠)로만 들어온다."""

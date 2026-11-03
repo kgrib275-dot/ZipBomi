@@ -12,6 +12,10 @@ import "./Home.css";
 type Version = { id?: number; announced_at: string; effective_date: string; summary?: string; status: string };
 type Row = Record<string, string | null | undefined>;
 type Content = {
+  measures?: string[];  // 2026-11-03 부터 공지 때 함께 고정 (제8조)
+  cookies?: { name: string; purpose: string; keep: string }[];  // 제9조
+  storage?: string;
+  cookie_refuse?: string;
   settings?: { operator?: string; admin_measures?: string; officer_name?: string; officer_dept?: string; officer_email?: string; officer_phone?: string; request_dept?: string };
   retention?: unknown;
   records?: Row[];
@@ -57,11 +61,11 @@ const UL = ({ children }: { children: React.ReactNode }) => <ul className="sec-p
 function PolicyView({ content, effective, announced }: { content: Content; effective: string; announced?: string | null }) {
   const s = content.settings || {};
   const operator = s.operator || "집보미 운영자";
-  const measures = [
-    "관리 화면 접근 통제 — 관리자 로그인(토큰과 OTP 2단계 인증), 30분 동안 쓰지 않으면 자동 차단, 로그인 5회 실패 시 잠금",
-    "관리자 접속기록 2년 보관·위변조 방지(해시 연결)·정기 점검, 개인정보 내려받기·전체 보기 시 사유 기록, 관리 화면의 이메일 가림 표시",
+  // 공지한 버전에 들어 있는 문구를 그대로 쓴다. 2026-11-03 이전 버전(v1)은 그때 화면에 있던 문구로 보여 준다.
+  const measures = content.measures ? [...content.measures] : [
+    "관리 화면 접근 제한 — 서버가 있는 PC 또는 등록한 IP에서만 접근",
     "전송 구간 암호화(HTTPS), 서버는 외부에서 직접 접속할 수 없게 내부 주소에만 열어 둠",
-    "로그인 링크·확인 코드·기기 식별값·구독 코드는 복원할 수 없는 해시로, IP 대체 식별값과 쿠키는 서버 비밀값으로 서명·해시 처리",
+    "구독 코드는 복원할 수 없는 해시로, IP 대체 식별값과 쿠키는 서버 비밀값으로 서명·해시 처리",
     "접속 기록 보관과 남용 시도 제한, 오류 화면에 내부 정보 비노출",
     "데이터 백업과 무결성 검사, 보유 기간이 지난 정보 자동 파기",
   ];
@@ -115,12 +119,23 @@ function PolicyView({ content, effective, announced }: { content: Content; effec
       <UL>{measures.map((m) => <li key={m}>{m}</li>)}</UL>
 
       <H>제9조 개인정보 자동 수집 장치(쿠키)의 설치·운영 및 거부</H>
-      <UL>
-        <li>사이트는 같은 방문자를 알아보기 위해 <b>쿠키(zgv, 1년 — 방문할 때마다 연장)</b> 를 씁니다. 연속 참여 기록, 테스트·퀴즈 결과 유지, 이용 한도 계산에 쓰며 이름·이메일과 연결하지 않습니다. 북마크와 안내 띠 닫기 기록은 브라우저 저장소에만 남고 서버로 보내지 않습니다.</li>
-        <li><b>거부 방법</b>: 브라우저 설정에서 쿠키를 차단하거나 삭제할 수 있습니다 (예: Chrome·Edge → 설정 → 개인정보 및 보안 → 쿠키 및 사이트 데이터).</li>
-        <li><b>거부 시 불이익</b>: 연속 참여 기록과 결과 유지가 되지 않을 수 있으며, 그 밖의 이용에는 제한이 없습니다.</li>
-        <li>공유 버튼(카카오톡·LinkedIn)과 번역(EN) 버튼은 누를 때만 해당 서비스로 연결되며, 화면 글꼴은 Google Fonts에서 받아 옵니다.</li>
-      </UL>
+      {content.cookies ? (
+        <UL>
+          <li>사이트는 아래 쿠키만 씁니다.
+            <ul>{content.cookies.map((c) => <li key={c.name}><b>{c.name}</b> — {c.purpose} (보관: {c.keep})</li>)}</ul></li>
+          {content.storage && <li>{content.storage}</li>}
+          <li><b>거부 방법</b>: 브라우저 설정에서 쿠키를 차단하거나 삭제할 수 있습니다 (예: Chrome·Edge → 설정 → 개인정보 및 보안 → 쿠키 및 사이트 데이터).</li>
+          <li><b>거부 시 불이익</b>: {content.cookie_refuse}</li>
+          <li>공유 버튼(카카오톡·LinkedIn)과 번역(EN) 버튼은 누를 때만 해당 서비스로 연결되며, 화면 글꼴은 Google Fonts에서 받아 옵니다.</li>
+        </UL>
+      ) : (
+        <UL>
+          <li>사이트는 같은 방문자를 알아보기 위해 <b>쿠키(zgv, 1년 — 방문할 때마다 연장)</b> 를 씁니다. 연속 참여 기록, 테스트·퀴즈 결과 유지, 이용 한도 계산에 쓰며 이름·이메일과 연결하지 않습니다. 북마크와 안내 띠 닫기 기록은 브라우저 저장소에만 남고 서버로 보내지 않습니다.</li>
+          <li><b>거부 방법</b>: 브라우저 설정에서 쿠키를 차단하거나 삭제할 수 있습니다 (예: Chrome·Edge → 설정 → 개인정보 및 보안 → 쿠키 및 사이트 데이터).</li>
+          <li><b>거부 시 불이익</b>: 연속 참여 기록과 결과 유지가 되지 않을 수 있으며, 그 밖의 이용에는 제한이 없습니다.</li>
+          <li>공유 버튼(카카오톡·LinkedIn)과 번역(EN) 버튼은 누를 때만 해당 서비스로 연결되며, 화면 글꼴은 Google Fonts에서 받아 옵니다.</li>
+        </UL>
+      )}
 
       <H>제10조 자동화된 결정</H>
       <P>운영자는 정보주체에게 법적 효과나 중대한 영향을 미치는 자동화된 결정을 하지 않습니다. 사이트의 AI는 기사 선별·요약과 질문 답변에만 쓰입니다.</P>

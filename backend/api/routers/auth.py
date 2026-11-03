@@ -67,6 +67,8 @@ def _mail_refused(email: str) -> HTTPException:
 @router.post("/auth/request")
 def request_link(request: Request, response: Response, payload: dict = Body(...), c: Caller = CallerDep) -> dict:
     email = _email(payload.get("email"))
+    if payload.get("agree") is not True:  # 만 14세 이상·수집 안내 확인 (로그인 창 체크, 2026-11-03)
+        raise HTTPException(status_code=400, detail="만 14세 이상인지와 개인정보 수집·이용 안내를 확인해 주세요.")
     throttle("login_try", c, per_visitor=5, per_ip=30)
     bad = email_check.problem(email, typo_ok=payload.get("typo_ok") is True)
     if bad:
@@ -213,7 +215,8 @@ def admin_login(request: Request, response: Response, payload: dict = Body(...),
     if res == "not_configured":
         raise HTTPException(status_code=503, detail="관리자 토큰(.env ADMIN_TOKEN)이 설정되지 않았습니다.")
     if res == "locked":
-        raise HTTPException(status_code=429, detail=f"로그인 실패가 {admin_auth.FAIL_LIMIT}번을 넘어 {admin_auth.FAIL_WINDOW_MIN}분 동안 잠겼습니다.")
+        until = admin_auth.locked_until(c.ip)
+        raise HTTPException(status_code=429, detail=f"로그인 실패가 {admin_auth.FAIL_LIMIT}번을 넘어 잠겼습니다." + (f" {until}에 풀립니다." if until else f" {admin_auth.FAIL_WINDOW_MIN}분 뒤에 다시 시도해 주세요."))
     if res != "ok":
         raise HTTPException(status_code=401, detail="토큰 또는 OTP 가 맞지 않습니다.")
     # 세션 쿠키 (창을 닫으면 사라짐) · HttpOnly · SameSite=Strict — 다른 사이트에서 연 링크·요청에는 실리지 않는다

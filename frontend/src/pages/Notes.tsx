@@ -143,7 +143,7 @@ function NoteDetail({ id }: { id: string }) {
         </>
       )}
       <hr className="divider" />
-      <SubscribeCTA source="note_detail" headline="이런 노트를 매주 받아 보세요" sub="한 주의 노트 5편과 부동산 흐름 요약을 월요일 아침 메일로 보내 드려요." />
+      <SubscribeCTA source="note_detail" headline="이런 노트를 매주 받아 보세요" sub="한 주의 노트 5편과 부동산 흐름 요약을 주간 메일로 보내 드려요." />
     </>
   );
 }

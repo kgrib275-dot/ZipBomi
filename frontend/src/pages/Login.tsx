@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { ApiError, post } from "../api";
+import { useDialogs } from "../components/Dialogs";
 import { Alert } from "../components/ui";
 import { announceAuth, useMe } from "../me";
 
@@ -35,6 +36,7 @@ export default function Login() {
     catch (e) { setErr(e instanceof Error ? e.message : "처리하지 못했습니다."); } finally { setBusy(false); }
   };
   const valid = (x: string) => /^[0-9a-f]{32}$/.test(x);
+  const { openLogin } = useDialogs();
   if (rv) return (
     <div className="login-page">
       <div className="eyebrow">보안</div>
@@ -53,7 +55,13 @@ export default function Login() {
     <div className="login-page">
       <div className="eyebrow">로그인</div>
       <h2 className="sec-h">집보미에 <span className="grad">로그인</span>합니다</h2>
-      {!valid(t) ? <Alert kind="err">링크가 올바르지 않습니다. 메일의 버튼을 다시 눌러 주세요.</Alert> : (
+      {!t ? (
+        // 링크 없이 /login 으로 들어온 경우 — 막다른 안내 대신 바로 로그인할 수 있게 (2026-11-03)
+        <>
+          <p className="sec-p">이메일로 받은 6자리 코드로 로그인해요. 비밀번호는 필요 없어요.</p>
+          <button className="btn primary" onClick={openLogin}>메일로 로그인</button>
+        </>
+      ) : !valid(t) ? <Alert kind="err">링크가 올바르지 않습니다. 메일의 버튼을 다시 눌러 주세요. <button type="button" className="linkish" onClick={openLogin}>새로 로그인하기</button></Alert> : (
         <form onSubmit={(e) => { e.preventDefault(); go(); }}>
           <p className="sec-p">아래 버튼을 누르면 이 브라우저가 계정에 연결됩니다. 이 브라우저에 저장해 둔 관심 단지·알림·저장한 노트는 계정에 합쳐져요.</p>
           {needCode && (

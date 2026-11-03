@@ -134,7 +134,7 @@ function ResultView({ data, answers, onRetry }: { data: TypeData; answers: strin
       <button className="btn" style={{ marginTop: 10 }} onClick={onRetry}>↻ 다시 하기</button>
       <ProfileCTA what="성향 유형" />
       <ProfileForm source="type_test" />
-      <SubscribeCTA source="type_test" headline={`${t.name}에게 맞는 부동산 노트를 매주 받아 보세요`} sub="내 유형이 놓치기 쉬운 주제까지, 월요일 아침 3분 요약으로 보내 드립니다." />
+      <SubscribeCTA source="type_test" headline={`${t.name}에게 맞는 부동산 노트를 매주 받아 보세요`} sub="내 유형이 놓치기 쉬운 주제까지, 주간 3분 요약으로 보내 드립니다." />
       {!!res.recommended_notes?.length && (
         <>
           <div className="eyebrow" style={{ marginTop: 20 }}>{res.code} 유형에게 추천</div>

@@ -12,7 +12,7 @@ import { useProfile } from "../profile";
 type Market = {
   indicators: Param[];
   kb_seoul: { label: string; value: number; period: string; mom: number; source: string } | null;
-  extra?: { label: string; value: string; sub: string; dir: string; href: string }[];
+  extra?: { label: string; value: string; sub: string; dir: string; href: string; src?: string }[];
   trades: {
     ym: string; label: string; count: number; median: number; reporting: boolean; source: string;
     prev: { label: string; count: number; median: number } | null;
@@ -220,6 +220,7 @@ export function MarketBoard() {
               <span className="k">{p.label.replace(" (소비자동향조사)", "").replace(" (신규취급액)", "")}</span>
               <span className="v">{fmtValue(p.value, p.value_text, p.unit)}</span>
               <span className={`d ${d ? (d > 0 ? "up" : "down") : ""}`}>{d ? `${d > 0 ? "▲" : "▼"} ${Math.abs(d).toLocaleString("ko-KR", { maximumFractionDigits: 2 })}${p.unit === "%" ? "%p" : p.unit} ` : ""}{p.effective_on} 기준</span>
+              {p.source_name && <span className="src">{p.source_name.split(" ")[0]}</span>}
             </Link>
           );
         })}
@@ -228,11 +229,12 @@ export function MarketBoard() {
             <span className="k">{data.kb_seoul.label}</span>
             <span className="v">{data.kb_seoul.value.toFixed(1)}</span>
             <span className={`d ${data.kb_seoul.mom > 0 ? "up" : data.kb_seoul.mom < 0 ? "down" : ""}`}>전월 대비 {data.kb_seoul.mom > 0 ? "+" : ""}{data.kb_seoul.mom}% · {data.kb_seoul.period}</span>
+            <span className="src">자료: KB부동산</span>
           </Link>
         )}
         {(data.extra || []).map((x) => (
           <Link key={x.label} to={x.href} className="mkt-kpi">
-            <span className="k">{x.label}</span><span className="v">{x.value}</span><span className={`d ${x.dir}`}>{x.sub}</span>
+            <span className="k">{x.label}</span><span className="v">{x.value}</span><span className={`d ${x.dir}`}>{x.sub}</span>{x.src && <span className="src">{x.src}</span>}
           </Link>
         ))}
       </div>
@@ -271,13 +273,13 @@ export function MarketBoard() {
             <Link className="more" to="/calendar">분양 일정 전체 →</Link>
           </div>
           <div className="mkt-box">
-            <h3>오늘 읽은 기사</h3>
+            <h3>최근 읽은 기사</h3>
             <ul className="mkt-news">
               {data.articles.map((a) => (
-                <li key={a.url}><a href={a.url} target="_blank" rel="noopener">{a.title}</a><span>{a.source} · {a.at.slice(5, 16).replace("T", " ")}</span></li>
+                <li key={a.url}><a href={a.url} target="_blank" rel="noopener">{a.title}</a><span>{a.source} · {a.at.slice(5, 16)}</span></li>
               ))}
             </ul>
-            <p className="caption" style={{ margin: "6px 0 0" }}>여러 매체에서 부동산 관련도가 높은 기사만 골랐어요. 제목을 누르면 원문으로 가요.</p>
+            <p className="caption" style={{ margin: "6px 0 0" }}>최근 3일 동안 여러 매체에서 부동산 관련도가 높은 기사만 골랐어요(한국 시각). 제목을 누르면 원문으로 가요.</p>
           </div>
         </div>
       )}

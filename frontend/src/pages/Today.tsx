@@ -81,7 +81,9 @@ export default function Today() {
   const quiz = useMemo(() => data?.quiz ?? [], [data]);
   const answered = quiz.filter((q) => q.mine).length;
   const score = quiz.filter((q) => q.mine && Number(q.mine.correct) > 0).length;
-  const streak = data?.streak ?? 0;
+  // 오늘 문제를 다 풀면 서버 기록이 다음에 불러올 때까지 0일로 남아, 위(0일)와 아래(1일째)가 달랐다 (2026-11-03) — 둘 다 같은 값으로
+  const solved = quiz.length > 0 && quiz.every((q) => q.mine);
+  const streak = solved ? Math.max(data?.streak ?? 0, 1) : data?.streak ?? 0;
   const poll = data?.poll ?? null;
   const dayLabel = (data?.day || "").replace(/-/g, ".");
 
@@ -167,7 +169,7 @@ export default function Today() {
         <>
           <div className="quiz-done">
             <b>오늘 {score}/{quiz.length} 정답</b>
-            <span>내일 새 문제가 올라옵니다. 연속 참여 🔥{Math.max(streak, 1)}일째!</span>
+            <span>내일 새 문제가 올라옵니다. 연속 참여 🔥{streak}일째!</span>
           </div>
           <ShareReveal content="today" path="/s/q" params={{ d: data?.day || "", score, n: quiz.length }}
             title={`오늘의 부동산 퀴즈 ${score}/${quiz.length} — 너도 풀어 봐`}
@@ -201,7 +203,7 @@ export default function Today() {
       {(answered > 0 || poll?.mine) && (
         <>
           <ProfileForm source="today" />
-          <SubscribeCTA source="today" headline="내일 정답과 새 문제, 놓치지 마세요" sub="매주 월요일, 한 주의 부동산 흐름과 퀴즈에 나온 기사 해설을 메일로 보내 드려요." />
+          <SubscribeCTA source="today" headline="내일 정답과 새 문제, 놓치지 마세요" sub="매주 한 주의 부동산 흐름과 퀴즈에 나온 기사 해설을 메일로 보내 드려요." />
         </>
       )}
 

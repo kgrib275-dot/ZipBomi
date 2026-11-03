@@ -6,10 +6,11 @@ import { ApiError, post, track } from "../api";
 import { useMe } from "../me";
 import { Alert, Dialog } from "./ui";
 import LoginDialog from "./LoginDialog";
+import { scheduleText, useNewsletter } from "../newsletter";
 
 export const INDUSTRIES = ["서울", "경기", "인천", "부산·울산·경남", "대구·경북", "대전·세종·충청", "광주·전라", "강원·제주"];
 const BENEFITS: [string, string, string][] = [
-  ["🗓️", "매주 월요일 3분", "이번 주 시세·정책·청약 흐름을 한 줄 헤드라인과 노트 5편으로"],
+  ["🗓️", "매주 3분", "이번 주 시세·정책·청약 흐름을 한 줄 헤드라인과 노트 5편으로"],
   ["🏠", "내 상황에 맞게", "무주택·갈아타기·임차인 등 누구에게 어떤 영향인지까지"],
   ["📎", "주간 PDF 리포트", "저장해 두고 다시 보기 좋은 카드형 요약 리포트"],
 ];
@@ -46,6 +47,7 @@ export function DialogProvider({ children }: { children: React.ReactNode }) {
 }
 
 function SubscribeDialog({ source, onClose }: { source: string; onClose: () => void }) {
+  const nl = useNewsletter();
   const { state, setState } = useMe();
   const [email, setEmail] = useState("");
   const [inds, setInds] = useState<string[]>([]);
@@ -88,15 +90,16 @@ function SubscribeDialog({ source, onClose }: { source: string; onClose: () => v
             <li>메일함에서 <b>"[집보미] 구독 신청을 확인해 주세요"</b>를 엽니다.</li>
             <li>메일 안의 <b>"구독 확인하기"</b> 버튼을 누르면 구독이 완료됩니다.</li>
           </ol>
-          <p className="caption">메일이 안 보이면 스팸함·프로모션함도 확인해 주세요. 보낸 사람은 집보미 입니다.</p>
+          <p className="caption">메일이 안 보이면 스팸함·프로모션함도 확인해 주세요. 보낸 사람은 집보미입니다.</p>
           <button type="button" className="btn primary block" style={{ marginTop: 14 }} onClick={onClose}>확인</button>
         </div>
       </Dialog>
     );
   }
   return (
-    <Dialog title="월요일 아침 맞춤 브리핑 받기" onClose={onClose}>
-      <p className="sec-p" style={{ margin: "0 0 10px" }}>월요일 아침 7시, 내 관심 단지와 내 조건 기준으로 3분. 관심 단지 거래 흐름과 내 유형에 영향 있는 노트만 골라 보내 드립니다.</p>
+    <Dialog title="주간 맞춤 브리핑 받기" onClose={onClose}>
+      <p className="sec-p" style={{ margin: "0 0 10px" }}>{scheduleText(nl)}, 내 관심 단지와 내 조건 기준으로 3분. 관심 단지 거래 흐름과 내 유형에 영향 있는 노트만 골라 보내 드립니다.
+        {!nl.enabled && " 청약 D-3·전세 만기 알림 메일은 지금도 받을 수 있어요."}</p>
       <div style={{ display: "grid", gap: 8, margin: "2px 0 8px" }}>
         {BENEFITS.map(([i, t, d]) => (
           <div key={t} style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
@@ -107,7 +110,7 @@ function SubscribeDialog({ source, onClose }: { source: string; onClose: () => v
       </div>
       <Link to="/letter" onClick={onClose} className="more">✉ 받게 될 메일 미리 보기 →</Link>
       <form onSubmit={submit} style={{ marginTop: 12 }}>
-        <div className="field"><label>이메일</label><input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="name@company.com" maxLength={254} /></div>
+        <div className="field"><label htmlFor="sb-email">이메일</label><input id="sb-email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="name@company.com" maxLength={254} /></div>
         <div className="field">
           <label>관심 지역 소식을 먼저 받기 (선택)</label>
           <div className="btn-row">
@@ -134,30 +137,41 @@ function SubscribeDialog({ source, onClose }: { source: string; onClose: () => v
 }
 
 function ContactDialog({ onClose, preset = "" }: { onClose: () => void; preset?: string }) {
-  const [f, setF] = useState({ name: "", email: "", company: "", message: preset, agree: false });
+  // 2026-11-03: 접수되면 완료 화면으로 바꾸고 보내는 동안 단추를 잠근다 — 예전엔 다시 누르면 같은 문의가 또 접수됐다.
+  // '부서·직책' 칸은 회사용 서비스 시절 흔적이라 뺐다 (개인용 서비스 — 최소 수집).
+  const [f, setF] = useState({ name: "", email: "", message: preset, agree: false });
   const [msg, setMsg] = useState<{ kind: "ok" | "err"; text: string } | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [sent, setSent] = useState(false);
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (busy) return;
+    setBusy(true); setMsg(null);
     try {
       await post("contact", f);
-      setMsg({ kind: "ok", text: "문의가 접수됐습니다. 확인 후 답장 드리겠습니다." });
+      setSent(true);
     } catch (err) {
       setMsg({ kind: "err", text: (err as ApiError).message });
-    }
+    } finally { setBusy(false); }
   };
+  if (sent) return (
+    <Dialog title="문의가 접수됐어요" onClose={onClose}>
+      <p>확인 후 {f.email} 으로 답장 드릴게요. 보통 1~2일 걸려요.</p>
+      <button className="btn primary block" onClick={onClose}>확인</button>
+    </Dialog>
+  );
   return (
     <Dialog title="집보미에 문의하기" onClose={onClose} wide>
       <p className="caption">서비스 이용, 제휴, 잘못된 정보 제보 등 무엇이든 남겨 주세요. 확인 후 답장 드릴게요.</p>
       <form onSubmit={submit}>
         <div className="row2">
-          <div className="field"><label>이름</label><input type="text" required maxLength={100} value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} /></div>
-          <div className="field"><label>이메일</label><input type="email" required maxLength={254} value={f.email} onChange={(e) => setF({ ...f, email: e.target.value })} /></div>
+          <div className="field"><label htmlFor="ct-name">이름</label><input id="ct-name" type="text" required maxLength={100} value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} /></div>
+          <div className="field"><label htmlFor="ct-email">이메일</label><input id="ct-email" type="email" required maxLength={254} value={f.email} onChange={(e) => setF({ ...f, email: e.target.value })} /></div>
         </div>
-        <div className="field"><label>부서 · 직책 (선택)</label><input type="text" maxLength={100} value={f.company} onChange={(e) => setF({ ...f, company: e.target.value })} /></div>
-        <div className="field"><label>내용</label><textarea required rows={5} maxLength={5000} value={f.message} onChange={(e) => setF({ ...f, message: e.target.value })} /></div>
-        <p className="caption"><b>개인정보 수집·이용 안내</b> · 항목: 이름·이메일·문의 내용(필수), 부서·직책(선택) · 목적: 문의 확인 및 답변 · 보유: 접수 후 12개월 · 답변에 꼭 필요한 정보만 받으며, 입력하지 않으면 문의를 접수할 수 없습니다. <Link to="/privacy" onClick={onClose}>개인정보 처리방침</Link></p>
+        <div className="field"><label htmlFor="ct-msg">내용</label><textarea id="ct-msg" required rows={5} maxLength={5000} value={f.message} onChange={(e) => setF({ ...f, message: e.target.value })} /></div>
+        <p className="caption"><b>개인정보 수집·이용 안내</b> · 항목: 이름·이메일·문의 내용(필수) · 목적: 문의 확인 및 답변 · 보유: 접수 후 12개월 · 답변에 꼭 필요한 정보만 받으며, 입력하지 않으면 문의를 접수할 수 없습니다. <Link to="/privacy" onClick={onClose}>개인정보 처리방침</Link></p>
         <label className="check"><input type="checkbox" checked={f.agree} onChange={(e) => setF({ ...f, agree: e.target.checked })} /> 만 14세 이상이며, 위 개인정보 수집·이용 안내를 확인했습니다 (필수)</label>
-        <button className="btn primary block" style={{ marginTop: 12 }}>보내기 →</button>
+        <button className="btn primary block" style={{ marginTop: 12 }} disabled={busy}>{busy ? "보내는 중…" : "보내기 →"}</button>
       </form>
       {msg && <Alert kind={msg.kind}>{msg.text}</Alert>}
     </Dialog>
@@ -199,7 +213,7 @@ function MembershipDialog({ onClose }: { onClose: () => void }) {
 }
 
 /** 결과·콘텐츠 끝의 구독 유도 카드. */
-export function SubscribeCTA({ source, headline, sub, button = "월요일 아침 맞춤 브리핑 받기 →" }: { source: string; headline: string; sub: string; button?: string }) {
+export function SubscribeCTA({ source, headline, sub, button = "주간 맞춤 브리핑 받기 →" }: { source: string; headline: string; sub: string; button?: string }) {
   const { state } = useMe();
   const { openSubscribe } = useDialogs();
   if (state.subscribed) return <Alert kind="ok">구독 중입니다. 다음 호에서 만나요!</Alert>;

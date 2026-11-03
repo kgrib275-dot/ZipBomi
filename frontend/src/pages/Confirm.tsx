@@ -1,5 +1,6 @@
 // 구독 확인 (/confirm?t=토큰) — Streamlit 판 app_pages/confirm.py 이식.
 // 메일 보안 검사기·링크 미리보기가 주소를 먼저 열어도 확정되지 않도록, 버튼을 눌러야 확정한다.
+import { useNewsletter } from "../newsletter";
 import { useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { ApiError, post } from "../api";
@@ -7,6 +8,7 @@ import { Alert } from "../components/ui";
 import { useMe } from "../me";
 
 export default function ConfirmPage() {
+  const nl = useNewsletter();
   const [params] = useSearchParams();
   const { setState } = useMe();
   const token = params.get("t") || "";
@@ -33,7 +35,7 @@ export default function ConfirmPage() {
       <div className="eyebrow">구독 확인</div>
       <h2 className="sec-h">구독 <span className="grad">확인</span></h2>
       {done ? (
-        <Alert kind="ok">📬 구독이 완료됐습니다. 다음 호부터 매주 월요일에 보내 드릴게요.</Alert>
+        <Alert kind="ok">📬 구독이 완료됐습니다. {nl.enabled && nl.when ? `다음 호부터 매주 ${nl.when}에 보내 드릴게요.` : "발송을 시작하면 첫 호부터 보내 드릴게요."}</Alert>
       ) : !token ? (
         <Alert kind="info">✉ 확인 메일의 '구독 확인하기' 링크로 들어와 주세요.</Alert>
       ) : (

@@ -2,6 +2,7 @@
 // 카드: 최근 3개월 평형별 최고·최저·최근가, 직전 3개월 대비 중위가 변동률, 전세가율(같은 단지 전세 중위 ÷ 매매 중위), 관련 노트 3편.
 // 단지 상세(?lawd=&dong=&apt=): 월별 중위가·거래량 차트 + 그 시군구·전국 정책 노트 표시. 자료는 저장된 실거래 표만 (/api/re/apt/summary · /re/region/trend).
 // 관심 목록은 방문자 상태 re_watch — 이 브라우저에만, 구독자와 이어져 있으면 맞춤 메일에도 쓰인다. 색인하지 않는다(og_meta.NOINDEX).
+import { applyBadge } from "../applyStatus";
 import { useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { get } from "../api";
@@ -43,7 +44,7 @@ export default function MyHomes() {
       <div>
         <div className="eyebrow">관심 단지</div>
         <h2 className="sec-h">내 <span className="grad">관심 단지</span></h2>
-        <p className="sec-p">실거래가에서 ☆로 담은 단지의 최근 거래를 평형별로, 청약 공고에서 ☆로 담은 공고는 일정과 함께 모았습니다. 로그인하면 기기 사이에 이어지고, 맞춤 브리핑을 구독하면 월요일 메일에도 실립니다.</p>
+        <p className="sec-p">실거래가에서 ☆로 담은 단지의 최근 거래를 평형별로, 청약 공고에서 ☆로 담은 공고는 일정과 함께 모았습니다. 로그인하면 기기 사이에 이어지고, 맞춤 브리핑을 구독하면 주간 메일에도 실립니다.</p>
       </div>
 
       <FavNotices />
@@ -192,7 +193,7 @@ function FavNotices() {
       <div className="re-list-h"><h3>관심 청약 공고 {ids.length}</h3><Link to="/deals?tab=apply">청약 공고 →</Link></div>
       <ul className="ap-cards">
         {rows.map((n) => {
-          const d = dd(n.receipt_start || n.receipt_end);
+          const b = applyBadge(n.receipt_start, n.receipt_end);
           return (
             <li key={n.notice_id}>
               <div className="ap-card">
@@ -200,7 +201,7 @@ function FavNotices() {
                 <div className="ap-card-b">
                   <a className="ap-card-t" href={n.url || "#"} target="_blank" rel="noopener">{n.name}</a>
                   <div className="ap-card-m">
-                    {d !== null && <span className={`ap-dd${d >= 0 && d <= 3 ? " hot" : ""}`}>{d < 0 ? "지남" : d === 0 ? "오늘" : `D-${d}`}</span>}
+                    {b && <span className={`ap-dd${b.hot ? " hot" : ""}`}>{b.label}</span>}
                     <span className="ap-chip">{n.region}</span>
                     <span className="ap-when">접수 {md(n.receipt_start)}~{md(n.receipt_end)}{n.winner_date ? ` · 발표 ${md(n.winner_date)}` : ""}</span>
                   </div>

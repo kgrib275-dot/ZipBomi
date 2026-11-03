@@ -43,6 +43,30 @@ def is_configured() -> bool:
     return bool(cfg["host"] and cfg["sender"])
 
 
+def _plain(html_text: str) -> str:
+    """HTML 메일 → 글자 본문 (링크는 '글자 (주소)' 로)."""
+    import html as _h
+    import re as _re
+    t = _re.sub(r"(?is)<(style|script)[^>]*>.*?</\1>", "", html_text)
+    t = _re.sub(r'(?is)<a [^>]*href="([^"]+)"[^>]*>(.*?)</a>', lambda m: f"{_re.sub('<[^>]+>', '', m.group(2)).strip()} ({m.group(1)})", t)
+    t = _re.sub(r"(?i)<br\s*/?>|</p>|</tr>|</h\d>|</div>|</li>", "\n", t)
+    t = _h.unescape(_re.sub(r"<[^>]+>", "", t))
+    return "\n".join(ln.strip() for ln in t.splitlines() if ln.strip())
+
+
+def _sender_line() -> str:
+    """뉴스레터 바닥 '보낸 곳' — 처리방침의 운영자·보호책임자 연락처 (정보통신망법: 전송자 명칭·연락처)."""
+    from html import escape
+    try:
+        from . import privacy
+        s = privacy.settings()
+        name = s.get("officer_name") or s.get("operator") or ""
+        mail = s.get("officer_email") or ""
+        return escape(" · ".join(x for x in (name, mail) if x)) or "사이트 '문의하기'"
+    except Exception:  # noqa: BLE001
+        return "사이트 '문의하기'"
+
+
 def site_url() -> str:
     return os.environ.get("SITE_URL", "http://localhost:5030").rstrip("/")
 
@@ -367,7 +391,9 @@ def render(s: dict, unsubscribe_token: str = "", industries: list[str] | None = 
 {refer}
 <tr><td style="padding:24px 32px 36px;font-size:12px;color:#B8AB8A;line-height:1.7">
   <a href="{mail_link(base, 'flow', '/', sd, token)}" style="color:#FFD54A">사이트에서 보기</a> · {pdf_link}
-  <a href="{unsub}" style="color:#B8AB8A">구독 해지</a><br>© 집보미
+  <a href="{unsub}" style="color:#B8AB8A">구독 해지</a><br>
+  노트는 생성형 AI가 원문을 읽고 쓴 초안을 운영자가 검토해 정리한 것입니다. 투자·세무 자문이 아니며, 수치·일정은 원문과 공고로 꼭 확인하세요.<br>
+  보낸 곳: 집보미 (운영자 {_sender_line()}) · 이 메일은 구독을 신청하신 분께만 보냅니다.<br>© 집보미
 </td></tr>
 </table></td></tr></table></body></html>""".replace(_TOKEN_SLOT, token)
 
@@ -382,22 +408,24 @@ def build_html(issue: dict | None, notes: list[dict], unsubscribe_token: str = "
 def confirm_html(confirm_token: str) -> str:
     base = site_url()
     return f"""<!doctype html><html><body style="margin:0;background:#120F08;font-family:'Malgun Gothic',sans-serif;color:#FBF6E9">
-<div style="max-width:560px;margin:0 auto;padding:36px 28px">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#120F08" style="background:#120F08"><tr><td>
+<div style="max-width:560px;margin:0 auto;padding:36px 28px;background:#120F08;color:#FBF6E9">
   <div style="font-size:22px;font-weight:800">ZIP<span style="color:#FFD54A">BOMI</span> <span style="font-size:13px;font-weight:600;color:#B8AB8A">집보미</span></div>
   <h2 style="font-size:19px;margin:22px 0 10px">구독 신청을 확인해 주세요</h2>
   <p style="color:#E8DEC6;line-height:1.7;font-size:14px">아래 버튼을 누르면 구독이 완료됩니다. 직접 신청하지 않았다면 이 메일을 무시하세요 — 아무것도 발송되지 않습니다.</p>
   <p style="margin:26px 0"><a href="{base}/confirm?t={confirm_token}" style="background:#F5B800;color:#1A1405;text-decoration:none;font-weight:700;padding:12px 22px;border-radius:999px">구독 확인하기</a></p>
   <p style="color:#B8AB8A;font-size:12px">확인하지 않은 신청은 7일 뒤 자동으로 지워집니다.</p>
-</div></body></html>"""
+</div></td></tr></table></body></html>"""
 
 
 def _shell(title: str, body: str) -> str:
     return f"""<!doctype html><html><body style="margin:0;background:#120F08;font-family:'Malgun Gothic',sans-serif;color:#FBF6E9">
-<div style="max-width:560px;margin:0 auto;padding:36px 28px">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#120F08" style="background:#120F08"><tr><td>
+<div style="max-width:560px;margin:0 auto;padding:36px 28px;background:#120F08;color:#FBF6E9">
   <div style="font-size:22px;font-weight:800">ZIP<span style="color:#FFD54A">BOMI</span> <span style="font-size:13px;font-weight:600;color:#B8AB8A">집보미</span></div>
   <h2 style="font-size:19px;margin:22px 0 10px">{title}</h2>
   {body}
-</div></body></html>"""
+</div></td></tr></table></body></html>"""
 
 
 def login_html(token: str, code: str) -> str:
@@ -438,25 +466,27 @@ def ask_link_html(link_token: str) -> str:
     """'질문하기 연결' 메일 — 구독한 주소로 이 브라우저를 잇는 링크 (api/routers/ask.py link). 링크를 연 것만으로 잇지 않고 화면의 버튼으로 확정."""
     base = site_url()
     return f"""<!doctype html><html><body style="margin:0;background:#120F08;font-family:'Malgun Gothic',sans-serif;color:#FBF6E9">
-<div style="max-width:560px;margin:0 auto;padding:36px 28px">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#120F08" style="background:#120F08"><tr><td>
+<div style="max-width:560px;margin:0 auto;padding:36px 28px;background:#120F08;color:#FBF6E9">
   <div style="font-size:22px;font-weight:800">ZIP<span style="color:#FFD54A">BOMI</span> <span style="font-size:13px;font-weight:600;color:#B8AB8A">집보미</span></div>
   <h2 style="font-size:19px;margin:22px 0 10px">질문하기를 이 구독자로 연결합니다</h2>
   <p style="color:#E8DEC6;line-height:1.7;font-size:14px">아래 버튼을 누르면 지금 쓰는 브라우저가 이 구독 주소와 이어져 남은 질문 횟수를 쓸 수 있습니다. 직접 요청하지 않았다면 이 메일을 무시하세요.</p>
   <p style="margin:26px 0"><a href="{base}/ask?link={link_token}" style="background:#F5B800;color:#1A1405;text-decoration:none;font-weight:700;padding:12px 22px;border-radius:999px">질문하기 연결하기</a></p>
   <p style="color:#B8AB8A;font-size:12px">링크는 1시간 동안, 한 번만 쓸 수 있습니다.</p>
-</div></body></html>"""
+</div></td></tr></table></body></html>"""
 
 
 def ask_credits_html(n: int) -> str:
     """관리자가 질문 횟수를 충전했을 때 구독자에게 보내는 짧은 안내."""
     base = site_url()
     return f"""<!doctype html><html><body style="margin:0;background:#120F08;font-family:'Malgun Gothic',sans-serif;color:#FBF6E9">
-<div style="max-width:560px;margin:0 auto;padding:36px 28px">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#120F08" style="background:#120F08"><tr><td>
+<div style="max-width:560px;margin:0 auto;padding:36px 28px;background:#120F08;color:#FBF6E9">
   <div style="font-size:22px;font-weight:800">ZIP<span style="color:#FFD54A">BOMI</span> <span style="font-size:13px;font-weight:600;color:#B8AB8A">집보미</span></div>
   <h2 style="font-size:19px;margin:22px 0 10px">질문 {int(n)}회가 충전되었습니다</h2>
   <p style="color:#E8DEC6;line-height:1.7;font-size:14px">연결해 둔 브라우저에서 바로 이어서 질문할 수 있습니다. 다른 브라우저라면 질문하기 화면에서 구독한 주소로 다시 연결해 주세요.</p>
   <p style="margin:26px 0"><a href="{base}/ask" style="background:#F5B800;color:#1A1405;text-decoration:none;font-weight:700;padding:12px 22px;border-radius:999px">질문하기 열기</a></p>
-</div></body></html>"""
+</div></td></tr></table></body></html>"""
 
 
 def send_confirmation(email: str, confirm_token: str) -> bool:
@@ -490,7 +520,13 @@ def send(recipients: list[tuple[str, str]], subject: str, html_for, on_sent=None
             msg["Subject"] = subject
             msg["From"] = formataddr(("집보미", cfg["sender"]))
             msg["To"] = email
-            msg.attach(MIMEText(html_for(token), "html", "utf-8"))
+            body = html_for(token)
+            # 2026-11-03: 글자만 보는 메일 앱용 본문 + 구독 메일은 메일 앱의 '수신 거부' 단추(RFC 8058 원클릭)를 쓸 수 있게
+            if token:
+                msg["List-Unsubscribe"] = f"<{site_url()}/api/unsubscribe/one-click?token={token}>"
+                msg["List-Unsubscribe-Post"] = "List-Unsubscribe=One-Click"
+            msg.attach(MIMEText(_plain(body), "plain", "utf-8"))
+            msg.attach(MIMEText(body, "html", "utf-8"))
             try:
                 server.sendmail(cfg["sender"], [email], msg.as_string())
                 ok += 1

@@ -65,26 +65,39 @@ export default function Access() {
             <input type="text" className="bq" placeholder="IP·페이지·동작·내용 검색" value={q} onChange={(e) => setQ(e.target.value)} aria-label="검색" />
             <span className="caption">{pg.info}</span><span className="sp" />{pg.sizeSel}
           </div>
-          <DataTable rows={pg.shown} cols={rows[0] && ["created_at", "ip", "page", "action", "detail"].every((c) => c in rows[0]) ? ["created_at", "ip", "page", "action", "detail"] : undefined} />
+          <DataTable rows={pg.shown} cols={rows[0] && ["created_at", "ip", "page", "action", "detail"].every((c) => c in rows[0]) ? ["created_at", "ip", "page", "action", "detail"] : undefined}
+            labels={{ created_at: "시각", ip: "IP", page: "화면", action: "동작", detail: "내용" }}
+            render={{ action: (v) => ACTION_KO[str(v)] || str(v) }} />
           {pg.pager}
         </div>
       ) : <p className="caption">기록이 없습니다.</p>}
 
       <h3 style={{ marginTop: 20 }}>관리자 행동 기록</h3>
       {actions.error && <Alert kind="err">{actions.error}</Alert>}
-      <DataTable rows={actionRows as Row[]} tall empty="기록이 없습니다." />
+      <DataTable rows={actionRows as Row[]} tall empty="기록이 없습니다." labels={{ id: "번호", created_at: "시각", ip: "IP", page: "화면", action: "동작", detail: "내용" }}
+        render={{ action: (v) => ACTION_KO[str(v)] || str(v) }} />
     </div>
   );
 }
 
 
 // 관리자 접속기록 (2026-11-03 ISMS-P 2.9.4) — GET /api/admin/audit, 위변조 검사 GET /api/admin/audit/verify (월 1회 이상 점검)
-const AUDIT_KINDS: [string, string][] = [["", "전체"], ["request", "관리 요청"], ["login", "로그인"], ["login_fail", "로그인 실패"], ["logout", "로그아웃"],
+const AUDIT_KINDS: [string, string][] = [["", "전체"], ["request", "관리 요청"], ["login", "로그인"], ["login_fail", "로그인 실패"], ["login_locked", "잠김"], ["logout", "로그아웃"],
   ["download", "다운로드"], ["reveal", "전체 보기"], ["audit_check", "점검"]];
+const AUDIT_KO: Record<string, string> = Object.fromEntries(AUDIT_KINDS.filter(([k]) => k));
+// 접속 기록의 동작 이름 (2026-11-03 — login_try 같은 원문이 그대로 보였다)
+const ACTION_KO: Record<string, string> = {
+  view: "페이지 조회", ask: "질문하기", login_mail: "로그인 메일", login_try: "로그인 메일 요청", login_verify: "로그인 확인", login_revoke: "모든 기기 로그아웃",
+  confirm_mail: "구독 확인 메일", ask_link_mail: "질문 연결 메일", subscribe_try: "구독 신청", subscribe_day: "구독 신청(하루)", confirm_try: "구독 확인",
+  unsub_try: "구독 해지", "제한 기록": "남용 제한",
+};
 function AdminAudit() {
   const [kind, setKind] = useState("");
   const [q, setQ] = useState("");
-  const list = useLoad(() => A.get<{ rows: Row[]; keep_days: number }>(`audit?limit=500&kind=${encodeURIComponent(kind)}&q=${encodeURIComponent(q.trim())}`), [kind, q]);
+  // 검색은 입력을 멈춘 뒤 0.5초에 — 예전엔 글자마다 요청해 그 요청이 다시 접속기록에 쌓였다 (2026-11-03)
+  const [qq, setQq] = useState("");
+  useEffect(() => { const t = window.setTimeout(() => setQq(q.trim()), 500); return () => window.clearTimeout(t); }, [q]);
+  const list = useLoad(() => A.get<{ rows: Row[]; keep_days: number }>(`audit?limit=500&kind=${encodeURIComponent(kind)}&q=${encodeURIComponent(qq)}`), [kind, qq]);
   const [check, setCheck] = useState<Row | null>(null);
   const act = useAct();
   const rows = list.data?.rows || [];
@@ -100,7 +113,7 @@ function AdminAudit() {
       </div>
       {check && <Alert kind={check.ok ? "ok" : "err"}>{check.ok ? `정상 — ${str(check.rows)}건, ${str(check.first)} ~ ${str(check.last)}` : `불일치 — ${str(check.broken_at)}번 기록(${str(check.at)})부터 사슬이 끊겼습니다. 기록이 고쳐졌거나 지워졌을 수 있습니다.`}</Alert>}
       {list.error && <Alert kind="err">{list.error}</Alert>}
-      <DataTable rows={pg.shown} cols={["at", "actor", "ip", "kind", "method", "path", "status", "detail"]}
+      <DataTable rows={pg.shown} cols={["at", "actor", "ip", "kind", "method", "path", "status", "detail"]} render={{ kind: (v) => AUDIT_KO[str(v)] || str(v) }}
         labels={{ at: "시각", actor: "관리자", ip: "IP", kind: "종류", method: "방식", path: "경로", status: "결과", detail: "내용·사유" }} />
       {pg.pager}
     </section>

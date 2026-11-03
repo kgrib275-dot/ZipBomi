@@ -48,8 +48,44 @@ def ld_summary(page_html: str) -> str:
     return ""
 
 
+_robots: dict[str, tuple[float, object]] = {}
+_ROBOTS_TTL = 24 * 3600
+
+
+def robots_allows(url: str) -> bool:
+    """그 사이트의 robots.txt 가 우리 수집기(ZipBomiBot)에게 이 주소를 허용하는지 (2026-11-03 — 노트 초안용 본문 가져오기에도 적용).
+    robots.txt 를 못 읽으면(없음·오류) 허용으로 본다. 사이트별로 하루 기억한다."""
+    import time
+    from urllib.parse import urlsplit
+    from urllib.robotparser import RobotFileParser
+    parts = urlsplit(url)
+    if parts.scheme not in ("http", "https") or not parts.netloc:
+        return False
+    origin = f"{parts.scheme}://{parts.netloc}"
+    hit = _robots.get(origin)
+    if not hit or time.time() - hit[0] > _ROBOTS_TTL:
+        rp = RobotFileParser()
+        try:
+            resp = safe_http.get(origin + "/robots.txt")
+            if resp.status_code >= 400:
+                rp.parse([])
+            else:
+                rp.parse(resp.text.splitlines())
+        except Exception:  # noqa: BLE001 - 못 읽으면 허용 (일반적인 처리)
+            rp.parse([])
+        hit = (time.time(), rp)
+        if len(_robots) > 2000:
+            _robots.clear()
+        _robots[origin] = hit
+    rp = hit[1]
+    return rp.can_fetch("ZipBomiBot", url)  # type: ignore[attr-defined]
+
+
 def article_text(article: dict, max_chars: int = 15000) -> tuple[str, bool]:
-    """(본문, 원문 확보 여부)를 반환한다."""
+    """(본문, 원문 확보 여부)를 반환한다. robots.txt 가 막은 원문은 가져오지 않고 발췌만 쓴다 (운영 기준 docs/CONTENT_POLICY.md)."""
+    if not robots_allows(article.get("url") or ""):
+        fallback = "\n\n".join(x for x in (article.get("excerpt") or "", article.get("summary_ko") or "") if x)
+        return f"(원문 사이트가 자동 수집을 허용하지 않아 발췌만 제공됨)\n{fallback}", False
     try:
         resp = safe_http.get(article["url"])  # 사설·내부 주소 차단, 리다이렉트마다 재검사, 크기 제한
         body, summary = extract_text(resp.text), ld_summary(resp.text)

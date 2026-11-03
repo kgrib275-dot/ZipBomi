@@ -41,7 +41,7 @@ export default function Lab() {
       {error && <Alert kind="err">{error}</Alert>}
       {data && <DocFrame html={data} title="부동산 데이터 랩 인터랙티브 대시보드" fallback={1400} />}
       <div className="space" />
-      <SubscribeCTA source="lab" headline="이 데이터가 매주 노트가 됩니다" sub="급상승 키워드를 편집자가 읽고 정리한 노트를 월요일마다 메일로 받아 보세요." />
+      <SubscribeCTA source="lab" headline="이 데이터가 매주 노트가 됩니다" sub="급상승 키워드를 편집자가 읽고 정리한 노트를 매주 메일로 받아 보세요." />
     </div>
   );
 }

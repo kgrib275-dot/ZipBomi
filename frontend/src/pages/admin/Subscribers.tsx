@@ -1,7 +1,8 @@
 // 구독·발송 — 구독자 / 뉴스레터 / 월 구독 / Teams / 문의 (app_pages/admin/subscribers.py).
+import { Link } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { Alert, Tabs, useLoad } from "../../components/ui";
-import { A, AdminHead, CsvButton, DataTable, Email, Expander, Field, Generic, Row, asArray, bool, isObj, num, pick, str, today, useAct, usePaged, useRemembered } from "./common";
+import { A, AdminHead, CsvButton, DataTable, Email, Expander, maskEmail, Field, Generic, Row, asArray, bool, isObj, num, pick, str, today, useAct, usePaged, useRemembered } from "./common";
 import { JobStatus, RunLogTable, StartJob, useJobs } from "./JobRunner";
 
 const SECTIONS = ["구독자", "뉴스레터", "월 구독", "Teams", "문의"];
@@ -11,8 +12,10 @@ function SubscribersTab() {
   const { data, error, reload } = useLoad(() => A.get<unknown>("subscribers"), []);
   const act = useAct();
   const subs = asArray(data, "subscribers", "items");
-  const pending = isObj(data) ? asArray(pick(data, "pending", "pending_confirmations")) : [];
-  const counts = isObj(data) && isObj(data.counts) ? (data.counts as Row) : isObj(data) && isObj(data.referral) ? (data.referral as Row) : {};
+  // 서버는 pending 을 숫자로, referred·rewarded·reward_at 을 바깥에 보낸다 (2026-11-03 — 화면이 다른 곳에서 찾아 '?'·0 만 보였다)
+  const pendingN = isObj(data) ? num(pick(data, "pending")) : 0;
+  const pending = { length: pendingN };
+  const counts: Row = isObj(data) ? (data as Row) : {};
   const smtp = isObj(data) ? pick(data, "smtp_ok", "smtp_configured") : undefined;
   const [q, setQ] = useRemembered<string>("subs-q", "");
   const [email, setEmail] = useState("");
@@ -25,7 +28,8 @@ function SubscribersTab() {
   const [addN, setAddN] = useState<Record<string, number>>({});
   const charge = async (email: string) => {
     const n = Math.min(100, Math.max(1, Math.floor(addN[email] ?? 10)));
-    const r = await act(() => A.put<Row>("subscribers/credits", { email, add: n }), `${email} 에 ${n}회 충전했습니다.${smtp === false ? " (SMTP 미설정 — 안내 메일은 가지 않았습니다)" : ""}`);
+    if (!window.confirm(`${maskEmail(email)} 계정에 보미AI ${n}회를 더할까요? 안내 메일이 갑니다.`)) return;
+    const r = await act(() => A.put<Row>("subscribers/credits", { email, add: n }), `${maskEmail(email)} 계정에 보미AI ${n}회를 더했습니다.${smtp === false ? " (SMTP 미설정 — 안내 메일은 가지 않았습니다)" : ""}`);
     if (r) reload();
   };
   const chargeCtl = (email: string) => (
@@ -37,7 +41,7 @@ function SubscribersTab() {
   const view = subs.filter((s) => !q.trim() || str(s.email).toLowerCase().includes(q.trim().toLowerCase())).map((s) => ({
     이메일: str(s.email), 구독일: str(s.created_at).slice(0, 19).replace("T", " "), 활성: str(s.email), 지역: Array.isArray(s.industries) ? s.industries.join(", ") : str(s.industries),
     확인: !!s.confirmed_at || bool(s.confirmed), "추천 수": num(pick(s, "referrals", "referral_count")) || byCode[str(s.ref_code)] || 0,
-    질문: `${num(s.ask_used)}/${num(s.ask_credits)}${str(s.ask_requested_at) ? " 충전 요청" : ""}`, 충전: str(s.email),
+    보미AI: `${s.account ? `${num(s.ask_used)}/${num(s.ask_credits)}` : "계정 없음"}${str(s.ask_requested_at) ? " 충전 요청" : ""}`, 충전: s.account ? str(s.email) : "",
   }));
   const csvRows = subs.map((s) => { const { token, ...rest } = s; void token; return rest; });
   const pg = usePaged("subs", view, q.trim().toLowerCase(), 20);  // 쪽·보기 개수 F5 유지
@@ -47,10 +51,10 @@ function SubscribersTab() {
       {error && <Alert kind="err">{error}</Alert>}
       {requests.length > 0 && (
         <div className="box" style={{ margin: "0 0 12px" }}>
-          <Alert kind="warn"><b>충전 요청 {requests.length}건</b> — 질문 횟수를 다 쓴 구독자가 충전을 기다립니다. 충전하면 구독자에게 안내 메일이 갑니다.</Alert>
+          <Alert kind="warn"><b>충전 요청 {requests.length}건</b> — 보미AI 횟수를 다 쓴 사용자가 충전을 기다립니다. 충전은 로그인 계정에 더해지고, 안내 메일이 갑니다.</Alert>
           {requests.map((s) => (
             <div key={str(s.email)} className="list-row">
-              <div className="grow"><b><Email v={s.email} /></b> · 질문 {num(s.ask_used)}/{num(s.ask_credits)} · 요청 {str(s.ask_requested_at).slice(0, 16).replace("T", " ")}</div>
+              <div className="grow"><b><Email v={s.email} /></b> · 보미AI {s.account ? `${num(s.ask_used)}/${num(s.ask_credits)}` : "계정 없음"} · 요청 {str(s.ask_requested_at).slice(0, 16).replace("T", " ")}</div>
               {chargeCtl(str(s.email))}
             </div>
           ))}
@@ -70,11 +74,11 @@ function SubscribersTab() {
       </p>
       <Field label="이메일 찾기"><input type="text" placeholder="일부만 입력해도 됩니다" value={q} onChange={(e) => setQ(e.target.value)} /></Field>
       <div className="board-bar"><span className="caption">{pg.info}</span><span className="sp" />{pg.sizeSel}</div>
-      <DataTable rows={pg.shown} cols={["이메일", "구독일", "활성", "지역", "추천 수", "확인", "질문", "충전"]}
+      <DataTable rows={pg.shown} cols={["이메일", "구독일", "활성", "지역", "추천 수", "확인", "보미AI", "충전"]}
         render={{
           활성: (v) => <input type="checkbox" checked={!!active[str(v)]} onChange={(e) => setActive({ ...active, [str(v)]: e.target.checked })} />,
-          질문: (v) => { const t = str(v); const req = t.endsWith(" 충전 요청"); return <>{req ? t.slice(0, -6) : t}{req && <span className="badge" style={{ marginLeft: 6 }}>충전 요청</span>}</>; },
-          충전: (v) => chargeCtl(str(v)),
+          보미AI: (v) => { const t = str(v); const req = t.endsWith(" 충전 요청"); return <>{req ? t.slice(0, -6) : t}{req && <span className="badge" style={{ marginLeft: 6 }}>충전 요청</span>}</>; },
+          충전: (v) => (str(v) ? chargeCtl(str(v)) : <span className="caption">-</span>),
         }} />
       {pg.pager}
       <div className="btn-row" style={{ margin: "10px 0" }}>
@@ -127,7 +131,7 @@ function NewsletterTab() {
       </Expander>
       <PersonalPreview />
       <h3 style={{ margin: "16px 0 8px" }}>발송 기록</h3>
-      <DataTable rows={history} cols={history.length ? ["sent_at", "subject", "recipients", "failed", "trigger"].filter((c) => c in history[0]) : undefined} />
+      <DataTable rows={history} cols={history.length ? ["sent_at", "subject", "recipients", "failed", "trigger"].filter((c) => c in history[0]) : undefined} labels={{ sent_at: "보낸 시각", subject: "제목", recipients: "받는 사람", failed: "실패", trigger: "실행" }} />
     </div>
   );
 }
@@ -277,14 +281,7 @@ function TeamsTab() {
 }
 
 function ContactsTab() {
-  const { data, error } = useLoad(() => A.get<unknown>("contacts"), []);
-  const rows = asArray(data, "contacts", "items");
-  return (
-    <div>
-      {error && <Alert kind="err">{error}</Alert>}
-      <DataTable rows={rows} cols={rows.length ? ["created_at", "name", "email", "company", "message"].filter((c) => c in rows[0]) : undefined} />
-    </div>
-  );
+  return <p className="caption">문의는 왼쪽 메뉴 <Link to="/admin/contacts">문의함</Link>으로 옮겼어요 (처리 표시·답장).</p>;
 }
 
 export default function Subscribers() {

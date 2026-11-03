@@ -15,6 +15,13 @@ _SCHEDULE_LABELS = (("collection", "수집"), ("drafting", "초안"), ("weekly",
                     ("vectorize", "벡터화"), ("teams", "Teams"))
 
 
+def _llm_ok() -> bool:
+    from pipeline import claude_llm
+    if claude_llm.provider() == "claude":
+        return bool(claude_llm.api_key())
+    return llm.pool_from_env() is not None
+
+
 def gemini_models() -> list[str]:
     g = jobs.config()["pipeline"]["gemini"]
     return sorted({g.get(k) or g["model"] for k in ("score_model", "note_model", "weekly_model", "chat_model")}
@@ -28,6 +35,8 @@ def dashboard() -> dict:
     return {
         "counts": db.counts(),
         "gemini_ok": llm.pool_from_env() is not None,
+        # 2026-11-03 — Claude 를 고르고 키가 있으면 Gemini 키가 없어도 채점·초안은 된다
+        "llm_name": llm.provider_name(), "llm_ok": _llm_ok(),
         "smtp_ok": mailer.is_configured(),
         "schedules_on": [n for k, n in _SCHEDULE_LABELS if cfg[k]["enabled"]],
         "drafting": {"min_score": cfg["drafting"]["min_score"], "per_run": cfg["drafting"]["per_run"]},

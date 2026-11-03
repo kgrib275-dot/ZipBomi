@@ -22,6 +22,7 @@ export default function PrivacySettings() {
   const current = isObj(d.current) ? (d.current as Row) : null;
   const upcoming = asArray(pick(d, "upcoming"));
   const outdated = bool(pick(d, "outdated"));
+  const changed = Array.isArray(d.changed) ? (d.changed as string[]) : [];
   const noticeDays = num(pick(d, "notice_days"), 7);
   const majorDays = num(pick(d, "major_notice_days"), 30);
   const first = versions.length === 0;
@@ -44,7 +45,7 @@ export default function PrivacySettings() {
       </div>
       {missing.length ? <Alert kind="err">⚖ 비어 있는 필수 기재사항: {missing.join(", ")}</Alert>
         : first ? <Alert kind="warn">📢 아직 공지한 처리방침이 없습니다 — 아래 '새 버전 공지'로 첫 처리방침을 게시하세요 (첫 게시는 오늘 바로 시행 가능).</Alert>
-        : outdated ? <Alert kind="warn">📢 기능·설정이 가장 최근 공지와 다릅니다 (예: SMTP·Databricks를 켬, 위탁 업체 변경) — 새 버전을 공지하세요.</Alert>
+        : outdated ? <Alert kind="warn">📢 기능·설정이 가장 최근 공지와 다릅니다 — 새 버전을 공지하세요.{changed.length ? <> 달라진 부분: <b>{changed.join(", ")}</b></> : null}</Alert>
         : <Alert kind="ok">✓ 가장 최근 공지가 지금 기능·설정과 같습니다.</Alert>}
 
       <h3>1. 기재사항</h3>
@@ -69,13 +70,16 @@ export default function PrivacySettings() {
       <p className="caption">공지하면 지금 내용이 이 버전으로 고정됩니다. {first ? "첫 게시는 오늘 바로 시행할 수 있습니다." : `시행일은 공지일로부터 ${noticeDays}일 뒤(정보주체 권리에 중요한 변경은 ${majorDays}일 뒤) 이후로 정하세요.`}</p>
       <div className="row2">
         <div>
-          <Check label="중요한 변경 (수집 항목 추가·목적 변경·제3자 제공·국외 이전 추가 등)" checked={pub.major} disabled={first} onChange={(v) => setPub({ ...pub, major: v })} />
+          <Check label="중요한 변경 (수집 항목 추가·목적 변경·제3자 제공·국외 이전 추가 등)" checked={pub.major} disabled={first}
+            onChange={(v) => setPub({ ...pub, major: v, eff: addDays(today(), v ? majorDays : noticeDays) })} />
           <div style={{ height: 8 }} />
           <Field label="시행일"><input type="date" min={today()} value={pub.eff} onChange={(e) => setPub({ ...pub, eff: e.target.value })} /></Field>
         </div>
         <Field label="변경 요약 (공개 화면 공지·버전 선택에 표시)"><input type="text" maxLength={200} value={pub.summary} onChange={(e) => setPub({ ...pub, summary: e.target.value })} /></Field>
       </div>
       <button className="btn primary" disabled={missing.length > 0 || !pub.eff} onClick={async () => {
+        if (!window.confirm(`처리방침 새 버전을 공지할까요?
+시행일 ${pub.eff}${pub.major ? " (중요한 변경)" : ""} · 공지하면 지금 내용이 이 버전으로 고정되고 공개 화면에 안내가 나갑니다.`)) return;
         await act(() => A.post("privacy/publish", { effective_date: pub.eff, summary: pub.summary.trim(), major: pub.major }), "공지했습니다.");
         reload();
       }}>이 내용으로 공지</button>

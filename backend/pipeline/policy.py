@@ -254,6 +254,8 @@ def update(key: str, fields: dict, by: str = "관리자") -> dict:
                 raise ValueError("값이 없는 항목은 게시할 수 없습니다.")
             if not src:
                 raise ValueError("근거 링크가 없는 항목은 게시할 수 없습니다.")
+            if not upd.get("effective_on", cur["effective_on"]):  # 2026-11-03 — 기준일 없는 숫자가 공개되지 않게 (운영 기준 '숫자에는 출처·기준일')
+                raise ValueError("기준일이 없는 항목은 게시할 수 없습니다. 원문에서 시행일·기준일을 확인해 넣어 주세요.")
         now = _now()
         value_changed = ("value" in upd and upd["value"] != cur["value"]) or \
                         ("value_text" in upd and (upd["value_text"] or "") != (cur["value_text"] or ""))

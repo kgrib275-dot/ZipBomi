@@ -47,11 +47,22 @@ def missing() -> list[str]:
     return [label for k, label in REQUIRED.items() if not str(s.get(k, "")).strip()]
 
 
+def _claude_on() -> bool:
+    try:
+        from . import claude_llm
+        return claude_llm.provider() == "claude" and bool(claude_llm.api_key())
+    except Exception:  # noqa: BLE001
+        return False
+
+
 def _features() -> dict:
     from . import mailer, warehouse
     cfg = settings_store.load()
     return {
-        "ask": cfg["ask"]["enabled"] and bool(os.environ.get("GEMINI_API_KEYS")),
+        "ask": cfg["ask"]["enabled"] and (bool(os.environ.get("GEMINI_API_KEYS")) or _claude_on()),
+        # 2026-11-03 — 관리 > AI 모델 설정에서 Claude 를 고르면 질문·초안이 Anthropic 으로 간다. 의미 검색(임베딩)은 Gemini 키가 있을 때만.
+        "gemini": bool(os.environ.get("GEMINI_API_KEYS")),
+        "claude": _claude_on(),
         "smtp": mailer.is_configured(),
         "databricks": warehouse.is_configured(),
         "kakao": bool(os.environ.get("KAKAO_JS_KEY")),
@@ -76,7 +87,7 @@ def records() -> list[dict]:
          "auto": "신청·확인·해지 일시, 추천 코드, 추천인(추천 링크로 구독한 경우), 연결된 브라우저의 쿠키 식별값(zgv), "
                  "질문 지급·사용 횟수와 충전 요청 일시, 메일 링크 클릭 기록",
          "keep": f"구독 해지 시까지 (해지 후 {R['unsubscribed']}일 이내 파기) · 확인하지 않은 신청은 {R['unconfirmed']}일 후 파기"},
-        {"name": "문의 접수", "purpose": "문의 확인 및 답변", "required": "이름, 이메일, 문의 내용", "optional": "부서·직책",
+        {"name": "문의 접수", "purpose": "문의 확인 및 답변", "required": "이름, 이메일, 문의 내용", "optional": "없음",
          "auto": "접수 일시", "keep": f"접수 후 {R['contacts'] // 30}개월"},
     ]
     if f["ask"] and _paid():
@@ -126,7 +137,9 @@ def entrustments() -> list[dict]:
     out = []
     if f["smtp"]:
         out.append({"to": s["smtp_vendor"] or "메일 발송 서버 운영사 (SMTP)", "work": "구독 확인·뉴스레터·로그인 링크·알림 메일 발송"})
-    if f["ask"]:
+    if f["ask"] and f["claude"]:
+        out.append({"to": "Anthropic, PBC (Claude API)", "work": "보미AI 답변 생성, 노트 초안 작성 (질문·대화 처리 — Anthropic 정책에 따라 처리·보관)"})
+    if f["ask"] and f["gemini"]:
         out.append({"to": "Google LLC (Gemini API)", "work": "보미AI 답변 생성, 노트 초안 작성, 노트 의미 검색 (질문·검색어 처리 — Google 정책에 따라 처리·보관 (무료 이용 등급은 Google이 서비스 개선·사람 검토에 이용할 수 있음 — 민감한 개인정보는 입력하지 마세요))"})
     if f["databricks"]:
         out.append({"to": "Databricks, Inc.", "work": "서비스 이용 통계 분석용 데이터 보관 (이름·이메일·IP 제외)"})
@@ -138,7 +151,11 @@ def overseas() -> list[dict]:
     """국외 이전 (제28조의8) — 위탁·보관으로 국외로 가는 경우. 연락처는 각 사 처리방침 문의처."""
     s, f = settings(), _features()
     out = []
-    if f["ask"]:
+    if f["ask"] and f["claude"]:
+        out.append({"to": "Anthropic, PBC", "country": "미국", "items": "질문·대화 일부 (본인이 입력한 내용), 보미AI에서 '내 공간 자료 참고'를 켠 경우 내 프로필·관심 단지·관심 공고·저장한 노트·메모",
+                    "when": "질문할 때마다 암호화된 네트워크로 전송", "purpose": "답변 생성 — Anthropic 정책에 따라 처리·보관",
+                    "contact": "https://www.anthropic.com/legal/privacy", "refuse": "보미AI를 쓰지 않으면 이전되지 않음 (거부 시 해당 기능만 이용 불가)"})
+    if f["ask"] and f["gemini"]:
         out.append({"to": "Google LLC", "country": "미국", "items": "질문·대화 일부, 의미 검색어 (본인이 입력한 내용), 보미AI에서 '내 공간 자료 참고'를 켠 경우 내 프로필·관심 단지·관심 공고·저장한 노트 제목·메모 요약",
                     "when": "질문·검색할 때마다 암호화된 네트워크로 전송", "purpose": "답변 생성·검색 — Google 정책에 따라 처리·보관 (무료 이용 등급은 Google이 서비스 개선·사람 검토에 이용할 수 있음 — 민감한 개인정보는 입력하지 마세요) · 이 사이트는 질문 원문을 저장하지 않음",
                     "contact": "https://policies.google.com/privacy", "refuse": "보미AI·의미 검색을 쓰지 않으면 이전되지 않음 (거부 시 해당 기능만 이용 불가)"})
@@ -168,11 +185,36 @@ _SQL = """CREATE TABLE IF NOT EXISTS privacy_versions (
   summary TEXT NOT NULL DEFAULT '', content TEXT NOT NULL, created_at TEXT NOT NULL)"""
 
 
+# 제8조 안전성 확보 조치·제9조 쿠키 (2026-11-03) — 예전엔 화면 코드(Privacy.tsx)에 고정돼 지난 버전을 열어도 지금 문구가 보였다.
+# 이제 공지할 때 이 내용도 함께 고정한다. 바뀌면 outdated() 가 '새 버전 공지' 를 알린다.
+MEASURES = [
+    "관리 화면 접근 통제 — 관리자 로그인(토큰과 OTP 2단계 인증), 30분 동안 쓰지 않으면 자동 차단, 로그인 5회 실패 시 잠금",
+    "관리자 접속기록 2년 보관·위변조 방지(해시 연결)·정기 점검, 개인정보 내려받기·전체 보기 시 사유 기록, 관리 화면의 이메일 가림 표시",
+    "전송 구간 암호화(HTTPS), 서버는 외부에서 직접 접속할 수 없게 내부 주소에만 열어 둠",
+    "로그인 링크·확인 코드·기기 식별값·구독 코드는 복원할 수 없는 해시로, IP 대체 식별값과 쿠키는 서버 비밀값으로 서명·해시 처리",
+    "접속 기록 보관과 남용 시도 제한, 오류 화면에 내부 정보 비노출",
+    "데이터 백업과 무결성 검사, 보유 기간이 지난 정보 자동 파기",
+]
+COOKIES = [
+    {"name": "zgv", "purpose": "방문자 구분 — 저장한 설정·관심 목록·참여 기록을 이 브라우저와 잇습니다. 로그인하면 계정에 연결된 이 기기의 식별값이 됩니다.",
+     "keep": "1년(방문할 때마다 연장), 로그아웃하면 새 값"},
+    {"name": "zgt", "purpose": "로그인 전 1분 둘러보기를 시작한 시각(서버 서명값)", "keep": "1년"},
+    {"name": "zgl", "purpose": "로그인 메일을 요청한 브라우저 확인(한 번만 사용)", "keep": "30분, 로그인하면 바로 삭제"},
+    {"name": "zga", "purpose": "관리자 로그인 세션(운영자만 받음)", "keep": "브라우저를 닫을 때까지, 30분 미사용·8시간이면 무효"},
+]
+STORAGE = ("브라우저 저장소(localStorage·sessionStorage)에는 화면 설정(밝기 테마·언어·표 보기 개수), 안내 띠 닫기, 보미AI '내 자료 참고' 선택, "
+           "아직 서버로 보내지 못한 변경(zg-unsaved — 다음 방문 때 다시 보낸 뒤 지움)만 둡니다. 저장한 노트·관심 목록·메모·일정은 서버에 저장되며, "
+           "이 브라우저의 쿠키 또는 로그인 계정과 연결됩니다.")
+COOKIE_REFUSE = ("쿠키를 막으면 로그인과 둘러보기가 동작하지 않아 서비스를 이용하기 어렵습니다(사이트 이용에 꼭 필요한 쿠키만 씁니다). "
+                 "광고·행태 추적용 쿠키는 쓰지 않습니다.")
+
+
 def snapshot() -> dict:
     """지금 기능·설정으로 만든 처리방침 내용 (공지할 때 이대로 고정된다)."""
     s = settings()
     return {"settings": {k: s[k] for k in DEFAULTS}, "records": records(), "entrustments": entrustments(),
-            "overseas": overseas(), "retention": dict(db.RETENTION_DAYS), "backup_days": 14}
+            "overseas": overseas(), "retention": dict(db.RETENTION_DAYS), "backup_days": 14,
+            "measures": list(MEASURES), "cookies": [dict(c) for c in COOKIES], "storage": STORAGE, "cookie_refuse": COOKIE_REFUSE}
 
 
 def _conn():
@@ -239,6 +281,18 @@ def withdraw(version_id: int) -> bool:
                                 (version_id, date.today().isoformat())).rowcount == 1
     finally:
         conn.close()
+
+
+def changed_parts() -> list[str]:
+    """가장 최근 공지와 지금 내용이 다른 부분 (관리 화면이 '무엇이 달라졌는지' 보여 준다, 2026-11-03)."""
+    vs = versions()
+    if not vs:
+        return []
+    old, new = vs[0]["content"] or {}, json.loads(json.dumps(snapshot(), ensure_ascii=False))
+    names = {"settings": "기재사항(운영자·보호책임자 등)", "records": "처리 업무 표(수집 항목·목적·보유)", "entrustments": "처리 위탁",
+             "overseas": "국외 이전", "retention": "보유 기간", "backup_days": "백업 보관 기간", "measures": "제8조 안전성 확보 조치",
+             "cookies": "제9조 쿠키", "storage": "제9조 브라우저 저장소", "cookie_refuse": "제9조 쿠키 거부 시 불이익"}
+    return [names.get(k, k) for k in sorted(set(old) | set(new)) if old.get(k) != new.get(k)]
 
 
 def outdated() -> bool:

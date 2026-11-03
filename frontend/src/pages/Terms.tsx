@@ -348,7 +348,7 @@ function ResultView({ track, tracks, qs, picks, onRestart }: { track: string; tr
         </>
       )}
       <ProfileForm source="terms" />
-      <SubscribeCTA source="terms" headline="이 용어들이 실제 뉴스에서 어떻게 쓰이는지 매주 받아 보세요" sub="용어가 나온 실제 부동산 기사 노트를 월요일 아침 3분 요약으로 보내 드려요." />
+      <SubscribeCTA source="terms" headline="이 용어들이 실제 뉴스에서 어떻게 쓰이는지 매주 받아 보세요" sub="용어가 나온 실제 부동산 기사 노트를 주간 3분 요약으로 보내 드려요." />
     </>
   );
 }

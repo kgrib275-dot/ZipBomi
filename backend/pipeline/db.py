@@ -613,8 +613,31 @@ def add_contact(name: str, email: str, company: str, message: str) -> None:
     )
 
 
+def _contacts_cols() -> None:
+    """문의 처리 표시 열 (2026-11-03 문의함) — 없으면 만든다."""
+    conn = connect()
+    try:
+        if "handled_at" not in {r[1] for r in conn.execute("PRAGMA table_info(contacts)")}:
+            conn.execute("ALTER TABLE contacts ADD COLUMN handled_at TEXT")
+            conn.commit()
+    finally:
+        conn.close()
+
+
 def contacts() -> list[dict]:
-    return _rows("SELECT * FROM contacts ORDER BY created_at DESC")
+    _contacts_cols()
+    # 처리하지 않은 문의를 위로
+    return _rows("SELECT * FROM contacts ORDER BY (handled_at IS NOT NULL), created_at DESC")
+
+
+def contact_handled(cid: int, done: bool) -> bool:
+    _contacts_cols()
+    return _exec("UPDATE contacts SET handled_at = ? WHERE id = ?", (_now() if done else None, int(cid))) == 1
+
+
+def contacts_open() -> int:
+    _contacts_cols()
+    return _rows("SELECT COUNT(*) n FROM contacts WHERE handled_at IS NULL")[0]["n"]
 
 
 def record_newsletter(issue_id: int | None, subject: str, recipients: int, failed: int, trigger: str) -> None:
@@ -785,6 +808,7 @@ def counts() -> dict:
         "published": one("SELECT COUNT(*) n FROM notes WHERE status = 'published'"),
         "subscribers": one("SELECT COUNT(*) n FROM subscribers WHERE active = 1"),
         "contacts": one("SELECT COUNT(*) n FROM contacts"),
+        "contacts_open": contacts_open(),
     }
 
 
@@ -953,6 +977,8 @@ def purge_expired() -> dict[str, int]:
     try:  # 관리자 접속기록 2년 보관·끝난 관리자 세션 (2026-11-03 ISMS-P)
         from . import admin_auth as _aa
         _aa.purge()
+        from . import accounts as _ac
+        _ac.purge_sessions()
     except Exception:  # noqa: BLE001
         pass
     try:

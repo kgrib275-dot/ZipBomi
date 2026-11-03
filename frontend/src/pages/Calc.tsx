@@ -299,6 +299,14 @@ function LoanTab({ v, tax, on }: { v: Loan; tax: Tax; on: (p: Partial<Loan>) => 
   const vd = useMemo(() => verdict(v, tax), [v, tax]);
   const { map } = useNow();
   const nowDsr = map.dsr_bank?.value, nowRate = map.mortgage_rate?.value, nowStress = map.stress_dsr?.value;
+  // 금리 기본값은 현행 수치의 평균 주담대 금리로 (2026-11-03) — 예전 기본 4.0% 라 같은 예시가 홈·현행 수치(4.88%)와 다른 한도로 나왔다.
+  // 처음 기본값(4.0) 그대로일 때 한 번만 바꾼다 — 직접 고친 금리는 건드리지 않는다.
+  const rateSynced = useRef(false);
+  useEffect(() => {
+    if (rateSynced.current || nowRate === undefined || nowRate === null) return;
+    rateSynced.current = true;
+    if (v.rate === DEFAULTS.loan.rate && nowRate !== v.rate) on({ rate: nowRate });
+  }, [nowRate]); // eslint-disable-line react-hooks/exhaustive-deps
   return (
     <div className="calc-grid">
       <div className="re-box calc-in">

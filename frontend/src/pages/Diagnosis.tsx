@@ -218,7 +218,7 @@ export default function Diagnosis() {
             <Link className="btn primary" to="/calc">내 집 계산기로 자금 계산해 보기 →</Link>
           </div>
           {complete ? <ProfileCTA what="준비도 진단" /> : <p className="caption">12문항을 모두 답하면 결과가 내 프로필에 기록돼요.</p>}
-          <SubscribeCTA source="diagnosis" headline={`${areas[weakest]?.[0] || ""} 영역을 채울 노트를 매주 받아 보세요`} sub="가장 약한 영역에 도움이 되는 소식과 체크리스트를 월요일 아침 메일로 보내 드려요." />
+          <SubscribeCTA source="diagnosis" headline={`${areas[weakest]?.[0] || ""} 영역을 채울 노트를 매주 받아 보세요`} sub="가장 약한 영역에 도움이 되는 소식과 체크리스트를 주간 메일로 보내 드려요." />
           {!!res?.recommended?.length && (
             <>
               <div className="eyebrow" style={{ marginTop: 24 }}>추천 노트</div>

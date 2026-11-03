@@ -6,6 +6,7 @@ import { get, post } from "../api";
 import { useDialogs } from "../components/Dialogs";
 import { Alert, useLoad } from "../components/ui";
 import { announceAuth, useMe } from "../me";
+import { applyBadge } from "../applyStatus";
 import { man } from "../policy";
 import { useRegions } from "../profile";
 import { ItemNote, MyCalendar } from "./MyCalendar";
@@ -20,7 +21,6 @@ type Space = { profile: Record<string, unknown>; watch: W[]; apply: N[]; apply_a
   notes: { id: number; title: string; category: string; published: string; summary: string }[];
   calcs: { label: string; summary: string; url: string; at: string }[]; memo: string; account: { email: string; since: string } | null };
 
-const dday = (s: string | null) => (s ? Math.ceil((new Date(s + "T00:00:00").getTime() - new Date(new Date().toDateString()).getTime()) / 86400000) : null);
 const SUGGEST = ["내 관심 단지들 최근 거래 흐름을 요약해 줘", "내 가점이면 다가오는 청약 중 어디가 해볼 만해?", "내 소득으로 관심 지역에서 가능한 집값은?", "저장한 노트 기준으로 이번 주 꼭 볼 것만 알려 줘"];
 
 export default function MySpace() {
@@ -75,7 +75,7 @@ export default function MySpace() {
                     <b>{w.apt || `${w.region} 전체`}</b>
                     <span className="caption">{w.region} {w.dong}</span>
                     <div className="my-num">{w.pp_recent ? man(w.pp_recent) : "-"}<small>/3.3㎡ (최근 3개월)</small></div>
-                    {w.change_pct !== null && <span className={`my-chg ${w.change_pct > 0 ? "up" : w.change_pct < 0 ? "down" : ""}`}>{w.change_pct > 0 ? "▲" : w.change_pct < 0 ? "▼" : "–"} {Math.abs(w.change_pct)}%</span>}
+                    {w.change_pct !== null && <span className={`my-chg ${w.change_pct > 0 ? "up" : w.change_pct < 0 ? "down" : ""}`}>{w.change_pct > 0 ? "▲" : w.change_pct < 0 ? "▼" : "–"} {Math.abs(w.change_pct)}%<small> 3.3㎡당</small></span>}
                     <span className="caption">{w.last ? `마지막 ${w.last.date.slice(5)} · ${man(w.last.amount)}${w.last.area ? ` · ${Math.round(w.last.area)}㎡` : ""}` : "최근 6개월 거래 없음"} · 6개월 {w.deals_6m}건</span>
                     {w.note && <span className="my-note">📝 {w.note}</span>}
                     <ItemNote k={`w:${w.lawd}|${w.dong}|${w.apt}`} title={w.apt || `${w.region} 전체`} />
@@ -92,10 +92,10 @@ export default function MySpace() {
             {!data.apply.length ? <p className="caption">분양 일정에서 🔔, 청약 공고에서 ☆를 누르면 여기 모여요.</p> : (
               <ul className="my-list">
                 {data.apply.map((n) => {
-                  const d = dday(n.receipt_start || n.receipt_end);
+                  const b = applyBadge(n.receipt_start, n.receipt_end);
                   return (
                     <li key={n.notice_id}>
-                      <span className={`my-dd${d !== null && d >= 0 && d <= 3 ? " hot" : ""}`}>{d === null ? "-" : d < 0 ? "지남" : d === 0 ? "오늘" : `D-${d}`}</span>
+                      <span className={`my-dd${b?.hot ? " hot" : ""}`}>{b ? b.label : "-"}</span>
                       <a href={n.url || "#"} target="_blank" rel="noopener">{n.name}</a>
                       <span className="caption">{n.region} · 접수 {n.receipt_start?.slice(5) || "-"}~{n.receipt_end?.slice(5) || "-"}{data.apply_alert.includes(n.notice_id) ? " · 🔔" : ""}</span>
                       <ItemNote k={`a:${n.notice_id}`} title={n.name} />

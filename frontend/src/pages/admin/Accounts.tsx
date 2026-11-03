@@ -19,7 +19,8 @@ export default function Accounts() {
     await act(() => A.post(`accounts/${r.id}/logout`), "모든 기기에서 로그아웃했습니다."); reload();
   };
   const grant = async (r: Acc, n: number) => {
-    await act(() => A.post(`accounts/${r.id}/ask-grant`, { n }), `${maskEmail(String(r.email))} 보미AI ${n}회를 더했습니다.`); reload();
+    if (!window.confirm(`${maskEmail(String(r.email))} 계정의 보미AI 횟수를 ${n > 0 ? `${n}회 늘릴` : `${-n}회 줄일`}까요?`)) return;
+    await act(() => A.post(`accounts/${r.id}/ask-grant`, { n }), `${maskEmail(String(r.email))} 보미AI ${n > 0 ? `${n}회를 더했습니다` : `${-n}회를 줄였습니다`}.`); reload();
   };
   const remove = async (r: Acc) => {
     if (!window.confirm(`${maskEmail(String(r.email))} 계정과 저장 자료(관심 단지·알림·메모·참여 기록)를 모두 삭제할까요? 되돌릴 수 없습니다.`)) return;
@@ -55,7 +56,8 @@ export default function Accounts() {
                 <td>{r.subscribed ? "✓" : "-"}</td>
                 <td style={{ whiteSpace: "nowrap" }}>{r.ask_used}/{r.ask_credits}회{" "}
                   <button className="btn sm" onClick={() => grant(r, 5)} title="문의로 신청받으면 횟수를 늘려 주세요">+5</button>{" "}
-                  <button className="btn sm ghost" onClick={() => grant(r, 30)}>+30</button></td>
+                  <button className="btn sm ghost" onClick={() => grant(r, 30)}>+30</button>{" "}
+                  <button className="btn sm ghost" onClick={() => grant(r, -5)} title="쓴 횟수보다 아래로는 줄지 않아요">−5</button></td>
                 <td className="caption">{[r.profile && "프로필", r.watch && `관심 단지 ${r.watch}`, r.apply_fav && `관심 공고 ${r.apply_fav}`, r.alerts && `알림 ${r.alerts}`,
                   r.notes && `노트 ${r.notes}`, r.calcs && `계산 ${r.calcs}`, r.items && `메모·알림 ${r.items}`, r.events && `일정 ${r.events}`, r.memo && "메모"]
                   .filter(Boolean).join(" · ") || "없음"}</td>

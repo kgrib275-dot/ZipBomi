@@ -12,8 +12,10 @@ export default function Search() {
   const act = useAct();
   const { data, error, reload } = useLoad(() => A.get<Row>("ask-settings"), [finished]);
   const cfg = data && isObj(data.ask) ? (data.ask as Row) : data || {};
-  const emb = data && isObj(data.embeddings) ? (data.embeddings as Row) : data && isObj(data.counts) ? (data.counts as Row) : {};
-  const hasKeys = pick(data, "has_api_keys", "has_keys", "gemini_ok");
+  // 벡터화 현황은 GET /admin/search 에 있다 (2026-11-03 — ask-settings 에서 찾아 늘 0/0 이었다)
+  const status = useLoad(() => A.get<Row>("search"), [finished]);
+  const emb = status.data && isObj(status.data.embeddings) ? (status.data.embeddings as Row) : {};
+  const hasKeys = pick(status.data, "has_keys") ?? pick(data, "has_api_keys", "has_keys", "gemini_ok");
   const [f, setF] = useState<Ask>({ enabled: true, free_credits: 3, member_daily: 30, per_ip_daily: 10, global_daily: 300, plan_price: "", web_search: true });
   useEffect(() => {
     if (!data) return;
@@ -65,7 +67,8 @@ export default function Search() {
       <h3 style={{ marginTop: 20 }}>공개 '질문하기' 설정</h3>
       <Check label="사용" checked={f.enabled} onChange={(v) => setF({ ...f, enabled: v })} />
       <div className="row4" style={{ marginTop: 10 }}>
-        <Field label="구독자 무료 질문 횟수(가입 시 1회 지급)"><input type="number" min={0} max={100} title="뉴스레터 구독 확인 때 한 번 지급. 다 쓰면 구독·발송 > 구독자에서 충전합니다." value={f.free_credits} onChange={(e) => setF({ ...f, free_credits: Number(e.target.value) })} /></Field>
+        {/* 2026-11-03: 보미AI 횟수는 로그인 계정 기준(계정마다 처음 1회) — 예전 '구독자 무료 횟수(3)' 칸은 실제 한도에 쓰이지 않아 헷갈렸다 */}
+        <Field label="보미AI 무료 횟수"><p className="caption" style={{ margin: 0 }}>로그인 계정마다 처음 1회예요. 더 쓰게 하려면 관리 &gt; 회원 계정에서 +5·+30 으로 늘려 주세요.</p></Field>
         <Field label="월 구독 하루 질문 수"><input type="number" min={1} max={500} value={f.member_daily} onChange={(e) => setF({ ...f, member_daily: Number(e.target.value) })} /></Field>
         <Field label="무료 IP당 하루 질문 수"><input type="number" min={1} max={1000} title="쿠키를 지워 한도를 다시 받는 것을 막는 남용 상한. 월 구독자에게는 적용하지 않습니다." value={f.per_ip_daily} onChange={(e) => setF({ ...f, per_ip_daily: Number(e.target.value) })} /></Field>
         <Field label="전체 하루 질문 수"><input type="number" min={1} max={100000} title="Gemini 키 한도 보호. 관리자 제외 모든 질문의 합계" value={f.global_daily} onChange={(e) => setF({ ...f, global_daily: Number(e.target.value) })} /></Field>

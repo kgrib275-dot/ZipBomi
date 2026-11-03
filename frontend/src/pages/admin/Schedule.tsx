@@ -7,16 +7,16 @@ const WD = ["월", "화", "수", "목", "금", "토", "일"];
 const TIME_RE = /^([01]\d|2[0-3]):([0-5]\d)$/;
 type Def = { key: string; title: string; desc: string; weekly?: boolean; extra?: "draft" | "auto" };
 const LEFT: Def[] = [
-  { key: "collection", title: "1. 수집", desc: "활성 소스 수집 → 중복 제거 → 키워드 필터 → AI 채점 (관리 > AI 모델 설정)" },
-  { key: "drafting", title: "2. 노트 초안 생성", desc: "점수 높은 대기 기사의 원문을 읽고 초안을 씁니다. 수집 30분 뒤 정도가 적당합니다.", extra: "draft" },
-  { key: "vectorize", title: "5. 벡터화", desc: "새 게시 노트·기사를 임베딩해 의미 검색과 '질문하기'에 반영합니다. 수집·초안 뒤로 잡으세요." },
-  { key: "re_data", title: "7. 부동산 데이터 수집", desc: "실거래가(매매·전월세)·청약 공고·경쟁률·금리·가격지수를 받아 로컬 DB 에 저장합니다 (관리 > 부동산 데이터). AI 를 쓰지 않습니다." },
-  { key: "reminders", title: "8. 알림 메일", desc: "내 프로필에서 알림을 켠 확인 구독자에게 청약 접수 D-3, 전세 만기 D-90·D-30 메일을 보냅니다. 같은 알림은 한 번만 갑니다. AI 를 쓰지 않습니다." },
+  { key: "collection", title: "수집", desc: "활성 소스 수집 → 중복 제거 → 키워드 필터 → AI 채점 (관리 > AI 모델 설정)" },
+  { key: "drafting", title: "노트 초안 생성", desc: "점수 높은 대기 기사의 원문을 읽고 초안을 씁니다. 수집 30분 뒤 정도가 적당합니다.", extra: "draft" },
+  { key: "vectorize", title: "벡터화", desc: "새 게시 노트·기사를 임베딩해 의미 검색과 '질문하기'에 반영합니다. 수집·초안 뒤로 잡으세요." },
+  { key: "re_data", title: "부동산 데이터 수집", desc: "실거래가(매매·전월세)·청약 공고·경쟁률·금리·가격지수를 받아 로컬 DB 에 저장합니다 (관리 > 부동산 데이터). AI 를 쓰지 않습니다." },
+  { key: "reminders", title: "알림 메일", desc: "내 프로필에서 알림을 켠 확인 구독자에게 청약 접수 D-3, 전세 만기 D-90·D-30 메일을 보냅니다. 같은 알림은 한 번만 갑니다. AI 를 쓰지 않습니다." },
 ];
 const RIGHT: Def[] = [
-  { key: "weekly", title: "3. 주간 흐름", desc: "지난주(월~일) 게시 노트로 '이번 주 부동산 흐름'을 씁니다.", weekly: true, extra: "auto" },
-  { key: "newsletter", title: "4. 뉴스레터 발송", desc: "최신 주간 흐름과 지난 발송 이후 새 노트를 활성 구독자에게 보냅니다. 주간 흐름 이후로 잡으세요.", weekly: true },
-  { key: "teams", title: "6. Teams 발송", desc: "최신 주간 흐름과 지난 Teams 발송 이후 새 노트를 등록된 채널에 카드로 보냅니다.", weekly: true },
+  { key: "weekly", title: "주간 흐름", desc: "지난주(월~일) 게시 노트로 '이번 주 부동산 흐름'을 씁니다.", weekly: true, extra: "auto" },
+  { key: "newsletter", title: "뉴스레터 발송", desc: "최신 주간 흐름과 지난 발송 이후 새 노트를 활성 구독자에게 보냅니다. 주간 흐름 이후로 잡으세요.", weekly: true },
+  { key: "teams", title: "Teams 발송", desc: "최신 주간 흐름과 지난 Teams 발송 이후 새 노트를 등록된 채널에 카드로 보냅니다.", weekly: true },
 ];
 
 function Section({ d, c, onSave }: { d: Def; c: Row; onSave: (key: string, values: Row) => Promise<void> }) {
@@ -69,7 +69,8 @@ function Section({ d, c, onSave }: { d: Def; c: Row; onSave: (key: string, value
           <Field label={`최소 점수 ${minScore}`}><input type="range" min={1} max={5} value={minScore} onChange={(e) => setMinScore(Number(e.target.value))} /></Field>
         </div>
       )}
-      {d.extra === "auto" && <div style={{ marginBottom: 10 }}><Check label="검토 없이 바로 게시" checked={autoPub} onChange={setAutoPub} /></div>}
+      {d.extra === "auto" && <div style={{ marginBottom: 10 }}><Check label="검토 없이 바로 게시" checked={autoPub} onChange={(v) => { if (v && !window.confirm("생성형 AI가 쓴 주간 흐름을 운영자 검토 없이 바로 공개할까요? 소개·운영 기준은 '운영자가 검토한 글만 게시'라고 안내하고 있습니다.")) return; setAutoPub(v); }} />
+        {autoPub && <p className="caption" style={{ color: "var(--err-ink)" }}>⚠ 켜져 있으면 검토 없이 공개됩니다. 사이트 안내(운영자 검토 후 게시)와 맞지 않아요.</p>}</div>}
       {err && <Alert kind="err">{err}</Alert>}
       <button className="btn primary sm" onClick={save}>저장</button>
     </div>
@@ -93,8 +94,9 @@ export default function Schedule() {
       <AdminHead title="배치 스케줄" note="서버가 켜져 있는 동안 30초마다 확인해 등록된 시각에 실행합니다." />
       {error && <Alert kind="err">{error}</Alert>}
       <div className="row2">
-        <div>{LEFT.map((d) => <Section key={d.key} d={d} c={sec(d.key)} onSave={save} />)}</div>
-        <div>{RIGHT.map((d) => <Section key={d.key} d={d} c={sec(d.key)} onSave={save} />)}</div>
+        {/* 번호가 1·2·5·7 / 3·4·6 으로 섞여 보여 순서를 알기 어려웠다 (2026-11-03) — 매일·매주로 묶는다 */}
+        <div><h3 style={{ marginTop: 0 }}>매일 돌리는 작업</h3>{LEFT.map((d) => <Section key={d.key} d={d} c={sec(d.key)} onSave={save} />)}</div>
+        <div><h3 style={{ marginTop: 0 }}>매주 돌리는 작업</h3>{RIGHT.map((d) => <Section key={d.key} d={d} c={sec(d.key)} onSave={save} />)}</div>
       </div>
       <p className="caption">데일리 아카이브(지난 날짜 확정)는 시각 등록 없이 스케줄러가 상시 처리합니다.</p>
     </div>

@@ -76,7 +76,7 @@ def md_html(body: str) -> str:
 
 
 _STYLE = """
-:root{color-scheme:dark}*{box-sizing:border-box}
+:root{color-scheme:dark light}*{box-sizing:border-box}
 body{margin:0;background:#120F08;color:#FBF6E9;font:17px/1.8 'IBM Plex Sans KR','Malgun Gothic',sans-serif}
 a{color:#FFD54A}header,main,footer{max-width:780px;margin:0 auto;padding:0 20px}
 header{display:flex;justify-content:space-between;align-items:center;padding-top:22px;padding-bottom:22px;border-bottom:1px solid #3A3220}
@@ -90,6 +90,10 @@ li{margin:4px 0}strong{color:#fff}
 .list a{display:block;padding:14px 0;border-bottom:1px solid #3A3220;text-decoration:none;color:#FBF6E9}
 .list small{display:block;color:#B8AB8A;font-size:15px}
 footer{color:#B8AB8A;font-size:15px;padding-top:30px;padding-bottom:40px}
+.ai{font-size:14px;color:#B8AB8A;margin:18px 0}
+@media (prefers-color-scheme: light){body{background:#FBF8F1;color:#1E1A0E}a{color:#8A6400}.logo{color:#1E1A0E}
+header{border-bottom-color:#E6DCC6}.meta{color:#8A6400}h2{color:#5A4300}.sum{color:#3A3220}strong{color:#000}
+.src{background:#F3EDE0;border-color:#E6DCC6}.list a{color:#1E1A0E;border-bottom-color:#E6DCC6}.list small,footer,.ai{color:#6B5E44}}
 """
 
 
@@ -104,8 +108,9 @@ def _page(title: str, desc: str, canonical: str, body: str, og_image: str, extra
 <meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="{t}"><meta name="twitter:description" content="{d}">
 <meta name="twitter:image" content="{escape(og_image)}">{extra_head}
 <style>{_STYLE}</style></head><body>
-<header><a class="logo" href="/">ZIP<b>BOMI</b></a><a class="btn" href="/letter">뉴스레터 미리 보기</a></header>
-<main>{body}</main><footer>© {datetime.now():%Y} 집보미 ZIPBOMI · 내 집 마련과 부동산 결정을 위해 읽은 자료를 정리한 노트입니다.</footer></body></html>""",
+<header><a class="logo" href="/">ZIP<b>BOMI</b></a><a class="btn" href="/">집보미에서 보기</a></header>
+<main>{body}</main><footer>© {datetime.now():%Y} 집보미 ZIPBOMI · 내 집 마련과 부동산 결정을 위해 읽은 자료를 정리한 노트입니다.
+투자·법률·세무 자문이 아니며, 중요한 결정 전에는 원문·공고·전문가에게 확인하세요.</footer></body></html>""",
                         headers={"Cache-Control": "public, max-age=300"})
 
 
@@ -127,6 +132,7 @@ def note_page(request: Request) -> Response:
 {md_html(n['body'])}
 <div class="src">원문: <a href="{escape(n['url'])}" rel="nofollow noopener" target="_blank">{escape(n['source'] or n['url'])}</a>
 {f'<br>태그: {escape(tags)}' if tags else ''}</div>
+<p class="ai">이 노트는 생성형 AI가 원문을 읽고 쓴 초안을 운영자가 검토해 게시한 것입니다. 수치·일정은 원문과 공고로 꼭 확인하세요.</p>
 <p><a class="btn" href="/notes?id={n['id']}">집보미에서 이어 보기 →</a> &nbsp; <a href="/n/">전체 노트</a></p>"""
     return _page(f"{n['title']} | 집보미", n["summary"][:150], url, body, _note_og(site, n),
                  f'<script type="application/ld+json">{ld}</script>')
@@ -166,7 +172,7 @@ def sitemap(request: Request) -> Response:
             (f"{site}/lab", None), (f"{site}/ask", None), (f"{site}/letter", None), (f"{site}/about", None),
             (f"{site}/type", None), (f"{site}/diagnosis", None), (f"{site}/terms", None),
             (f"{site}/habit", None), (f"{site}/career", None), (f"{site}/deals", None), (f"{site}/calc", None),
-            (f"{site}/privacy", None)]
+            (f"{site}/privacy", None), (f"{site}/map", None), (f"{site}/now", None), (f"{site}/calendar", None)]  # 2026-11-03 지도·현행 수치·분양 일정 추가
     urls += [(f"{site}/n/{n['id']}", n["published"]) for n in db.notes("published")]
     xml = "".join(f"<url><loc>{escape(u)}</loc>" + (f"<lastmod>{escape(d)}</lastmod>" if d else "") + "</url>" for u, d in urls)
     return Response(f'<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">{xml}</urlset>',

@@ -125,7 +125,7 @@ export default function AskPanel() {
         </div>
       ) : (
         <>
-        <label className="ap-mine" title="관심 단지·관심 공고·내 프로필·메모를 질문과 함께 Google Gemini로 보냅니다">
+        <label className="ap-mine" title="관심 단지·관심 공고·내 프로필·메모를 질문과 함께 생성형 AI 업체(개인정보 처리방침의 국외 이전 항목)로 보냅니다">
           <input type="checkbox" checked={mine} onChange={(e) => { setMine(e.target.checked); try { localStorage.setItem(MKEY, e.target.checked ? "1" : "0"); } catch { /* 무시 */ } }} /> 내 공간 자료도 참고해서 답하기
         </label>
         <form className="ap-in" onSubmit={(e) => { e.preventDefault(); send(q); }}>
