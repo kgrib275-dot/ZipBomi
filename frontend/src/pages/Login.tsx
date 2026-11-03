@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { ApiError, post } from "../api";
 import { Alert } from "../components/ui";
-import { useMe } from "../me";
+import { announceAuth, useMe } from "../me";
 
 export default function Login() {
   const [sp] = useSearchParams();
@@ -21,6 +21,7 @@ export default function Login() {
     setBusy(true); setErr("");
     try {
       await post("auth/verify", needCode ? { t, code } : { t });
+      announceAuth();
       await reload();
       nav("/my");
     } catch (e) {
@@ -30,7 +31,7 @@ export default function Login() {
   };
   const revoke = async () => {
     setBusy(true); setErr("");
-    try { const r = await post<{ message: string }>("auth/revoke", { r: rv }); setDone(r.message); await reload(); }
+    try { const r = await post<{ message: string }>("auth/revoke", { r: rv }); setDone(r.message); announceAuth(); await reload(); }
     catch (e) { setErr(e instanceof Error ? e.message : "처리하지 못했습니다."); } finally { setBusy(false); }
   };
   const valid = (x: string) => /^[0-9a-f]{32}$/.test(x);

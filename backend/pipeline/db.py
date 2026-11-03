@@ -1098,7 +1098,9 @@ def purge_access_logs(keep_days: int = 90) -> int:
 
 def csv_safe(df):
     """엑셀에서 수식으로 실행될 수 있는 값(=,+,-,@로 시작)을 문자로 만든다 (CSV 수식 주입 방지)."""
-    return df.map(lambda v: "'" + v if isinstance(v, str) and v[:1] in ("=", "+", "-", "@") else v)
+    # 탭·CR 로 시작하거나 앞 공백 뒤에 수식 기호가 오는 값도 막는다 (2026-11-03 보안 점검)
+    return df.map(lambda v: "'" + v if isinstance(v, str) and (v[:1] in ("=", "+", "-", "@", "\t", "\r")
+                                                            or v.lstrip()[:1] in ("=", "+", "-", "@")) else v)
 
 
 def optimize(conn: sqlite3.Connection | None = None) -> None:

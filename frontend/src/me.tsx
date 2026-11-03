@@ -32,6 +32,12 @@ type Ctx = {
 
 const MeCtx = createContext<Ctx>({ me: null, reload: async () => undefined, state: {}, setState: () => undefined, flush: async () => undefined });
 
+const AUTH_CHANNEL = "zipgenie-auth";
+/** 로그인·로그아웃했음을 같은 브라우저의 다른 탭에 알린다 (그 탭들이 /api/me 를 다시 받는다). */
+export function announceAuth(): void {
+  try { const c = new BroadcastChannel(AUTH_CHANNEL); c.postMessage("changed"); c.close(); } catch { /* 지원하지 않는 브라우저 */ }
+}
+
 export function MeProvider({ children }: { children: React.ReactNode }) {
   const [me, setMe] = useState<Me | null>(null);
   const [state, setLocal] = useState<Record<string, unknown>>({});
@@ -63,6 +69,9 @@ export function MeProvider({ children }: { children: React.ReactNode }) {
         if (patch && typeof patch === "object") setLocal((s) => ({ ...s, ...patch, ...pending.current }));
       };
     } catch { /* 지원하지 않는 브라우저 — 탭 복귀 때 다시 받기로 충분 */ }
+    // 다른 탭에서 로그인·로그아웃하면 이 탭도 바로 다시 받는다 (2026-11-03 — 메일 링크를 새 탭에서 열어 로그인해도 처음 창이 몰랐다)
+    let auth: BroadcastChannel | null = null;
+    try { auth = new BroadcastChannel(AUTH_CHANNEL); auth.onmessage = () => { reload(); }; } catch { /* 지원하지 않는 브라우저 */ }
     let last = Date.now();
     const onVisible = () => {
       if (document.visibilityState === "visible" && Date.now() - last > 15_000) reload();
@@ -86,6 +95,7 @@ export function MeProvider({ children }: { children: React.ReactNode }) {
       document.removeEventListener("visibilitychange", onVisible);
       window.removeEventListener("pagehide", sendNow);
       chan.current?.close();
+      auth?.close();
     };
   }, [reload]);
 

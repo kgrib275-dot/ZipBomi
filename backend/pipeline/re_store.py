@@ -411,6 +411,9 @@ def upsert_notices(rows: list[dict]) -> int:
     if not rows:
         return 0
     at = _now()
+    from .db import safe_url
+    # 공고 원문 주소는 http(s) 만 (2026-11-03) — 외부 자료가 javascript: 주소를 넣어도 화면 링크로 실행되지 않게
+    rows = [{**r, "url": safe_url(r.get("url")) or None} for r in rows]
     cols = ", ".join(_NOTICE_COLS)
     upd = ", ".join(f"{c}=excluded.{c}" for c in _NOTICE_COLS if c != "notice_id")
     vals = [tuple((r.get(c) if c != "fetched_at" else at) for c in _NOTICE_COLS) for r in rows]
@@ -418,6 +421,8 @@ def upsert_notices(rows: list[dict]) -> int:
         # lat·lng 는 건드리지 않는다 (지도 기능이 채울 수 있다)
         c.executemany(f"INSERT INTO re_apply_notice ({cols}) VALUES ({','.join('?' * len(_NOTICE_COLS))}) "
                       f"ON CONFLICT(notice_id) DO UPDATE SET {upd}", vals)
+        # 예전에 검사 없이 저장된 주소도 정리한다
+        c.execute("UPDATE re_apply_notice SET url=NULL WHERE url IS NOT NULL AND url NOT LIKE 'http://%' AND url NOT LIKE 'https://%'")
     return len(rows)
 
 
@@ -582,8 +587,9 @@ def notices(scope: str = "upcoming", region: str = "", q: str = "", house_type: 
         where.append("house_type = ?")
         params.append(house_type)
     if q:
-        where.append("(name LIKE ? OR address LIKE ?)")
-        params += [f"%{q}%", f"%{q}%"]
+        where.append("(name LIKE ? ESCAPE '\\' OR address LIKE ? ESCAPE '\\')")
+        qe = q.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")  # 검색어의 %·_ 는 글자 그대로
+        params += [f"%{qe}%", f"%{qe}%"]
     if scope == "upcoming":
         where.append("(receipt_end >= ? OR (receipt_end IS NULL AND notice_date >= date(?, '-60 day')))")
         params += [today, today]

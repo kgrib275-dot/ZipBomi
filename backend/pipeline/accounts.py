@@ -33,7 +33,7 @@ _SQL = (
     "CREATE INDEX IF NOT EXISTS idx_account_sessions_acc ON account_sessions(account_id)",
 )
 _COLS = (("login_tokens", "code_hash", "TEXT"), ("login_tokens", "nonce_hash", "TEXT"), ("login_tokens", "tries", "INTEGER DEFAULT 0"),
-         ("login_tokens", "ncode_hash", "TEXT"),
+         ("login_tokens", "ncode_hash", "TEXT"), ("login_tokens", "code_used_at", "TEXT"),
          ("accounts", "revoke_hash", "TEXT"), ("accounts", "ask_credits", "INTEGER DEFAULT 1"), ("accounts", "ask_used", "INTEGER DEFAULT 0"))
 _ready: list = []
 
@@ -110,16 +110,18 @@ def use_link(token: str, nonce: str | None, code: str | None) -> tuple[str | Non
 
 def use_code(nonce: str | None, code: str) -> tuple[str | None, str]:
     """로그인 창에 바로 넣은 6자리 코드로 확정 (2026-11-03). 링크를 요청한 브라우저(nonce 쿠키) + 메일의 코드 = 링크와 같은 2가지 확인.
-    휴대폰에서 메일 앱이 링크를 앱 안 브라우저로 열어 요청 기기로 인정되지 않던 문제를 피한다. (이메일, ok·bad_code·invalid)"""
+    휴대폰에서 메일 앱이 링크를 앱 안 브라우저로 열어 요청 기기로 인정되지 않던 문제를 피한다. (이메일, ok·bad_code·invalid)
+    링크 사용(used_at)과 코드 사용(code_used_at)은 따로 센다 — 메일 앱에서 링크를 눌러 그쪽에서 로그인한 뒤에도, 처음 요청한 창에
+    코드를 넣어 그 창도 로그인할 수 있게 (둘 다 메일함을 가진 사람만 할 수 있고, 각각 한 번만)."""
     if not nonce:
         return None, "invalid"
     c = _conn()
     c.isolation_level = None
     try:
         c.execute("BEGIN IMMEDIATE")
-        row = c.execute("SELECT token_hash, email, expires_at, used_at, ncode_hash, tries FROM login_tokens WHERE nonce_hash=?",
+        row = c.execute("SELECT token_hash, email, expires_at, code_used_at, ncode_hash, tries FROM login_tokens WHERE nonce_hash=?",
                         (_h(nonce),)).fetchone()
-        if not row or row["used_at"] or row["expires_at"] < _now() or (row["tries"] or 0) >= CODE_TRIES or not row["ncode_hash"]:
+        if not row or row["code_used_at"] or row["expires_at"] < _now() or (row["tries"] or 0) >= CODE_TRIES or not row["ncode_hash"]:
             c.execute("COMMIT")
             return None, "invalid"
         if not hmac.compare_digest(_h(nonce + code), row["ncode_hash"]):
@@ -127,7 +129,7 @@ def use_code(nonce: str | None, code: str) -> tuple[str | None, str]:
             c.execute("UPDATE login_tokens SET tries=? WHERE token_hash=?", (tries, row["token_hash"]))
             c.execute("COMMIT")
             return None, "invalid" if tries >= CODE_TRIES else "bad_code"
-        c.execute("UPDATE login_tokens SET used_at=? WHERE token_hash=?", (_now(), row["token_hash"]))
+        c.execute("UPDATE login_tokens SET code_used_at=? WHERE token_hash=?", (_now(), row["token_hash"]))
         c.execute("COMMIT")
         return row["email"], "ok"
     except BaseException:

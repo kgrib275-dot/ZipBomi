@@ -222,6 +222,9 @@ input:focus,textarea:focus,select:focus{outline:none;border-color:var(--accent)}
   .nav.open .dd > a,.nav.open .dd > button{font-weight:700;color:var(--ink)}  /* 모바일 메뉴의 묶음 이름은 굵게 (2026-11-03) */
   .nav.open > a{font-weight:700;color:var(--ink)}
   .burger{display:inline-flex}
+  /* 메뉴를 연 동안 뒤 페이지 스크롤 잠금 + 메뉴 밖 어둡게(누르면 닫힘) (2026-11-03) */
+  html.nav-lock,html.nav-lock body{overflow:hidden}
+  .nav-backdrop{position:fixed;inset:60px 0 0 0;z-index:94;background:rgba(0,0,0,.35)}
 }
 @media (max-width:1100px){.hdr .sub{display:none}}
 @media (max-width:420px){.hdr-in{gap:8px}.hdr .logo{flex:none}.hdr-right{gap:6px;margin-left:auto}.lang-btn{padding:5px 8px}.theme-btn{width:28px;height:28px}}

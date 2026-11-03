@@ -60,6 +60,16 @@ function Shell({ children }: { children: React.ReactNode }) {
     }
   }, [params, state.ref, setState]);
 
+  // 모바일 메뉴를 연 동안 뒤 페이지가 같이 스크롤되지 않게 잠그고, 메뉴 밖을 누르거나 Esc 로 닫는다 (2026-11-03)
+  useEffect(() => {
+    if (!open) return;
+    const root = document.documentElement;
+    root.classList.add("nav-lock");
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setOpen(false); };
+    window.addEventListener("keydown", onKey);
+    return () => { root.classList.remove("nav-lock"); window.removeEventListener("keydown", onKey); };
+  }, [open]);
+
   const isAdminArea = loc.pathname.startsWith("/admin");
   return (
     <>
@@ -94,6 +104,7 @@ function Shell({ children }: { children: React.ReactNode }) {
           </div>
         </div>
       </header>
+      {open && <div className="nav-backdrop" aria-hidden="true" onClick={() => setOpen(false)} />}
       <TrialGate />
       <SaveError />
       <main>

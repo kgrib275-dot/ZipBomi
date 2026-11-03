@@ -312,7 +312,7 @@ export default function MapPage() {
         radius: 6 + 14 * Math.sqrt(p.deals / maxDeals), color: binColor(bins, p.median_per_3_3m2_manwon), weight: 1.5, opacity: 0.9,
         fillColor: binColor(bins, p.median_per_3_3m2_manwon), fillOpacity: 0.38,
       }).bindPopup(pricePopup(p, regions.data?.months || 3), { maxWidth: 280 })
-        .bindTooltip(`${p.region} ${p.sigungu} · ${man(p.median_per_3_3m2_manwon)}/3.3㎡`, { direction: "top" });
+        .bindTooltip(esc(`${p.region} ${p.sigungu} · ${man(p.median_per_3_3m2_manwon)}/3.3㎡`), { direction: "top" });
       m.addTo(g);
       markers.current.price.set(p.lawd_cd, m);
     }
@@ -328,7 +328,7 @@ export default function MapPage() {
       const m = L.circleMarker([n.lat, n.lng], {
         radius: n.status === "마감" ? 4 : 8, color: dark ? "#120F08" : "#ffffff", weight: n.status === "마감" ? 1 : 2,
         fillColor: STATUS_COLOR[n.status], fillOpacity: n.status === "마감" ? 0.45 : 1,
-      }).bindPopup(noticePopup(n), { maxWidth: 300 }).bindTooltip(n.name, { direction: "top" });
+      }).bindPopup(noticePopup(n), { maxWidth: 300 }).bindTooltip(esc(n.name), { direction: "top" }); // 툴팁도 HTML 로 그려지므로 이스케이프 (2026-11-03 보안 점검)
       m.addTo(g);
       if (n.status !== "마감") m.bringToFront();
       markers.current.apply.set(n.id, m);

@@ -238,7 +238,8 @@ _TAG = re.compile(r"<[^>]+>")
 
 
 def _txt(s: str) -> str:
-    return re.sub(r"\s+", " ", html.unescape(_TAG.sub(" ", s))).strip()
+    # 태그를 지운 뒤 풀어낸(&lt;…&gt;) 글자가 다시 태그가 되지 않게, 풀어낸 뒤 한 번 더 지운다 (2026-11-03 보안 점검)
+    return re.sub(r"\s+", " ", _TAG.sub(" ", html.unescape(_TAG.sub(" ", s)))).strip()
 
 
 def lh_notices(c: httpx.Client, delay: float = 1.0) -> list[dict]:

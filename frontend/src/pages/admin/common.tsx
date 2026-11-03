@@ -426,7 +426,7 @@ export function rowsToCsv(rows: Row[], cols?: string[]) {
   const columns = cols || Array.from(new Set(rows.flatMap((r) => Object.keys(r))));
   const esc = (v: unknown) => {
     let s = v === null || v === undefined ? "" : typeof v === "object" ? JSON.stringify(v) : String(v);
-    if (/^[=+\-@]/.test(s)) s = "'" + s; // 수식 주입 방지 (db.csv_safe 와 같은 역할)
+    if (/^[=+\-@\t\r]/.test(s) || /^\s*[=+\-@]/.test(s)) s = "'" + s; // 수식 주입 방지 (db.csv_safe 와 같은 역할, 탭·CR·앞 공백까지)
     return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
   };
   return [columns.join(","), ...rows.map((r) => columns.map((c) => esc(r[c])).join(","))].join("\n");

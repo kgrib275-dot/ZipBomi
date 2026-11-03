@@ -5,7 +5,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { get, post } from "../api";
 import { useDialogs } from "../components/Dialogs";
 import { Alert, useLoad } from "../components/ui";
-import { useMe } from "../me";
+import { announceAuth, useMe } from "../me";
 import { man } from "../policy";
 import { useRegions } from "../profile";
 import { ItemNote, MyCalendar } from "./MyCalendar";
@@ -33,7 +33,7 @@ export default function MySpace() {
   const acc = me?.account;
   const empty = data && !data.watch.length && !data.apply.length && !data.notes.length && !data.calcs.length;
   const removeCalc = (i: number) => setState({ calc_saves: (data?.calcs || []).filter((_, j) => j !== i) });
-  const logout = async () => { await post("auth/logout"); window.location.href = "/"; };
+  const logout = async () => { await post("auth/logout"); announceAuth(); window.location.href = "/"; };
   const logoutAll = async () => {
     if (!window.confirm("모든 기기에서 로그아웃할까요? 이 브라우저만 로그인 상태로 남고, 다른 기기는 다시 로그인해야 합니다.")) return;
     await post("auth/logout-all"); window.alert("다른 모든 기기에서 로그아웃했습니다.");
