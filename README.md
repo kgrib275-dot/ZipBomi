@@ -444,6 +444,12 @@ ZipBomi/
 - 쓰기 요청 분당 한도·보미AI IP 동시 질문 수는 프로세스 수(`ZIPGENIE_WORKERS`)로 나눠 PC 전체 기준이 되게. 남용 제한 확인·기록은 프로세스 공용 잠금으로 묶는다.
 - `start-zipbomi.bat` 은 이미 떠 있는 집보미 서버(5030·5031)와 그 창을 끄고 새로 띄운다 (`stop-zipbomi.ps1`).
 
+**속도** (DB 사본·프로세스 3개 실측: `/api/me` 42 → 5.5ms, `/api/home` 50~78 → 6.7ms, 지도 시세 첫 요청 0.8~1.5초 → 5ms, `/api/lab/html` 0.5초 → 4ms)
+- DB 연결 재사용 (`pipeline/db.py connect`) — 3.4GB DB 는 새 연결의 첫 쿼리마다 스키마를 읽어 약 5ms 가 들었다. 스레드마다 빈 연결을 돌려 쓴다. `ZIPGENIE_DB_POOL=0` 이면 끈다.
+- 공용 캐시(`api/common.cached`)는 만료되면 직전 값을 바로 주고 뒤에서 다시 계산한다. 서버 시작 때 지도 시세·홈·현행 수치·데이터 랩을 미리 계산한다.
+- 데이터 랩 문서(약 1MB)는 계산할 때 gzip 으로 한 번만 압축해 두고, 화면에서는 그 부분에 가까워질 때 불러온다.
+- 모바일 메뉴는 화면보다 길면 메뉴 안에서 스크롤, 보미AI 패널은 좁은 화면에서 양옆 0(스크롤바 폭 때문에 왼쪽이 잘리던 문제).
+
 ## 12. Databricks 적재
 - `pipeline/warehouse.py` — 운영 DB 는 로컬 SQLite 로 두고, 바뀐 행만 `<catalog>.<schema>`(기본 `workspace.zipgenie`) Delta 테이블로 MERGE.
 - 행 내용 해시를 로컬 `warehouse_sync` 에 기억해 변경분만 보내고, 로컬에서 지운 행은 Databricks 에서도 지웁니다.

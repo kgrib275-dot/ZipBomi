@@ -81,7 +81,23 @@ async def lifespan(app: FastAPI):
     start_scheduler_thread()
     start_watchdog_thread()  # 공개 서버만 — 관리·배치 서버(스케줄러)가 멈췄는지 본다
     log.info("집보미 API 시작 · DB %s · 프론트 빌드 %s", db.DB_PATH, "있음" if DIST.exists() else "없음(npm run build 필요)")
+    threading.Thread(target=_warm_caches, daemon=True, name="zipbomi-warm").start()
     yield
+
+
+def _warm_caches() -> None:
+    """모두에게 같은 무거운 응답을 시작하자마자 미리 계산한다 (2026-11-03) — 프로세스마다 캐시가 따로라, 재시작 뒤 첫 방문자가
+    지도 시세(1.5초)·홈 순위(0.5초) 등을 기다렸다. 만료 뒤에는 api/common.cached 가 뒤에서 다시 계산한다."""
+    from api.routers import home, home_market, lab, now, re_map
+    jobs = [("지도 시세", re_map.map_regions), ("홈 공용", lambda: home.cached("home:shared", home._shared, home._SHARED_TTL)),
+            ("홈 시장", home_market.home_market), ("홈 순위", lambda: home_market.home_top("apt", "all", 10)),
+            ("홈 거래량", lambda: home_market.home_volume("apt", "all")), ("현행 수치", now.now),
+            ("데이터 랩 시장", lab.lab_market), ("데이터 랩 문서", lab.warm)]
+    for name, fn in jobs:
+        try:
+            fn()
+        except Exception:  # noqa: BLE001 - 미리 계산 실패는 첫 요청 때 다시
+            log.warning("캐시 미리 계산 실패: %s", name, exc_info=True)
 
 
 app = FastAPI(title="집보미 API", docs_url="/api/docs" if os.environ.get("ZIPGENIE_DEBUG") else None,

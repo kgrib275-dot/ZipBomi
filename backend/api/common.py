@@ -40,10 +40,13 @@ def cached(key: str, fn, ttl: float):
         return hit[1]
     with _locks_guard:
         lock = _locks.setdefault(key, threading.Lock())
-    if hit and not lock.acquire(blocking=False):
-        return hit[1]  # 다른 요청이 다시 계산하는 중 — 직전 값
-    if not hit:
-        lock.acquire()
+    if hit:
+        # 만료된 값이 있으면 그 값을 바로 주고 다시 계산은 뒤에서 한다 (2026-11-03) — 예전엔 만료 뒤 처음 온 방문자가
+        # 계산이 끝날 때까지(지도 시세 1.5초 등) 기다렸다. 이미 누가 계산 중이면 그냥 직전 값.
+        if lock.acquire(blocking=False):
+            threading.Thread(target=_refresh, args=(key, fn, lock), daemon=True, name=f"cache-{key[:30]}").start()
+        return hit[1]
+    lock.acquire()
     try:
         hit = _cache.get(key)
         if hit and time.monotonic() - hit[0] < ttl:
@@ -51,6 +54,16 @@ def cached(key: str, fn, ttl: float):
         val = fn()
         _cache[key] = (time.monotonic(), val)
         return val
+    finally:
+        lock.release()
+
+
+def _refresh(key: str, fn, lock: threading.Lock) -> None:
+    try:
+        _cache[key] = (time.monotonic(), fn())
+    except Exception:  # noqa: BLE001 - 실패하면 직전 값을 계속 쓰고 다음 만료 때 다시
+        import logging
+        logging.getLogger("zipgenie.cache").exception("캐시 다시 계산 실패: %s", key)
     finally:
         lock.release()
 

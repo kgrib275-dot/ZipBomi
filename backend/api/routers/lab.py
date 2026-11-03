@@ -6,8 +6,8 @@ React 화면은 iframe srcdoc 으로 띄운다. Streamlit 판 app_pages/lab.py·
 from __future__ import annotations
 
 
-from fastapi import APIRouter, Query
-from fastapi.responses import HTMLResponse
+from fastapi import APIRouter, Query, Request
+from fastapi.responses import HTMLResponse, Response
 
 from api.common import cached
 from api.deps import Caller, CallerDep
@@ -25,10 +25,25 @@ def _cached(key: str, fn, ttl: int):
 _HEADERS = {"Cache-Control": "private, max-age=120", "X-Content-Type-Options": "nosniff"}
 
 
+def _lab_doc() -> tuple[str, bytes]:
+    """(문서, gzip 으로 미리 압축한 문서). 문서가 약 1MB 라 요청마다 압축하면 0.5초씩 들었다 (2026-11-03) — 계산할 때 한 번만 압축한다."""
+    import gzip
+    html = datalab.page_html(datalab.build_data())
+    return html, gzip.compress(html.encode("utf-8"), compresslevel=6)
+
+
+def warm() -> None:
+    _cached("lab", _lab_doc, 300)
+
+
 @router.get("/lab/html", response_class=HTMLResponse)
-def lab_html() -> HTMLResponse:
-    """탐색 대시보드 — app/datalab.py 가 만들던 HTML 문서 그대로 (5분 캐시)."""
-    html = _cached("lab", lambda: datalab.page_html(datalab.build_data()), 300)
+def lab_html(request: Request) -> Response:
+    """탐색 대시보드 — app/datalab.py 가 만들던 HTML 문서 그대로 (5분 캐시). gzip 을 받는 브라우저에는 미리 압축한 것을 준다
+    (GZipMiddleware 는 Content-Encoding 이 이미 있으면 다시 압축하지 않는다)."""
+    html, gz = _cached("lab", _lab_doc, 300)
+    if "gzip" in request.headers.get("accept-encoding", ""):
+        return Response(gz, media_type="text/html; charset=utf-8",
+                        headers={**_HEADERS, "Content-Encoding": "gzip", "Vary": "Accept-Encoding"})
     return HTMLResponse(html, headers=_HEADERS)
 
 

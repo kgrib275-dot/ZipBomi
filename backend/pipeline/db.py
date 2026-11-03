@@ -7,6 +7,7 @@ Streamlit 세션 스레드와 스케줄러 스레드가 동시에 쓰기 때문�
 from __future__ import annotations
 
 import json
+import threading
 import time
 import os
 import re
@@ -140,9 +141,51 @@ def _now() -> str:
     return datetime.now().isoformat(timespec="seconds")
 
 
+# ───────── 연결 재사용 (2026-11-03) ─────────
+# 3.4GB 운영 DB 는 새 연결의 첫 쿼리마다 스키마(표·인덱스 정의)를 다시 읽어 약 5ms 가 들었다. 요청 하나가 connect() 를 10번 안팎 불러
+# /api/me 같은 작은 요청도 40ms 가 걸렸다. 이제 close() 를 부르면 실제로 닫지 않고 그 스레드의 빈 연결 목록에 돌려놓았다가 다시 쓴다.
+# - 스레드마다 따로 (sqlite 연결은 만든 스레드에서만 쓴다). 쓰는 중인 연결은 목록에 없으므로 안쪽 함수가 connect() 해도 다른 연결을 받는다.
+# - 돌려놓을 때 열린 트랜잭션은 되돌리고, 호출 쪽이 바꾼 설정(isolation_level·row_factory)은 기본값으로 되돌린다.
+# - ZIPGENIE_DB_POOL=0 이면 예전처럼 매번 새로 연다.
+_POOL_ON = os.environ.get("ZIPGENIE_DB_POOL", "1") != "0"
+_POOL_MAX = 3  # 스레드당 빈 연결 수
+_pool = threading.local()
+
+
+class _PooledConnection(sqlite3.Connection):
+    _db_path: str = ""
+
+    def close(self) -> None:  # noqa: D401 - 닫지 않고 돌려놓는다
+        free = getattr(_pool, "free", None)
+        try:
+            if self.in_transaction:
+                self.rollback()
+            self.isolation_level = ""
+            self.row_factory = sqlite3.Row
+        except sqlite3.Error:
+            super().close()
+            return
+        if free is None or len(free) >= _POOL_MAX or self._db_path != str(DB_PATH):
+            super().close()
+            return
+        free.append(self)
+
+
 def connect() -> sqlite3.Connection:
     DB_PATH.parent.mkdir(parents=True, exist_ok=True)
-    conn = sqlite3.connect(DB_PATH, timeout=15)
+    if _POOL_ON:
+        free = getattr(_pool, "free", None)
+        if free is None:
+            free = _pool.free = []
+        while free:
+            conn = free.pop()
+            if conn._db_path == str(DB_PATH):
+                return conn
+            sqlite3.Connection.close(conn)
+        conn = sqlite3.connect(DB_PATH, timeout=15, factory=_PooledConnection)
+        conn._db_path = str(DB_PATH)
+    else:
+        conn = sqlite3.connect(DB_PATH, timeout=15)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA synchronous=NORMAL")  # WAL에서는 안전 — 커밋마다 디스크 동기화를 줄여 쓰기가 빨라진다
     return conn
