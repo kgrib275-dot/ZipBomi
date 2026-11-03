@@ -20,6 +20,13 @@ export default function LoginDialog({ onClose }: { onClose: () => void }) {
   const who = me?.account?.email || "";
   const startedAs = useRef(who);  // 창을 연 때의 계정 — 바뀌었을 때만 닫는다
   useEffect(() => { if (msg && who && who !== startedAs.current) { onClose(); nav("/my"); } }, [msg, who]); // eslint-disable-line react-hooks/exhaustive-deps
+  // 메일을 기다리는 동안 3초마다 로그인됐는지 확인 — 메일 앱이 링크를 같은 브라우저의 다른 창(크롬 맞춤 탭 등)으로 열어 그쪽에서
+  // 로그인하면 탭 사이 알림이 오지 않는 경우가 있다 (2026-11-03 휴대폰에서 확인)
+  useEffect(() => {
+    if (!msg) return;
+    const id = window.setInterval(() => { if (document.visibilityState === "visible") reload(); }, 3000);
+    return () => window.clearInterval(id);
+  }, [msg, reload]);
   const send = async (addr = email, typoOk = false) => {
     setBusy(true); setErr(""); setSuggest("");
     try {
@@ -39,6 +46,7 @@ export default function LoginDialog({ onClose }: { onClose: () => void }) {
       onClose();
       nav("/my");
     } catch (e) {
+      await reload();  // 링크로 이미 이 브라우저가 로그인됐으면 코드가 쓰였어도 위 useEffect 가 창을 닫는다
       setErr(e instanceof Error ? e.message : "로그인하지 못했습니다.");
     } finally { setBusy(false); }
   };

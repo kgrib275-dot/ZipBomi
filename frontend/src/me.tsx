@@ -74,7 +74,8 @@ export function MeProvider({ children }: { children: React.ReactNode }) {
     try { auth = new BroadcastChannel(AUTH_CHANNEL); auth.onmessage = () => { reload(); }; } catch { /* 지원하지 않는 브라우저 */ }
     let last = Date.now();
     const onVisible = () => {
-      if (document.visibilityState === "visible" && Date.now() - last > 15_000) reload();
+      // 탭으로 돌아오면 다시 받는다 — 휴대폰에서 메일 앱으로 가 로그인 링크를 누르고 돌아온 경우가 보통 15초 안이라 3초로 줄였다 (2026-11-03)
+      if (document.visibilityState === "visible" && Date.now() - last > 3_000) reload();
       if (document.visibilityState === "hidden") { last = Date.now(); sendNow(); }
     };
     const sendNow = () => {
