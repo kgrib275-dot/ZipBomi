@@ -12,16 +12,20 @@ import TrialGate, { SaveError } from "./TrialGate";
 import { ThemeToggle } from "./Theme";
 import { LangToggle } from "./Translate";
 
-const PLAY = [["/type", "부동산 성향 16유형"], ["/career", "내 집 마련 전략 찾기"], ["/habit", "부동산 공부 습관 진단"], ["/terms", "부동산 용어 퀴즈"], ["/diagnosis", "내 집 마련 준비도 진단"]] as const;
+const PLAY = [["/today", "오늘의 퀴즈"], ["/terms", "부동산 용어 퀴즈"], ["/type", "부동산 성향 16유형"], ["/career", "내 집 마련 전략 찾기"],
+  ["/diagnosis", "내 집 마련 준비도 진단"], ["/habit", "부동산 공부 습관 진단"]] as const;
 // 메뉴 (2026-11-02 정리) — 할 일 기준으로 묶었다: 시세 보기 · 청약 · 계산 · 묻기. 퀴즈·테스트·데이터 랩·소개는 '더 보기'로.
 // 위 칸 7개라 960~1100px 에서도 한 줄에 들어간다 (예전 11개는 넘쳤다).
 type MenuItem = { to?: string; label: string; items?: readonly (readonly [string, string])[] };
 // 2026-11-02 메뉴 정리: 밀고 가는 3개(시세·청약·소식) + 더 보기. 보미AI 는 오른쪽 패널(✦ 버튼)로.
+// 2026-11-03 메뉴 다시 정리 — 흔한 부동산 서비스 순서(시세 → 청약 → 뉴스 → 도구)로. 자주 쓰는 계산기는 위 칸으로 올리고,
+// 퀴즈·테스트는 '더 보기' 안에서 제목('-')으로 묶었다. 항목 이름은 짧게(무엇을 하는 곳인지만).
 const MENU: MenuItem[] = [
-  { to: "/deals", label: "시세", items: [["/deals", "실거래가 · 지역 흐름"], ["/map", "지도 · 분양·매물"], ["/lab", "데이터 랩 · 지역 순위"], ["/my-homes", "★ 관심 단지"]] },
-  { to: "/calendar", label: "청약", items: [["/calendar", "분양 일정 · 당첨 가점"], ["/deals?tab=apply", "청약 공고 목록"]] },
-  { to: "/notes", label: "소식", items: [["/", "✦ 이번 주 시장"], ["/notes", "노트 · 시장 해설"], ["/now", "현행 수치 · 규제·금리"]] },
-  { label: "더 보기", items: [["/calc", "내 집 계산기"], ["/today", "오늘의 퀴즈"], ...PLAY, ["/about", "소개"]] },
+  { to: "/map", label: "시세", items: [["/map", "지도로 보기"], ["/deals", "실거래가 조회"], ["/lab", "지역 비교 · 데이터 랩"], ["/my-homes", "관심 단지"]] },
+  { to: "/calendar", label: "청약", items: [["/calendar", "분양 일정"], ["/deals?tab=apply", "청약 공고"], ["/calendar?tab=scores", "당첨 가점 · 경쟁률"]] },
+  { to: "/notes", label: "소식", items: [["/", "이번 주 시장"], ["/notes", "시장 해설 노트"], ["/now", "규제 · 금리 현황"]] },
+  { to: "/calc", label: "계산기" },
+  { label: "더 보기", items: [["-", "재미로 알아보기"], ...PLAY, ["-", "집보미"], ["/about", "서비스 소개"]] },
 ]
 
 export default function Layout({ children }: { children: React.ReactNode }) {
@@ -66,12 +70,13 @@ function Shell({ children }: { children: React.ReactNode }) {
           <nav className={`nav ${open ? "open" : ""}`}>
             {MENU.map((m) => {
               if (!m.items) return <NavLink key={m.label} to={m.to!} end={m.to === "/"} className={({ isActive }) => (isActive ? "on" : "")}>{m.label}</NavLink>;
-              const here = m.items.some(([to]) => to.split("?")[0] === loc.pathname && (!to.includes("?") || loc.search === to.slice(to.indexOf("?"))));
+              const here = m.items.some(([to]) => to !== "-" && to.split("?")[0] === loc.pathname && (!to.includes("?") || loc.search === to.slice(to.indexOf("?"))));
               return (
                 <div key={m.label} className="dd">
                   {m.to ? <NavLink to={m.to} className={() => (here ? "on" : "")}>{m.label} ▾</NavLink>
                     : <button type="button" className={here ? "on" : ""} aria-haspopup="true">{m.label} ▾</button>}
-                  <div className="menu">{m.items.map(([to, label]) => <NavLink key={to} to={to} end>{label}</NavLink>)}</div>
+                  <div className="menu">{m.items.map(([to, label]) => (to === "-" ? <span key={label} className="mh">{label}</span>
+                    : <NavLink key={to} to={to} end className={() => (to.split("?")[0] === loc.pathname && (to.includes("?") ? loc.search === to.slice(to.indexOf("?")) : !loc.search.includes("tab=")) ? "on" : "")}>{label}</NavLink>))}</div>
                 </div>
               );
             })}
