@@ -225,7 +225,8 @@ async def _trial_gate(request: Request, call_next):
                and not path.startswith(("/n/", "/s/", "/r/", "/m/")))
     if (is_api or is_html) and response.status_code < 400 and gate.first_seen(request.cookies.get(gate.COOKIE)) is None:
         response.set_cookie(gate.COOKIE, await run_in_threadpool(_new_trial_cookie, request), max_age=365 * 24 * 3600, httponly=True,
-                            samesite="lax", secure=request.url.scheme == "https" or bool(request.headers.get("tailscale-funnel-request")),
+                            samesite="lax", secure=request.url.scheme == "https" or bool(request.headers.get("tailscale-funnel-request"))
+                            or request.headers.get("x-forwarded-proto") == "https",  # Cloudflare Tunnel 등 다른 프록시도 (2026-11-04)
                             path="/")
     return response
 

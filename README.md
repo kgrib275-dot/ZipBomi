@@ -10,7 +10,8 @@
 - 설계 기준 `docs/ZIPBOMI_SPEC.md` · 단계별 계획 `docs/ROADMAP_PHASES.md` · API 메모 `docs/API.md`, `docs/API-notes-backend-public.md`
 - 최종 갱신 2026-11-03 — 이날 바뀐 것: 로그인·운영 안정성(11-5절), ISMS-P 기준 보안(11-6절·`docs/ISMS-P.md`), 품질 검수 반영(11-7절),
   속도 개선·메뉴 정리(11-5절 '속도', 11-3절 '메뉴'), 개인정보 수집 문구 '확인했습니다'·처리방침 구제 기관 정리,
-  지도의 네이버·카카오·구글 단추를 키 없이도 사용(지금 위치를 새 창으로 — 19절 6번)
+  지도의 네이버·카카오·구글 단추를 키 없이도 사용(지금 위치를 새 창으로 — 19절 6번), 관리자 OTP 재사용 차단(11-6절)
+- 2026-11-04 — 공개 전 점검표(5절), 자체 도메인 공개 절차(16절 Cloudflare Tunnel), `.env.example` 에 OTP·지도 키 추가
 
 ---
 
@@ -130,7 +131,9 @@ ZIPGENIE_PORT=5030 ZIPGENIE_SCHEDULER=1 venv/bin/python serve.py
 | `ADMIN_TOTP_SECRET` | 권장 | 관리자 OTP 2단계 인증 비밀값 — `backend/venv/Scripts/python backend/tools/admin_otp.py` 로 만들어 OTP 앱에 등록 |
 | `DATABRICKS_SERVER_HOSTNAME`, `DATABRICKS_HTTP_PATH`, `DATABRICKS_TOKEN` | 선택 | Databricks 적재 |
 | `DATABRICKS_CATALOG`, `DATABRICKS_SCHEMA` | 선택 | 적재 위치 (기본 `workspace.zipgenie`) |
-| `KAKAO_JS_KEY` | 선택 | 카카오 공유 |
+| `KAKAO_JS_KEY` | 선택 | 카카오 공유 + 지도 화면 안 카카오맵 (developers.kakao.com > JavaScript 키, 플랫폼 > Web 에 공개 도메인 등록, 카카오맵 사용 설정 켜기) |
+| `NAVER_MAP_CLIENT_ID` | 선택 | 지도 화면 안 네이버 지도 (네이버 클라우드 Maps — 뉴스 검색용 `NAVER_CLIENT_ID` 와 다름) |
+| `GOOGLE_MAPS_KEY` | 선택 | 지도 화면 안 구글 지도 (Maps JavaScript API). 지도 키 세 개는 비워도 단추가 그 회사 지도 새 창으로 열린다 |
 | `REDDIT_CLIENT_ID`, `REDDIT_CLIENT_SECRET` | 선택 | Reddit 출처 |
 
 서버 실행 옵션 (보통 `start-zipbomi.bat` 이 정함):
@@ -190,6 +193,16 @@ ZIPGENIE_PORT=5030 ZIPGENIE_SCHEDULER=1 venv/bin/python serve.py
 4. **현행 수치**에서 "확인 대기" 항목(LTV·DSR·중과세율 등)을 원문으로 확인 후 게시.
 5. **개인정보 처리방침**에서 시행일·공지 버전 등록.
 6. **배치 스케줄**에서 자동 실행 켜기/시각 조정 (13장).
+
+### 공개 전 점검표 (새 PC·새 도메인에 그대로 따라 하기)
+1. `.env` — `ADMIN_TOKEN`(40자 이상 무작위), `SITE_URL`(공개 주소, https), `SMTP_*`(로그인 메일), `DATA_GO_KR_KEY`·`ECOS_API_KEY`.
+2. 관리자 OTP — `cd backend && venv\Scripts\python tools\admin_otp.py` → 나온 비밀값을 OTP 앱(Google OTP 등)에 등록하고 `.env` `ADMIN_TOTP_SECRET` 에 넣는다.
+3. `start-zipbomi.bat` 실행(화면 빌드 자동) → 관리 > **운영 점검**에서 경고 항목이 없는지 확인.
+4. 공개 주소 연결 — 자체 도메인은 16절 '자체 도메인으로 공개', 임시로는 16절 Tailscale Funnel.
+5. `register-autostart.ps1` 실행(로그인 1분 뒤 자동 시작) + Windows 전원 옵션 '절전 안 함'.
+6. 외부 백업 위치 정하기(16절 '백업' 목록 그대로 주 1회).
+7. 관리 > 개인정보 처리방침 시행·공지, 현행 수치 기준일 확인, 뉴스레터 발송 여부 결정.
+8. Google Search Console·네이버 서치어드바이저에 `https://<도메인>/sitemap.xml` 등록.
 
 ---
 
@@ -552,6 +565,17 @@ DB 백업도 스케줄러가 돌 때만 실행됩니다 → 운영은 반드시 
     ```
   - 끄기: `%TS% --socket=%SOCK% funnel --https=443 off` (기본 기기의 Funnel 은 영향 없음).
   - `.env` 의 `SITE_URL` 을 공개 주소로 맞춰야 메일 링크·사이트맵·공유 주소가 맞습니다. Caddy·Nginx 등 다른 리버스 프록시로 옮길 때도 같습니다.
+- **자체 도메인으로 공개 (Cloudflare Tunnel — 무료, 공유기 포트 열지 않음)**: 코드에 공개 주소가 박혀 있지 않아 `SITE_URL` 만 바꾸면 된다
+  (CSRF 는 `Sec-Fetch-Site`, 쿠키 Secure·접속자 IP 는 프록시 헤더 `X-Forwarded-For`·`X-Forwarded-Proto` 로 판단 — 2026-11-04 확인).
+  1. 도메인 구입(.com·.kr 연 1.5~3만 원). Cloudflare 에서 사거나, 다른 곳에서 샀으면 Cloudflare 에 사이트를 추가하고 네임서버를 Cloudflare 로 바꾼다.
+  2. Cloudflare 대시보드 > **Zero Trust > Networks > Tunnels > Create a tunnel**(Cloudflared) → 이름 `zipbomi`.
+  3. 이 PC 에 cloudflared 설치: `winget install --id Cloudflare.cloudflared` → 화면에 나온 `cloudflared.exe service install <토큰>` 을 **관리자 PowerShell** 에서 실행
+     (Windows 서비스로 등록돼 재부팅해도 저절로 켜진다. 토큰은 비밀값 — 저장소·채팅에 남기지 않는다).
+  4. 같은 화면 **Public Hostname** 추가: 도메인(예 `zipbomi.kr` 또는 `www.zipbomi.kr`) → Service `HTTP` · `127.0.0.1:5030`.
+  5. `backend/.env` `SITE_URL=https://<도메인>` → `start-zipbomi.bat` 다시 실행 → 관리 > 운영 점검에서 SITE_URL 확인.
+  6. 카카오·네이버 지도 키를 쓰면 각 개발자 사이트에 새 도메인 등록, 검색 사이트에 새 사이트맵 등록.
+  7. 기존 `*.ts.net` 주소는 한동안 켜 둔다 — 이미 보낸 메일 링크·공유 링크가 그 주소다. 로그인 쿠키는 주소마다 따로라 새 도메인에서는 한 번 다시 로그인한다.
+  - Cloudflare 의 SSL/TLS 모드는 기본(Flexible/Full 어느 것이든 터널은 동작), **Always Use HTTPS** 를 켠다.
 - **로그**: 관리 화면 실행 로그 독, `backend/data/logs/`.
 
 ## 17. 테스트 결과
@@ -597,7 +621,7 @@ DB 백업도 스케줄러가 돌 때만 실행됩니다 → 운영은 반드시 
    키를 넣으면 같은 단추가 집보미 화면 안에 그 회사 지도를 그린다. 네이버: 네이버 클라우드 플랫폼 > Maps > Application 등록(Dynamic Map) →
    서비스 URL 에 공개 주소·`http://localhost:5030` 등록 → Client ID 를 `.env` `NAVER_MAP_CLIENT_ID` 에. `ECOS_API_KEY` 도 비어 있음.
 7. 구독자가 늘면: Gmail 하루 약 500통 한도 → 발송 서비스와 SPF·DKIM, Gemini 유료 등급(처리방침 문구도 갱신).
-8. 오래 운영하면 자체 도메인 + Cloudflare Tunnel 등으로 이전(`*.ts.net` 은 옮길 수 없음), `SITE_URL` 변경.
+8. 자체 도메인 + Cloudflare Tunnel 로 이전 — 절차는 16절 '자체 도메인으로 공개'(`*.ts.net` 은 옮길 수 없음). PC 를 늘 켜 두기 어렵거나 이 PC 가 회사 PC 라면 VPS(리눅스, 메모리 4GB 이상)로 옮기고 2절 명령 + systemd 로 띄운다.
 9. 이용약관, 지도 매물 공개 시 공인중개사법 광고 규정 검토.
 10. 첫 커밋(`1b3bebb`) 메시지는 옛 이름 "집지니" 그대로(force push 는 하지 않음).
 11. 노트 다시 검토: 30번은 원문(11월 3일 1순위)과 달리 '2월 3일'로 적혀 있음, 6번·11번은 같은 주제(종부세 주택 수 중과 폐지) 중복 — 관리 > 노트 검토에서 고치거나 합친다.
