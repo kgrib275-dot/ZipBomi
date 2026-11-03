@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import hashlib
 import logging
+import os
 import re
 import threading
 
@@ -36,35 +37,43 @@ CONFIRM_MAIL_GAP_MIN = 10   # 같은 주소로 확인 메일은 10분에 한 번
 CONFIRM_MAIL_PER_DAY = 3    # 하루 3번까지 — 남의 주소로 신청을 반복해 메일 폭탄을 보내지 못하게
 
 
-MAIL_DAILY_CAP = 300  # 하루 전체 확인·연결 메일 상한 (Gmail 개인 계정 하루 한도 500 안쪽)
-MAIL_ACTIONS = ("confirm_mail", "ask_link_mail", "login_mail")  # 방문자가 남의 주소로 일으킬 수 있는 메일 — 하루 상한은 이 합계로 센다
+MAIL_DAILY_CAP = int(os.environ.get("ZIPGENIE_MAIL_CAP", "120") or 120)  # 하루 전체 확인·연결 메일 상한
+MAIL_ACTIONS = ("confirm_mail", "ask_link_mail")  # 방문자가 남의 주소로 일으킬 수 있는 메일 — 하루 상한은 이 합계로 센다
+# 로그인 메일은 따로 센다 (2026-11-03) — 예전엔 구독 확인 메일과 상한 300을 같이 써서, 남의 주소로 구독 신청을 반복하면
+# 그날 로그인 메일까지 막혔다(1분 둘러보기 뒤 로그인 필수라 신규 이용이 멈춤). 로그인 1번 = 링크 메일 + 로그인 알림 메일 2통.
+# Gmail 개인 계정 하루 500통 = 확인·연결 120 + 로그인 150×2 + 뉴스레터·경보 여유.
+LOGIN_DAILY_CAP = int(os.environ.get("ZIPGENIE_LOGIN_MAIL_CAP", "150") or 150)
 log = logging.getLogger("zipgenie.subscribe")
 
 
 def _may_mail(email: str, action: str = "confirm_mail", page: str = "구독 확인 메일", gap_min: int | None = None,
               per_day: int | None = None, own_day: bool = False) -> bool:
     """같은 주소로 보내는 메일 제한 (확인 메일, 질문하기 연결 메일 — api/routers/ask.py 도 action 을 달리해 쓴다).
-    간격(10분)은 종류별, 하루 상한(3통)은 종류 합계 — 예전엔 종류별로 따로 세어 한 주소에 하루 6통까지 갔다 (2026-10-30)."""
+    간격(10분)은 종류별, 하루 상한(3통)은 종류 합계 — 예전엔 종류별로 따로 세어 한 주소에 하루 6통까지 갔다 (2026-10-30).
+    로그인 메일(action=login_mail)은 하루 전체 상한도 따로 센다. 확인과 기록은 프로세스 공용 잠금으로 묶는다(동시 요청으로 넘지 않게)."""
+    from pipeline.xlock import xlock
     key = hashlib.sha256(email.lower().encode()).hexdigest()[:24]  # 주소 자체는 접속 기록에 남기지 않는다
-    if db.access_count_detail_since(action, key, CONFIRM_MAIL_GAP_MIN if gap_min is None else gap_min):
-        return False
-    # own_day: 로그인 메일처럼 여러 기기에서 연달아 받을 수 있는 메일은 자기 종류만 따로 센다 (api/routers/auth.py)
-    acts = (action,) if own_day else MAIL_ACTIONS
-    if sum(db.access_count_detail_since(a, key, 24 * 60) for a in acts) >= (CONFIRM_MAIL_PER_DAY if per_day is None else per_day):
-        return False
-    # 하루 전체 상한 — 서로 다른 주소 수천 개로 신청해 우리 SMTP 한도를 소진시키거나 스팸 신고를 유도하지 못하게 (2026-11-02)
-    total = sum(db.access_count_action_since(a, 24 * 60) for a in MAIL_ACTIONS)
-    if total >= MAIL_DAILY_CAP:
-        if total == MAIL_DAILY_CAP:
+    with xlock("mail_cap"):
+        if db.access_count_detail_since(action, key, CONFIRM_MAIL_GAP_MIN if gap_min is None else gap_min):
+            return False
+        # own_day: 로그인 메일처럼 여러 기기에서 연달아 받을 수 있는 메일은 자기 종류만 따로 센다 (api/routers/auth.py)
+        acts = (action,) if own_day else MAIL_ACTIONS
+        if sum(db.access_count_detail_since(a, key, 24 * 60) for a in acts) >= (CONFIRM_MAIL_PER_DAY if per_day is None else per_day):
+            return False
+        # 하루 전체 상한 — 서로 다른 주소 수천 개로 신청해 우리 SMTP 한도를 소진시키거나 스팸 신고를 유도하지 못하게 (2026-11-02)
+        pool, cap = ((action,), LOGIN_DAILY_CAP) if action == "login_mail" else (MAIL_ACTIONS, MAIL_DAILY_CAP)
+        total = sum(db.access_count_action_since(a, 24 * 60) for a in pool)
+        if total >= cap:
             try:
                 from pipeline import alerts
-                alerts.notify("메일 상한", f"오늘 확인·연결 메일이 {MAIL_DAILY_CAP}통에 닿아 더 보내지 않습니다. 비정상 신청인지 확인하세요.")
+                alerts.notify("메일 상한", f"오늘 {'로그인' if action == 'login_mail' else '확인·연결'} 메일이 {cap}통에 닿아 더 보내지 않습니다. "
+                                          "비정상 신청인지 확인하고, 정상 사용이면 .env 상한이나 메일 발송 서비스를 늘리세요.",
+                              key=f"mail-cap-{action if action == 'login_mail' else 'confirm'}")  # 하루 한 번만
             except Exception:  # noqa: BLE001
                 log.exception("메일 상한 경보 실패")
-            db.record_access(None, page, action, "cap")
-        return False
-    db.record_access(None, page, action, key)
-    return True
+            return False
+        db.record_access(None, page, action, key)
+        return True
 
 
 def send_later(fn, *args) -> None:
@@ -85,6 +94,7 @@ def subscribe(payload: dict = Body(...), c: Caller = CallerDep) -> dict:
         raise HTTPException(status_code=400, detail="만 14세 이상만 구독할 수 있습니다.")
     # 남용 제한을 DNS 확인보다 먼저 — 느린 DNS 를 노린 요청 폭주로 서버 작업 슬롯이 묶이지 않게
     throttle("subscribe_try", c, per_visitor=3, per_ip=30)
+    throttle("subscribe_day", c, per_visitor=5, per_ip=40, minutes=24 * 60)  # 하루 상한 — 한 IP 가 시간당 30건씩 종일 보내 메일 상한을 채우지 못하게
     bad = email_check.problem(email, typo_ok=payload.get("typo_ok") is True)  # 오타·없는 도메인 — 신청 전에 알려 준다
     if bad:
         raise HTTPException(status_code=400, detail=bad)  # {message, suggest} — 화면이 '고친 주소로 신청' 버튼을 보여 준다

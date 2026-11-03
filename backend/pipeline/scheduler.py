@@ -90,6 +90,46 @@ def missed_weekly(cfg: dict, now: datetime) -> list[str]:
     return out
 
 
+DAILY = (("collect", "collection"), ("draft", "drafting"), ("vectorize", "vectorize"), ("re_data", "re_data"), ("reminders", "reminders"))
+CATCHUP_HOURS = 3  # 정해진 시각을 이만큼 안에서 놓쳤으면 한 번 따라잡는다 (그보다 오래되면 다음 예정 시각을 기다린다)
+
+
+def _claimed(slot: str) -> bool:
+    conn = db.connect()
+    try:
+        conn.execute("CREATE TABLE IF NOT EXISTS schedule_claims (slot TEXT PRIMARY KEY, claimed_at TEXT NOT NULL)")
+        return conn.execute("SELECT 1 FROM schedule_claims WHERE slot=?", (slot,)).fetchone() is not None
+    finally:
+        conn.close()
+
+
+def missed_daily(cfg: dict, now: datetime) -> list[tuple[str, str]]:
+    """오늘 정해진 시각이 지났는데(최근 CATCHUP_HOURS 안) 실행 기록(schedule_claims)이 없는 매일 작업 — (작업, 놓친 'YYYY-MM-DD HH:MM').
+    예전엔 매일 작업이 정확히 그 1분에만 돌아, 그때 서버가 재시작 중이거나 꺼져 있으면 그날은 건너뛰었다 (2026-11-03).
+    작업마다 가장 최근에 놓친 시각 하나만 돌려준다."""
+    out = []
+    for kind, key in DAILY:
+        c = cfg.get(key, {})
+        if not c.get("enabled"):
+            continue
+        latest = None
+        for hhmm in c.get("times") or []:
+            try:
+                hh, mm = map(int, str(hhmm).split(":"))
+            except ValueError:
+                continue
+            at = now.replace(hour=hh, minute=mm, second=0, microsecond=0)
+            if timedelta(minutes=2) <= now - at <= timedelta(hours=CATCHUP_HOURS) and (latest is None or at > latest):
+                latest = at
+        if latest is None:
+            continue
+        minute_key = latest.strftime("%Y-%m-%d %H:%M")
+        if _last_fired.get(kind) == minute_key or _claimed(f"{kind}@{minute_key}"):
+            continue
+        out.append((kind, minute_key))
+    return out
+
+
 def _tick() -> None:
     now = datetime.now()
     try:
@@ -102,6 +142,13 @@ def _tick() -> None:
         if _fire_once(kind, now):
             logger.info("스케줄 실행: %s", kind)
             jobs.start(kind, trigger="자동")
+    # 놓친 매일 작업 — 원래 시각의 실행 기록(slot)을 차지해 두 번 돌지 않게 한다
+    for kind, minute_key in missed_daily(cfg, now):
+        if _claim(kind, minute_key):
+            with _lock:
+                _last_fired[kind] = minute_key
+            logger.warning("놓친 매일 작업 따라잡기: %s (%s)", kind, minute_key)
+            jobs.start(kind, trigger="자동(놓친 작업)")
     # 놓친 주간 작업은 하루 한 번만 다시 시도한다 (실패가 반복될 때 계속 돌지 않게)
     for kind in missed_weekly(cfg, now):
         if _claim(f"catchup-{kind}", now.strftime("%Y-%m-%d")):
@@ -121,7 +168,8 @@ def _archive_housekeeping() -> None:
 
 
 def _purge_housekeeping() -> None:
-    """하루 한 번(프로세스·재시작과 무관하게 DB에 기록): 보관 기간이 지난 기록 삭제 → 통계 갱신 → 백업."""
+    """하루 한 번(프로세스·재시작과 무관하게 DB에 기록): 보관 기간이 지난 기록 삭제 → 통계 갱신 → 백업.
+    3.4GB 백업·무결성 검사는 몇 분 걸리므로 별도 스레드에서 한다 (2026-11-03) — 예전엔 그동안 예약 확인(tick)이 멈췄다."""
     global _purged_on
     today = datetime.now().date()
     if _purged_on == today:
@@ -129,6 +177,10 @@ def _purge_housekeeping() -> None:
     _purged_on = today
     if not _claim("housekeeping", today.isoformat()):
         return  # 오늘 다른 프로세스(또는 재시작 전의 이 프로세스)가 이미 했다
+    threading.Thread(target=_housekeeping_run, daemon=True, name="zipbomi-housekeeping").start()
+
+
+def _housekeeping_run() -> None:
     try:
         for name, n in db.purge_expired().items():
             if n:
@@ -159,6 +211,44 @@ def _loop() -> None:
         _archive_housekeeping()
         _purge_housekeeping()
         time.sleep(_POLL_SECONDS)
+
+
+WATCH_EVERY = 300      # 5분마다 확인
+STALE_AFTER = 600      # 스케줄러 tick 이 10분 넘게 없으면 멈춘 것으로 본다
+
+
+def _watch_once(now: datetime) -> None:
+    tick = db.get_meta("scheduler_tick")
+    try:
+        age = (now - datetime.fromisoformat(tick)).total_seconds() if tick else None
+    except ValueError:
+        age = None
+    if age is not None and age <= STALE_AFTER:
+        return
+    since = f"{int(age // 60)}분 전 마지막 실행" if age is not None else "실행 기록 없음"
+    # 같은 시(時) 안에서는 한 번만 — 프로세스 3개가 모두 감시해도 DB 기록으로 한 번만 보낸다
+    alerts.notify("관리·배치 서버 멈춤",
+                  f"예약 작업(백업·수집·알림 메일)을 돌리는 관리·배치 서버(5031)가 멈춘 것 같습니다 ({since}). "
+                  "PC 에서 start-zipbomi.bat 을 다시 실행하거나 '집보미 관리·배치 서버 (5031)' 창을 확인하세요.",
+                  key=f"admin-down-{now:%H}")
+
+
+def _watch_loop() -> None:
+    time.sleep(WATCH_EVERY)  # 막 함께 시작한 관리·배치 서버가 첫 tick 을 남길 시간을 준다
+    while True:
+        try:
+            _watch_once(datetime.now())
+        except Exception:
+            logger.exception("관리·배치 서버 감시 오류")
+        time.sleep(WATCH_EVERY)
+
+
+def start_watchdog_thread() -> None:
+    """공개 서버(스케줄러 꺼짐, 관리 요청을 5031 로 넘기는 서버)에서만 — 관리·배치 서버가 멈추면 경보를 보낸다 (2026-11-03).
+    경보도 원래 5031 이 보내므로, 5031 이 꺼지면 아무도 알 수 없었다."""
+    if os.environ.get("ZIPGENIE_SCHEDULER") == "1" or not os.environ.get("ZIPGENIE_ADMIN_UPSTREAM"):
+        return
+    threading.Thread(target=_watch_loop, daemon=True, name="zipbomi-watchdog").start()
 
 
 def start_scheduler_thread() -> None:

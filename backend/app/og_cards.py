@@ -129,9 +129,14 @@ def render_note_async(note: dict) -> None:
         _pending.add(nid)
 
     def run():
+        from pipeline.xlock import xlock
         try:
-            render_note(note)
-            _failed.pop(nid, None)
+            # PC 전체에서 브라우저는 한 번에 하나만 (2026-11-03) — 예전엔 프로세스마다·노트마다 Chromium 을 띄워, 검색 엔진이 노트를
+            # 한꺼번에 긁으면 브라우저가 수십 개 떠 PC 자원이 바닥났다. 이미 누가 그리고 있으면 이번엔 건너뛰고(og.png) 다음 요청 때 다시.
+            with xlock("og_render", wait=False) as got:
+                if got:
+                    render_note(note)
+                    _failed.pop(nid, None)
         except Exception:  # noqa: BLE001 - 실패해도 페이지는 og.png 로 계속 나간다
             _failed[nid] = time.time()
         finally:

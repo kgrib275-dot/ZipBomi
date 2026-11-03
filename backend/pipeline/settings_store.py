@@ -218,7 +218,16 @@ def is_admin_request(ip: str | None, headers: dict[str, str]) -> bool:
     real_ip, proxied = client_ip(ip, headers)
     if proxied:
         # 프록시 경유 요청은 "로컬"로 취급하지 않는다 — 등록된 IP만 관리자.
+        # 단 X-Forwarded-For 는 Funnel 이 아닌 길(tailnet 기기 → 사용자 공간 tailscaled → 127.0.0.1)로 오면 보낸 쪽이 마음대로 쓸 수 있어
+        # 운영에서는 기본으로 믿지 않는다 (2026-11-03). 꼭 쓰려면 .env ZIPGENIE_TRUST_ADMIN_IPS=1.
+        if os.environ.get("ZIPGENIE_TRUST_ADMIN_IPS") != "1" and os.environ.get("ZIPGENIE_LOCAL_ADMIN") != "1":
+            return False
         return bool(real_ip) and any(a["ip"] == real_ip for a in load()["admin_ips"])
+    # 운영(2026-11-03~): 127.0.0.1 접속이라도 토큰 없이는 관리자가 아니다. 머리글(Host·Sec-Fetch-Site)은 브라우저가 아닌 프로그램이
+    # 마음대로 넣을 수 있고, 공개용 tailscaled(사용자 공간 모드)·같은 PC 의 다른 서비스를 거친 요청도 127.0.0.1 로 들어온다.
+    # 관리 화면은 .env ADMIN_TOKEN 을 한 번 입력해 쓴다. 개발 서버(start-dev.bat)만 ZIPGENIE_LOCAL_ADMIN=1 로 예전처럼 둔다.
+    if os.environ.get("ZIPGENIE_LOCAL_ADMIN") != "1":
+        return False
     # 로컬 접속은 브라우저에서 온 요청만 관리자로 본다 — 브라우저는 모든 요청에 Sec-Fetch-Site 를 붙이지만, 같은 PC 의 다른 공개
     # 서비스(AX Review·Trade_IQ)가 서버 코드로 이 주소를 부르면(SSRF) 이 헤더가 없다. 다른 사이트에서 온 요청(cross-site)도 거절.
     lower = {k.lower(): v for k, v in headers.items()}

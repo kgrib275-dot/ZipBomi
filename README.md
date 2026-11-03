@@ -75,9 +75,10 @@ cd ..
 ```bat
 start-zipbomi.bat
 ```
-- http://localhost:5030 — 사이트, http://localhost:5030/admin — 관리 화면 (이 PC 에서 열면 관리자로 인식)
+- http://localhost:5030 — 사이트, http://localhost:5030/admin — 관리 화면 (`.env` `ADMIN_TOKEN` 을 한 번 입력)
 - 배치 스케줄러가 켜진 채로 뜨고, 서버가 멈추면 5초 뒤 저절로 다시 시작합니다. 창을 닫으면 종료.
 - `frontend/dist` 가 없으면 처음 한 번 화면을 빌드합니다.
+- 이미 실행 중인 집보미 서버(5030·5031)가 있으면 그 창까지 자동으로 끄고 새로 띄웁니다 (`stop-zipbomi.ps1`). Tailscale 공개 기기는 그대로 둡니다.
 - DB(`backend/data/zipbomi.db`)와 설정 파일은 첫 실행 때 자동으로 만들어집니다.
 
 ### 개발 모드
@@ -123,7 +124,7 @@ ZIPGENIE_PORT=5030 ZIPGENIE_SCHEDULER=1 venv/bin/python serve.py
 | `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM`, `SMTP_TLS` | 선택 | 구독 확인·뉴스레터·청약 D-3·전세 만기 알림 메일. `SMTP_TLS` = `starttls`/`ssl`/`none` |
 | `ALERT_EMAIL` | 선택 | 수집·발송 실패 경보를 받을 관리자 메일 |
 | `SITE_URL` | 필수(메일 쓸 때) | 메일 속 링크·공유 주소의 기준. 외부에서 열리는 주소여야 메일 링크가 동작 |
-| `ADMIN_TOKEN` | 선택 | 이 PC 밖에서 관리 화면을 쓸 때 (`X-Admin-Token` 헤더). 비우면 로컬 접속만 관리자 |
+| `ADMIN_TOKEN` | **필수(운영)** | 관리 화면·관리 API (`X-Admin-Token` 헤더). 2026-11-03부터 이 PC 에서도 토큰을 넣어야 관리자 (11-5절) |
 | `DATABRICKS_SERVER_HOSTNAME`, `DATABRICKS_HTTP_PATH`, `DATABRICKS_TOKEN` | 선택 | Databricks 적재 |
 | `DATABRICKS_CATALOG`, `DATABRICKS_SCHEMA` | 선택 | 적재 위치 (기본 `workspace.zipgenie`) |
 | `KAKAO_JS_KEY` | 선택 | 카카오 공유 |
@@ -142,6 +143,11 @@ ZIPGENIE_PORT=5030 ZIPGENIE_SCHEDULER=1 venv/bin/python serve.py
 | `ZIPGENIE_TRIAL_SEC` | 60 | 로그인 전 둘러보기 시간(초). 부하 시험 때만 늘린다 |
 | `ZIPGENIE_DB` | `backend/data/zipbomi.db` | 다른 DB 파일 사용 (시험용 사본 등 — 이때 자동 백업은 건너뜀) |
 | `ZIPGENIE_DEBUG` | (없음) | `1` 이면 `/api/openapi.json` 공개 |
+| `ZIPGENIE_LOCAL_ADMIN` | (없음) | `1` 이면 이 PC 브라우저 접속을 토큰 없이 관리자로 (개발용 — `start-dev.bat` 만 켠다. 운영에서 켜지 않는다) |
+| `ZIPGENIE_TRUST_ADMIN_IPS` | (없음) | `1` 이면 관리 > 관리자 IP 에 등록한 IP 를 토큰 없이 관리자로 (X-Forwarded-For 위조 위험 — 기본 끔) |
+| `ZIPGENIE_LOGIN_MAIL_CAP` | 150 | 하루 로그인 메일 상한 (로그인 1번 = 링크 메일 + 알림 메일 2통) |
+| `ZIPGENIE_MAIL_CAP` | 120 | 하루 구독 확인·질문하기 연결 메일 상한 (로그인 메일과 따로 센다) |
+| `ZIPGENIE_IP_TRIALS` | 20 | 같은 IP 에서 하루 새로 시작할 수 있는 1분 둘러보기 수 (공유 IP 대비) |
 
 ---
 
@@ -231,6 +237,7 @@ Docker(Dockerfile 없음), 별도 벡터 DB, Redis, 외부 큐 — 모두 단일
 ```
 ZipBomi/
 ├─ start-zipbomi.bat        운영 실행 (스케줄러 켜짐, 자동 재시작)
+├─ stop-zipbomi.ps1         실행 중인 서버(5030·5031)와 그 창 종료 (start-zipbomi.bat 이 먼저 부름)
 ├─ start-dev.bat             개발 실행 (백엔드 --reload + Vite)
 ├─ docs/                     설계·로드맵·API 메모
 ├─ backend/
@@ -347,7 +354,7 @@ ZipBomi/
   `POST /api/auth/verify` (30분·한 번만, 토큰은 sha256 해시로 저장). 계정은 방문자 쿠키 원값(raw) 하나를 가지며, 로그인하면 브라우저 쿠키를 그 값으로
   바꿔 심어 프로필·관심 단지·알림·필터·계산 입력(visitor_state)이 기기와 상관없이 이어진다. 로그인 전 브라우저에 쌓인 값은 계정 쪽에 합친다(목록은 합집합).
   같은 주소의 확인된 구독자와 자동으로 이어진다. `POST /api/auth/logout`, '내 기록 지우기'(`DELETE /api/me`)는 계정까지 삭제.
-  로그인 메일은 주소당 1분 간격·하루 10통, 확인·연결·로그인 메일 합계 하루 300통 상한.
+  로그인 메일은 주소당 1분 간격·하루 10통. 하루 전체 상한은 로그인 150통·확인·연결 120통을 따로 센다 (2026-11-03, 11-5절).
 - **내 공간** `/my` (`GET /api/me/space`, `pipeline/my_space.py`): 관심 단지 최근 6개월 거래·3.3㎡당 변동, 관심·알림 청약(D-day), 저장한 노트(`note_bm`),
   저장한 계산(`calc_saves`, 계산기 '이 계산 저장'), 메모(`my_memo`), 관심 공고(`apply_fav`).
 - **내 자료로 질문하기**: `/api/ask` 가 `mine`(기본 켬)이면 `my_space.context_text()` 의 '내 상황' 글을 근거에 붙인다 (Gemini 로 전송 — 처리방침 국외 이전 항목에 명시).
@@ -355,7 +362,8 @@ ZipBomi/
   ③ 로그인마다 알림 메일 + '모든 기기에서 로그아웃'(`POST /api/auth/revoke`·`/api/auth/logout-all` — 계정 raw 교체로 다른 기기 쿠키 무효). 요청·확인 횟수 제한.
 - **내 일정 달력·항목 메모**: `/my` 통합 달력(관심·알림 공고 일정, 전세 만기, 항목 알림 `my_items`, 직접 넣은 일정 `my_events`). 항목마다 메모·알림 날짜.
 - **상단 🔔** (`layout/AlertBell.tsx`, `GET /api/me/alerts`): 켠 청약·전세 만기 알림과 상태(D-day·메일 예정·보냄·지남), 내 공간 알림·일정(3일 전부터).
-- **원격 관리**: `.env` `ADMIN_TOKEN` 설정 → 공개 주소 `/admin` 에서 토큰 입력(5회 틀리면 잠시 차단). 이 PC 는 브라우저 요청(Sec-Fetch-Site)일 때만 토큰 없이 관리자.
+- **관리 화면**: `.env` `ADMIN_TOKEN` 설정 → `/admin` 에서 토큰 입력(10분에 10번 틀리면 잠시 차단). 2026-11-03부터 이 PC 에서도 토큰이 필요하다 (11-5절).
+- 2026-11-03 바뀐 로그인 구조(코드 입력·기기별 로그인·메일 상한 분리)는 11-5절.
 
 ## 11-2. 데이터 랩 · 청약 통계 (2026-11-02)
 - `/lab` 위쪽 시장 놀이터 (`GET /api/lab/market`, 1시간 캐시): 2년 월별 거래량·3.3㎡ 중위 + 금리·심리·KB 지수, 예산 슬라이더, 시군구 순위, 3곳 비교.
@@ -374,7 +382,8 @@ ZipBomi/
 - ⚠ 실행 중인 bat 파일을 고치지 않는다(cmd 가 줄 위치로 다시 읽어 꼬인다). 바꾼 뒤에는 창을 닫고 다시 실행.
 
 **로그인 전 1분 둘러보기** (`pipeline/gate.py`, `layout/TrialGate.tsx`)
-- 처음 방문 시각을 서명 쿠키(`zgt`)와 IP(`trial_ip` 표, 2일 뒤 삭제)로 기억. 1분이 지나면 공개 API 가 401 `{login_required}` → 화면은 `/about?login=1` 로 옮겨 로그인 창.
+- 처음 방문 시각을 서명 쿠키(`zgt`)로 기억. 1분이 지나면 공개 API 가 401 `{login_required}` → 화면은 `/about?login=1` 로 옮겨 로그인 창.
+- 같은 IP 는 하루 `ZIPGENIE_IP_TRIALS`(20)개까지 새 둘러보기를 받는다(`trial_ip` 표). 넘으면 새 쿠키는 이미 끝난 둘러보기로 준다 — 쿠키를 지워 가며 1분을 계속 받지 못하게.
 - 늘 열린 API: `/api/me*`, `/api/auth/*`, 소개·처리방침·구독·문의·방문 기록. 화면(HTML)·공유 미리보기·사이트맵은 막지 않는다. 관리자는 막지 않는다.
 
 **보미AI** (옛 질문하기) — 오른쪽 패널(`layout/AskPanel.tsx`, ✦ 버튼)로 보던 화면 옆에서 질문, `/ask` 는 전체 화면.
@@ -404,6 +413,36 @@ ZipBomi/
   - 메일 발송 업체는 `SMTP_HOST`가 gmail.com이고 발송 업체 칸이 비어 있으면 자동으로 Google LLC (Gmail), 미국 국외 이전으로 표시한다.
   - Gemini는 "무료 등급은 Google이 서비스 개선·사람 검토에 이용할 수 있음"으로 적었다. 유료 등급으로 바꾸면 이 문구를 고치고 새 버전을 공지한다.
 - 회사 메일로 만든 계정·구독은 개인 Gmail로 옮겼다. 운영에는 회사 계정·브랜드를 쓰지 않는다.
+
+## 11-5. 로그인·운영 안정성 점검 반영 (2026-11-03)
+**로그인**
+- **로그인 창에서 코드 바로 입력**: `POST /api/auth/request` 뒤 창에 메일의 6자리 코드를 넣으면 `POST /api/auth/verify-code` 로 로그인.
+  링크를 요청한 브라우저(nonce 쿠키 `zgl`) + 코드 두 가지를 확인한다(`login_tokens.ncode_hash`, 5번 틀리면 무효).
+  휴대폰 메일 앱이 링크를 앱 안 브라우저로 열어 '다른 기기'로 처리되던 문제를 피한다. 메일의 링크(`/login?t=…`)도 그대로 쓸 수 있다.
+- **기기별 로그인** (`account_sessions` 표): 로그인하면 쿠키(`zgv`)에 계정 raw 대신 그 기기만의 값(sid, DB 에는 해시)을 심고, 요청마다
+  `accounts.resolve()` 로 계정 raw 로 바꾼다. 내 공간 '로그인한 기기'(`GET /api/auth/sessions`)에서 기기별 로그아웃(`POST /api/auth/sessions/end`).
+  로그아웃은 그 기기 값을 지워 쿠키를 다시 쓸 수 없다. 1년 안 쓴 기기는 로그아웃. 예전 방식 쿠키(계정 raw)도 받고, 다음 로그인 때 바뀐다.
+- **다른 계정 자료 섞임 고침**: 로그인할 때 익명으로 쌓은 값만 계정에 합친다. 예전엔 A 계정으로 로그인된 브라우저에서 B 가 로그인하면 A 의 자료가 B 에 복사됐다.
+- **메일 상한 분리**: 로그인 메일 하루 `ZIPGENIE_LOGIN_MAIL_CAP`(150), 구독 확인·연결 메일 `ZIPGENIE_MAIL_CAP`(120)을 따로 센다.
+  못 보냈으면 429 로 알린다(예전엔 "보냈습니다"라고 답했다). 구독 신청은 IP 당 하루 40건. 확인·기록은 프로세스 공용 잠금(`pipeline/xlock.py`)으로 묶는다.
+  ⚠ 개인 Gmail 은 하루 500통 — 사용자가 늘면 메일 발송 서비스(Resend·AWS SES 등)로 바꾼다.
+- 로그인 판정 캐시는 "로그인됨"만 10초 기억(로그인 직후 다른 프로세스가 로그인 창을 다시 띄우던 문제).
+
+**관리자**
+- 운영에서는 **127.0.0.1 접속도 토큰 없이는 관리자가 아니다**. Host·Sec-Fetch-Site 머리글은 브라우저가 아닌 프로그램이 마음대로 넣을 수 있고,
+  공개용 tailscaled(사용자 공간 모드)나 같은 PC 의 다른 서비스를 거친 요청도 127.0.0.1 로 들어오기 때문. `/admin` 에서 `ADMIN_TOKEN` 을 한 번 입력한다.
+  개발 서버(`start-dev.bat`)는 `ZIPGENIE_LOCAL_ADMIN=1` 로 예전처럼. 등록 IP 관리자는 `ZIPGENIE_TRUST_ADMIN_IPS=1` 일 때만.
+- 공개 서버는 `/api/admin/*` 를 넘기기 전에 관리자인지 먼저 보고, 본문은 2MB(실거래가 업로드 61MB)까지만 받는다.
+
+**서버**
+- 둘러보기 판정(DB 읽기)을 작업 스레드에서 한다 — 배치가 DB 를 잡고 있어도 공개 서버 이벤트 루프가 멈추지 않게.
+- 로그 파일을 프로세스마다 따로(`data/logs/zipbomi-<포트>-<PID>.log`), 14일 지난 로그는 시작할 때 지운다.
+- 노트 공유 카드(Chromium)는 PC 전체에서 한 번에 하나만 그린다.
+- 공개 서버가 5분마다 관리·배치 서버 스케줄러 기록(`scheduler_tick`)을 보고, 10분 넘게 멈췄으면 경보(Teams·`ALERT_EMAIL`, 1시간에 한 번).
+- 매일 작업(수집·초안·벡터화·부동산 데이터·알림 메일)을 정해진 시각에 놓쳤으면 3시간 안에서 한 번 따라잡는다.
+- 하루 정리·백업은 별도 스레드에서. 백업 중 끊겨 남은 `.tmp`(1시간 지난 것)와 30일 지난 `.bad` 는 지운다.
+- 쓰기 요청 분당 한도·보미AI IP 동시 질문 수는 프로세스 수(`ZIPGENIE_WORKERS`)로 나눠 PC 전체 기준이 되게. 남용 제한 확인·기록은 프로세스 공용 잠금으로 묶는다.
+- `start-zipbomi.bat` 은 이미 떠 있는 집보미 서버(5030·5031)와 그 창을 끄고 새로 띄운다 (`stop-zipbomi.ps1`).
 
 ## 12. Databricks 적재
 - `pipeline/warehouse.py` — 운영 DB 는 로컬 SQLite 로 두고, 바뀐 행만 `<catalog>.<schema>`(기본 `workspace.zipgenie`) Delta 테이블로 MERGE.
@@ -435,7 +474,7 @@ DB 백업도 스케줄러가 돌 때만 실행됩니다 → 운영은 반드시 
 스키마는 `pipeline/db.py`·`re_store.py`·`policy.py` 등이 시작 시 자동으로 만들고 열을 추가합니다(마이그레이션 도구 없음).
 
 ## 15. 보안 · 개인정보
-- 관리 API: 로컬 접속 또는 `ADMIN_TOKEN` 만 허용, 외부(Funnel·XFF) 요청은 401/403. `X-Forwarded-For` 위장으로 우회 불가.
+- 관리 API: `ADMIN_TOKEN` 만 허용(2026-11-03부터 로컬 접속도 토큰 필요, 개발 서버만 예외). `X-Forwarded-For`·Host 위장으로 우회 불가.
 - CSRF: 상태를 바꾸는 요청은 `X-Requested-With: zipgenie` 헤더 필수(없으면 428), 다른 사이트 출처 요청은 403.
 - 요청 본문 64KB 제한, 보안 헤더(CSP·X-Frame-Options·X-Content-Type-Options·Referrer-Policy), 방문자 쿠키 `HttpOnly; SameSite`.
 - 프로필 입력은 허용값 목록으로 정리(XSS 방지), SQL 은 모두 파라미터 바인딩.

@@ -178,12 +178,15 @@ def recent_count(kind: str, visitor: str, minutes: int) -> int:
 
 
 def attempt(kind: str, visitor: str, ip: str | None, per_visitor: int, per_ip: int, minutes: int = 60) -> bool:
-    """남용 제한 — 방문자 기준과 IP 기준을 함께 본다(쿠키를 바꿔도 IP로 묶임). 허용이면 시도를 기록하고 True."""
-    if recent_count(kind, visitor, minutes) >= per_visitor or db.access_count_since(ip, kind, minutes) >= per_ip:
-        return False
-    record(kind, visitor=visitor)
-    db.record_access(ip, "제한 기록", kind)
-    return True
+    """남용 제한 — 방문자 기준과 IP 기준을 함께 본다(쿠키를 바꿔도 IP로 묶임). 허용이면 시도를 기록하고 True.
+    확인과 기록 사이에 다른 프로세스가 끼어 한도를 넘지 않게 프로세스 공용 잠금으로 묶는다 (2026-11-03)."""
+    from .xlock import xlock
+    with xlock("attempt"):  # 못 잡아도(5초) 그대로 진행 — 제한이 조금 느슨해질 뿐 서비스는 멈추지 않는다
+        if recent_count(kind, visitor, minutes) >= per_visitor or db.access_count_since(ip, kind, minutes) >= per_ip:
+            return False
+        record(kind, visitor=visitor)
+        db.record_access(ip, "제한 기록", kind)
+        return True
 
 
 def record(kind: str, item: str = "", value: str = "", extra=None, visitor: str = "") -> bool:

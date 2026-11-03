@@ -42,17 +42,21 @@ def first_seen(cookie: str | None) -> int | None:
 
 
 def logged_in(raw: str | None) -> bool:
-    """방문자 쿠키 원값이 로그인 계정인지 — 요청마다 DB 를 읽지 않게 30초 기억."""
+    """방문자 원값(accounts.resolve 를 거친 값)이 로그인 계정인지 — 요청마다 DB 를 읽지 않게 "로그인됨"만 10초 기억.
+    예전엔 "로그인 안 됨"도 30초 기억해, 로그인을 처리하지 않은 다른 프로세스가 로그인 직후 최대 30초 동안 로그인 창을 다시 띄웠다 (2026-11-03)."""
     if not raw:
         return False
     now = time.monotonic()
     hit = _acc_cache.get(raw)
-    if hit and now - hit[0] < 30:
-        return hit[1]
+    if hit and now - hit[0] < 10:
+        return True
     ok = accounts.by_raw(raw) is not None
     if len(_acc_cache) > 20000:
         _acc_cache.clear()
-    _acc_cache[raw] = (now, ok)
+    if ok:
+        _acc_cache[raw] = (now, True)
+    else:
+        _acc_cache.pop(raw, None)
     return ok
 
 
@@ -62,41 +66,57 @@ def forget(raw: str | None) -> None:
         _acc_cache.pop(raw, None)
 
 
-_ip_first: dict[str, float] = {}
 _SQL = "CREATE TABLE IF NOT EXISTS trial_ip (ip TEXT PRIMARY KEY, first_at REAL NOT NULL)"
+# 같은 IP 에서 하루에 새로 시작할 수 있는 둘러보기 수 (2026-11-03). 예전엔 IP 하나에 1분 하나뿐이라, 사무실·통신사 공유 IP 뒤의
+# 두 번째 사람은 들어오자마자 로그인 화면을 봤다. 이제 쿠키(zgt)를 새로 줄 때만 IP 를 세고, 하루 이 수를 넘으면 그 IP 의 첫 시각으로 준다
+# (쿠키를 지워 가며 1분을 계속 새로 받는 것은 여전히 막힌다).
+IP_TRIALS_PER_DAY = int(os.environ.get("ZIPGENIE_IP_TRIALS", "20") or 20)
 
 
-def _ip_first_seen(ip_key: str, now: float) -> float:
-    """IP 처음 방문 시각 — 프로세스가 여러 개여도 같은 값이 되게 DB 에 둔다(메모리는 앞단 캐시). 하루 지나면 새로."""
-    t0 = _ip_first.get(ip_key)
-    if t0 is not None and now - t0 <= 86400:
-        return t0
+def _ip_trials(ip_key: str, now: float, count: bool) -> tuple[float, int]:
+    """(이 IP 의 오늘 첫 둘러보기 시각, 오늘 새로 준 둘러보기 수). count=True 면 하나 더 센다. 프로세스가 여러 개여도 같은 값이 되게 DB 에 둔다.
+    하루 지나면 새로."""
     from . import db
     c = db.connect()
     try:
         c.execute(_SQL)
+        if "n" not in {r[1] for r in c.execute("PRAGMA table_info(trial_ip)")}:
+            try:
+                c.execute("ALTER TABLE trial_ip ADD COLUMN n INTEGER NOT NULL DEFAULT 0")
+            except Exception:  # noqa: BLE001 - 다른 프로세스가 먼저 넣었다
+                pass
         c.execute("DELETE FROM trial_ip WHERE ip=? AND first_at < ?", (ip_key, now - 86400))
-        c.execute("INSERT OR IGNORE INTO trial_ip (ip, first_at) VALUES (?, ?)", (ip_key, now))
-        row = c.execute("SELECT first_at FROM trial_ip WHERE ip=?", (ip_key,)).fetchone()
+        c.execute("INSERT OR IGNORE INTO trial_ip (ip, first_at, n) VALUES (?, ?, 0)", (ip_key, now))
+        if count:
+            c.execute("UPDATE trial_ip SET n = n + 1 WHERE ip=?", (ip_key,))
+        row = c.execute("SELECT first_at, n FROM trial_ip WHERE ip=?", (ip_key,)).fetchone()
         c.commit()
-        t0 = float(row[0]) if row else now
-    except Exception:  # noqa: BLE001 - DB 가 바쁘면 메모리 값으로
-        t0 = now
+        return (float(row[0]), int(row[1])) if row else (now, 0)
+    except Exception:  # noqa: BLE001 - DB 가 바쁘면 새 방문자로 (제한이 잠깐 느슨해질 뿐)
+        return now, 0
     finally:
         c.close()
-    if len(_ip_first) > 50000:
-        _ip_first.clear()
-    _ip_first[ip_key] = t0
-    return t0
+
+
+def new_cookie(ip_key: str | None) -> str:
+    """처음 온 브라우저에 줄 둘러보기 쿠키. 이 IP 가 오늘 IP_TRIALS_PER_DAY 개를 넘게 받았으면 이미 끝난 둘러보기로 준다."""
+    now = time.time()
+    if ip_key:
+        _, n = _ip_trials(ip_key, now, count=True)
+        if n > IP_TRIALS_PER_DAY:
+            return make_cookie(int(now) - TRIAL_SEC)
+    return make_cookie(int(now))
 
 
 def left(cookie: str | None, ip_key: str | None = None) -> int:
-    """남은 둘러보기 초. 쿠키 시각과 IP 처음 시각 중 이른 쪽 — 쿠키를 지워도 같은 IP 면 1분이 새로 생기지 않는다."""
+    """남은 둘러보기 초. 쿠키가 있으면 쿠키 시각으로. 쿠키가 없으면(첫 요청·쿠키를 받지 않는 클라이언트) 이 IP 가 오늘 둘러보기를
+    다 썼는지로 본다 — 쿠키를 지워도 같은 IP 에서 무한히 새로 받지는 못한다."""
     now = time.time()
     ts = first_seen(cookie)
-    if ip_key:
-        t0 = _ip_first_seen(ip_key, now)
-        ts = min(ts, t0) if ts is not None else t0
+    if ts is None and ip_key:
+        _, n = _ip_trials(ip_key, now, count=False)
+        if n >= IP_TRIALS_PER_DAY:
+            return 0
     if ts is None:
         return TRIAL_SEC
     return max(0, TRIAL_SEC - int(now - ts))

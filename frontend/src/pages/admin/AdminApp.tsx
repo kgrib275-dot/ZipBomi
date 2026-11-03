@@ -91,7 +91,7 @@ function TokenPrompt({ reason, onDone }: { reason: string; onDone: () => Promise
       <div className="eyebrow">Admin</div>
       <h2 className="sec-h" style={{ fontSize: "1.4rem" }}>🔒 관리자 확인</h2>
       <Alert kind="warn">{reason}</Alert>
-      <p className="caption">이 PC(localhost)·등록된 IP 에서는 자동으로 관리자입니다. 그 밖에서는 backend .env 의 ADMIN_TOKEN 을 입력하세요. 이 브라우저에만 저장됩니다.</p>
+      <p className="caption">관리 화면은 backend .env 의 ADMIN_TOKEN 을 입력해야 열려요(이 PC 에서도 마찬가지 — 2026-11-03부터). 한 번 넣으면 이 브라우저에만 저장됩니다.</p>
       <div className="field">
         <label>관리자 토큰</label>
         <input type="password" value={tok} onChange={(e) => setTok(e.target.value)} onKeyDown={(e) => e.key === "Enter" && save()} autoFocus />

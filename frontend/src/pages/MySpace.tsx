@@ -38,16 +38,20 @@ export default function MySpace() {
     if (!window.confirm("모든 기기에서 로그아웃할까요? 이 브라우저만 로그인 상태로 남고, 다른 기기는 다시 로그인해야 합니다.")) return;
     await post("auth/logout-all"); window.alert("다른 모든 기기에서 로그아웃했습니다.");
   };
+  const [devices, setDevices] = useState(false);
   return (
     <div className="my">
       <div className="eyebrow">내 공간</div>
       <h2 className="sec-h">나만의 <span className="grad">집 노트</span></h2>
       <div className="my-acc">
         {acc ? <><span>✓ {acc.email} 로 로그인 · {acc.since}부터</span><button type="button" className="linkish" onClick={logout}>로그아웃</button>
+          <button type="button" className="linkish" onClick={() => setDevices((v) => !v)}>로그인한 기기</button>
           <button type="button" className="linkish" onClick={logoutAll} title="다른 기기에서 로그인된 것을 모두 끊습니다">모든 기기에서 로그아웃</button></>
           : <><span>지금은 이 브라우저에만 저장돼요. 로그인하면 휴대폰·PC 어디서든 그대로 보여요.</span><button type="button" className="btn sm primary" onClick={openLogin}>메일로 로그인</button></>}
         <Link to="/me" className="linkish">내 프로필 고치기</Link>
       </div>
+
+      {acc && devices && <MyDevices />}
 
       <AskMine />
 
@@ -209,6 +213,43 @@ function AllSettings() {
           </div>
         ))}
       </div>
+    </section>
+  );
+}
+
+
+// 로그인한 기기 (2026-11-03) — GET /api/auth/sessions, 하나씩 로그아웃은 POST /api/auth/sessions/end
+type Sess = { id: string; created_at: string; last_seen: string; ua: string; current: boolean };
+function device(ua: string): string {
+  const os = /iPhone|iPad/.test(ua) ? "iPhone·iPad" : /Android/.test(ua) ? "Android" : /Windows/.test(ua) ? "Windows" : /Mac OS/.test(ua) ? "Mac" : "기기";
+  const br = /KAKAOTALK/i.test(ua) ? "카카오톡" : /NAVER/.test(ua) ? "네이버 앱" : /Edg\//.test(ua) ? "Edge" : /SamsungBrowser/.test(ua) ? "삼성 인터넷"
+    : /Chrome\//.test(ua) ? "Chrome" : /Safari\//.test(ua) ? "Safari" : /Firefox\//.test(ua) ? "Firefox" : "브라우저";
+  return `${os} · ${br}`;
+}
+function MyDevices() {
+  const { data, error, reload } = useLoad(() => get<{ sessions: Sess[]; legacy: boolean }>("auth/sessions"), []);
+  const [err, setErr] = useState("");
+  const end = async (id: string) => {
+    setErr("");
+    try { await post("auth/sessions/end", { id }); reload(); } catch (e) { setErr(e instanceof Error ? e.message : "처리하지 못했습니다."); }
+  };
+  return (
+    <section className="my-sec">
+      <div className="my-h"><h3>로그인한 기기 <small>{data?.sessions.length ?? ""}</small></h3></div>
+      {(error || err) && <Alert kind="err">{error || err}</Alert>}
+      {data?.legacy && <p className="caption">이 브라우저는 예전 방식으로 로그인돼 목록에 없어요. 로그아웃 후 다시 로그인하면 목록에 나타나요.</p>}
+      {!data ? <div className="page-loading">불러오는 중…</div> : !data.sessions.length ? <p className="caption">목록에 있는 기기가 없어요.</p> : (
+        <ul className="my-list">
+          {data.sessions.map((x) => (
+            <li key={x.id}>
+              <span className="my-dd">{x.last_seen.slice(5, 10)}</span>
+              <span>{device(x.ua)}{x.current ? " (지금 이 기기)" : ""}</span>
+              <span className="caption">처음 {x.created_at.slice(0, 10)} · 최근 {x.last_seen.slice(0, 16).replace("T", " ")}</span>
+              {!x.current && <button type="button" className="linkish" onClick={() => end(x.id)}>로그아웃</button>}
+            </li>
+          ))}
+        </ul>
+      )}
     </section>
   );
 }

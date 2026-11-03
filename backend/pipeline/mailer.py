@@ -401,12 +401,12 @@ def _shell(title: str, body: str) -> str:
 
 
 def login_html(token: str, code: str) -> str:
-    """메일 링크 로그인 (api/routers/auth.py) — 30분, 한 번만. 다른 기기에서 열면 6자리 코드도 필요."""
+    """메일 링크 로그인 (api/routers/auth.py) — 30분, 한 번만. 요청한 화면에 코드를 넣거나, 링크를 누른다(다른 기기면 코드도 필요)."""
     base = site_url()
     return _shell("집보미에 로그인합니다", f"""
   <p style="color:#E8DEC6;line-height:1.7;font-size:14px">아래 버튼을 누르면 이 메일 주소로 로그인됩니다. 직접 요청하지 않았다면 이 메일을 무시하세요 — 링크와 코드가 함께 없으면 로그인되지 않습니다.</p>
   <p style="margin:26px 0"><a href="{base}/login?t={token}" style="background:#F5B800;color:#1A1405;text-decoration:none;font-weight:700;padding:12px 22px;border-radius:999px">로그인하기</a></p>
-  <p style="color:#E8DEC6;font-size:14px">로그인을 요청한 기기가 아닌 곳에서 열면 아래 확인 코드를 넣어 주세요.</p>
+  <p style="color:#E8DEC6;font-size:14px">또는 로그인을 요청한 화면에 아래 확인 코드를 넣어도 됩니다. 요청한 기기가 아닌 곳에서 버튼을 눌렀을 때도 이 코드를 넣어 주세요.</p>
   <p style="font-size:28px;font-weight:800;letter-spacing:8px;color:#FFD54A;margin:6px 0 18px">{code}</p>
   <p style="color:#B8AB8A;font-size:12px">링크와 코드는 30분 동안, 한 번만 쓸 수 있습니다. 코드를 5번 틀리면 링크가 무효가 됩니다. 이 메일을 다른 사람에게 전달하지 마세요.</p>""")
 

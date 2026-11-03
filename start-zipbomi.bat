@@ -15,13 +15,12 @@ set ZIPGENIE_PORT=5030
 set ZIPGENIE_SCHEDULER=0
 set ZIPGENIE_WORKERS=3
 set ZIPGENIE_ADMIN_UPSTREAM=http://127.0.0.1:5031
-rem 이미 다른 창에서 5030 이 떠 있으면 재시작 반복(Errno 10048) 대신 안내하고 끝낸다
-netstat -ano | findstr /r /c:"127.0.0.1:5030 .*LISTENING" >nul
-if not errorlevel 1 (
-  echo 이미 집보미가 실행 중입니다: http://localhost:5030
-  echo 다시 시작하려면 실행 중인 창을 먼저 닫으세요.
-  timeout /t 8 >nul
-  exit /b 0
+rem 이미 떠 있는 집보미 서버(5030·5031)와 그 창을 끄고 새로 띄운다 — 재시작 반복(Errno 10048) 방지
+powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0stop-zipbomi.ps1"
+if errorlevel 1 (
+  echo 기존 서버를 끄지 못했습니다. 실행 중인 창을 직접 닫고 다시 실행하세요.
+  timeout /t 10 >nul
+  exit /b 1
 )
 rem 공개 주소 — AX Review·Trade_IQ 의 Funnel(443·8443·10000)과 겹치지 않게 별도 Tailscale 기기 "zipgenie" 를 쓴다.
 rem 상태·로그는 backend\data\tailscale (git 제외). 처음 한 번은 tailscale up 로그인 승인이 필요 (README 16장).

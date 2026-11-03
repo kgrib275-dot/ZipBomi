@@ -1089,6 +1089,14 @@ def backup(keep: int = 14, force: bool = False) -> Path | None:
         return None
     BACKUP_DIR.mkdir(parents=True, exist_ok=True)
     dest = BACKUP_DIR / f"zipbomi-{datetime.now():%Y%m%d}.db"
+    # 백업 도중 서버를 강제로 끄면(stop-zipbomi.ps1 등) 3.4GB 짜리 .tmp 가 남는다 — 오늘 것이 아닌 .tmp 와 30일 지난 .bad 는 지운다 (2026-11-03)
+    for junk in list(BACKUP_DIR.glob("zip*-*.tmp")) + list(BACKUP_DIR.glob("zip*-*.bad")):
+        try:
+            age = time.time() - junk.stat().st_mtime
+            if (junk.suffix == ".tmp" and junk != dest.with_suffix(".tmp") and age > 3600) or (junk.suffix == ".bad" and age > 30 * 86400):
+                junk.unlink()
+        except OSError:
+            pass
     if dest.exists() and not force:
         return None
     tmp = dest.with_suffix(".tmp")

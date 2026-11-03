@@ -136,7 +136,8 @@ def _reserve(c: Caller, cfg: dict, member: dict | None, detail: str) -> str | No
     return sub["id"] if sub else None
 
 
-IP_INFLIGHT_MAX = 4
+# 프로세스마다 따로 센다 — 공개 서버 프로세스 수로 나눠 PC 전체로 IP 당 약 4개가 되게 (2026-11-03)
+IP_INFLIGHT_MAX = max(1, 4 // max(1, int(os.environ.get("ZIPGENIE_WORKERS", "1") or 1)))
 _ip_busy: dict = {}
 
 

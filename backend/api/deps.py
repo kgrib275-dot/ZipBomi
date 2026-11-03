@@ -16,7 +16,7 @@ from dataclasses import dataclass
 
 from fastapi import Depends, HTTPException, Request, Response
 
-from pipeline import engage, settings_store
+from pipeline import accounts, engage, settings_store
 
 COOKIE = "zgv"  # 다른 서비스(axv)와 같은 localhost 에서 쿠키가 섞이지 않게 이름을 달리한다
 COOKIE_MAX_AGE = 365 * 24 * 3600
@@ -56,11 +56,12 @@ def _count_token_fail(request: Request, ip: str) -> None:
 @dataclass
 class Caller:
     visitor: str          # 'c:<무작위>' 또는 'i:<IP 해시>'
-    raw: str              # 쿠키의 무작위 값
+    raw: str              # 이 요청의 방문자 원값 — 기기 로그인 쿠키면 계정 raw 로 바꾼 값 (accounts.resolve)
     ip: str | None
     proxied: bool
     is_admin: bool
     new_cookie: str | None  # 응답에 심을 값 (None이면 그대로)
+    sid: str | None = None  # 기기 로그인 값 (쿠키 원값) — 이 기기만 로그아웃할 때
 
 
 def _client_ip(request: Request) -> tuple[str | None, bool]:
@@ -86,14 +87,15 @@ def is_admin(request: Request) -> bool:
 def caller(request: Request, response: Response) -> Caller:
     """모든 공개 API가 쓰는 의존성. 쿠키가 없거나 위조면 새로 만들어 심는다."""
     ip, proxied = _client_ip(request)
-    raw, resign = engage.check_cookie(request.cookies.get(COOKIE))
+    cookie_raw, resign = engage.check_cookie(request.cookies.get(COOKIE))
     new_cookie = None
-    if not raw:
-        raw, resign = uuid.uuid4().hex, True
+    if not cookie_raw:
+        cookie_raw, resign = uuid.uuid4().hex, True
     if resign or request.headers.get("x-refresh-cookie"):
-        new_cookie = engage.sign_cookie(raw)
+        new_cookie = engage.sign_cookie(cookie_raw)
+    raw, sid = accounts.resolve(cookie_raw)  # 기기 로그인 값 → 계정 raw
     c = Caller(visitor=engage.visitor_id(raw, ip), raw=raw, ip=ip, proxied=proxied, is_admin=is_admin(request),
-               new_cookie=new_cookie)
+               new_cookie=new_cookie, sid=sid)
     plant_cookie(response, request, c)
     return c
 

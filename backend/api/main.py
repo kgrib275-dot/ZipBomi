@@ -41,7 +41,17 @@ def _log_file() -> None:
     log_dir = ROOT / "data" / "logs"
     log_dir.mkdir(parents=True, exist_ok=True)
     port = os.environ.get("ZIPGENIE_PORT", "5030")
-    h = RotatingFileHandler(log_dir / f"zipbomi-{port}.log", maxBytes=5_000_000, backupCount=5, encoding="utf-8")
+    # 프로세스마다 파일을 따로 쓴다 (2026-11-03) — 공개 서버는 프로세스 3개라 같은 파일을 셋이 열면 Windows 에서 회전(이름 바꾸기)이
+    # 실패하고(WinError 32) 그 뒤 기록이 버려졌다. 14일 넘은 로그는 시작할 때 지운다.
+    cutoff = time.time() - 14 * 86400
+    for old in log_dir.glob("zipbomi-*.log*"):
+        try:
+            if old.stat().st_mtime < cutoff:
+                old.unlink()
+        except OSError:
+            pass
+    h = RotatingFileHandler(log_dir / f"zipbomi-{port}-{os.getpid()}.log", maxBytes=5_000_000, backupCount=3, encoding="utf-8",
+                            delay=True)
     h.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(name)s: %(message)s"))
     logging.getLogger().addHandler(h)
 
@@ -67,8 +77,9 @@ async def lifespan(app: FastAPI):
     fm = note_format.backfill()  # 노트 형식 (brief/deep/data) — 빈 것만
     if fm["checked"]:
         log.info("노트 형식 채움: %s", fm)
-    from pipeline.scheduler import start_scheduler_thread
+    from pipeline.scheduler import start_scheduler_thread, start_watchdog_thread
     start_scheduler_thread()
+    start_watchdog_thread()  # 공개 서버만 — 관리·배치 서버(스케줄러)가 멈췄는지 본다
     log.info("집보미 API 시작 · DB %s · 프론트 빌드 %s", db.DB_PATH, "있음" if DIST.exists() else "없음(npm run build 필요)")
     yield
 
@@ -90,6 +101,9 @@ _SAFE_METHODS = {"GET", "HEAD", "OPTIONS"}
 MAX_BODY = 64 * 1024            # 공개 API 요청 본문 상한 (관리 API 는 2MB) — 큰 본문으로 DB·백업을 불리지 못하게
 MAX_BODY_ADMIN = 2 * 1024 * 1024
 WRITE_PER_MIN = 240             # IP 하나가 1분에 보낼 수 있는 쓰기 요청 수 (회사 공용 IP 를 고려해 넉넉히)
+# 이 수는 프로세스마다 따로 센다 — 공개 서버 프로세스가 3개면 실제 한도가 3배가 되므로 프로세스 수로 나눈다 (2026-11-03)
+_WORKERS = max(1, int(os.environ.get("ZIPGENIE_WORKERS", "1") or 1))
+_WRITE_LIMIT = max(20, WRITE_PER_MIN // _WORKERS)
 _writes: dict[str, list[float]] = {}
 _writes_lock = threading.Lock()
 
@@ -102,7 +116,7 @@ def _too_many_writes(ip: str) -> bool:
             for k in [k for k, v in _writes.items() if not v or now - v[-1] > 60]:
                 _writes.pop(k, None)
         q = [t for t in _writes.get(ip, []) if now - t < 60]
-        if len(q) >= WRITE_PER_MIN:
+        if len(q) >= _WRITE_LIMIT:
             _writes[ip] = q
             return True
         q.append(now)
@@ -155,24 +169,45 @@ async def _guard(request: Request, call_next):
     return response
 
 
+def _gate_blocked(request: Request) -> bool:
+    """둘러보기가 끝났고 로그인·관리자도 아니면 True. DB 를 읽으므로 작업 스레드에서 부른다."""
+    from api.deps import COOKIE as VISITOR_COOKIE, is_admin
+    from pipeline import accounts, engage, gate
+    cookie_raw, _ = engage.check_cookie(request.cookies.get(VISITOR_COOKIE))
+    raw, _ = accounts.resolve(cookie_raw)  # 기기 로그인 값 → 계정 raw
+    if gate.logged_in(raw):
+        return False
+    ip, _ = settings_store.client_ip(request.client.host if request.client else None, dict(request.headers))
+    return gate.left(request.cookies.get(gate.COOKIE), settings_store.rate_key(ip)) <= 0 and not is_admin(request)
+
+
+def _new_trial_cookie(request: Request) -> str:
+    from pipeline import gate
+    ip, _ = settings_store.client_ip(request.client.host if request.client else None, dict(request.headers))
+    return gate.new_cookie(settings_store.rate_key(ip))
+
+
 @app.middleware("http")
 async def _trial_gate(request: Request, call_next):
-    """1분 둘러보기 뒤 메일 로그인 요구 (pipeline/gate.py, 2026-11-02). 관리자·열어 둔 API·화면(HTML)은 막지 않는다."""
-    from api.deps import COOKIE as VISITOR_COOKIE, is_admin
-    from pipeline import engage, gate
+    """1분 둘러보기 뒤 메일 로그인 요구 (pipeline/gate.py, 2026-11-02). 관리자·열어 둔 API·화면(HTML)은 막지 않는다.
+    판정에 DB 를 읽으므로 작업 스레드에서 한다 (2026-11-03) — 예전엔 이벤트 루프에서 바로 읽어, 배치가 DB 쓰기 잠금을 쥐고 있으면
+    그 프로세스의 모든 요청이 최대 15초 멈췄다."""
+    from starlette.concurrency import run_in_threadpool
+    from pipeline import gate
     path = request.url.path
     is_api = path.startswith("/api/")
     if is_api and not path.startswith("/api/admin/") and not gate.is_open(path):
-        raw, _ = engage.check_cookie(request.cookies.get(VISITOR_COOKIE))
-        ip, _ = settings_store.client_ip(request.client.host if request.client else None, dict(request.headers))
-        if (not gate.logged_in(raw) and gate.left(request.cookies.get(gate.COOKIE), settings_store.rate_key(ip)) <= 0
-                and not is_admin(request)):
+        if await run_in_threadpool(_gate_blocked, request):
             return JSONResponse({"detail": {"message": "계속 이용하려면 메일 인증(로그인)이 필요해요. 1분이면 끝나요.", "login_required": True}},
                                 status_code=401)
     response = await call_next(request)
-    if is_api and gate.first_seen(request.cookies.get(gate.COOKIE)) is None:
-        response.set_cookie(gate.COOKIE, gate.make_cookie(), max_age=365 * 24 * 3600, httponly=True, samesite="lax",
-                            secure=request.url.scheme == "https" or bool(request.headers.get("tailscale-funnel-request")), path="/")
+    # 둘러보기 쿠키는 API 응답과 화면(HTML) 응답에 심는다 — 화면을 받을 때 먼저 심어 두면 첫 API 요청들이 쿠키 없이 와서
+    # IP 의 하루 둘러보기 수를 여러 개 쓰지 않는다
+    is_html = request.method == "GET" and response.headers.get("content-type", "").startswith("text/html")
+    if (is_api or is_html) and response.status_code < 400 and gate.first_seen(request.cookies.get(gate.COOKIE)) is None:
+        response.set_cookie(gate.COOKIE, await run_in_threadpool(_new_trial_cookie, request), max_age=365 * 24 * 3600, httponly=True,
+                            samesite="lax", secure=request.url.scheme == "https" or bool(request.headers.get("tailscale-funnel-request")),
+                            path="/")
     return response
 
 
@@ -194,10 +229,29 @@ async def _admin_proxy(request: Request, call_next):
     from fastapi.responses import Response as _Resp
     if _admin_client is None:
         _admin_client = httpx.AsyncClient(base_url=_ADMIN_UPSTREAM, timeout=httpx.Timeout(600.0, connect=5.0))
+    # 관리자가 아니면 본문을 읽기 전에 돌려보낸다 (2026-11-03) — 이 미들웨어는 _guard 의 크기 상한보다 먼저 돌아,
+    # 익명 요청이 거대한(길이 머리글 없는) 본문으로 공개 서버 메모리를 채울 수 있었다. 최종 판정은 관리·배치 서버가 다시 한다.
+    from starlette.concurrency import run_in_threadpool
+    from api.deps import _client_ip, _token_blocked, is_admin
+    if request.headers.get("x-admin-token") and await run_in_threadpool(lambda: _token_blocked(_client_ip(request)[0] or "?")):
+        return JSONResponse({"detail": "관리 토큰 오류가 잦아 잠시 차단되었습니다. 10분 뒤 다시 시도해 주세요."}, status_code=429)
+    if not await run_in_threadpool(is_admin, request):
+        return JSONResponse({"detail": "관리자만 쓸 수 있습니다"}, status_code=403)
+    limit = 61 * 1024 * 1024 if request.url.path == "/api/admin/redata/upload" else MAX_BODY_ADMIN
+    try:
+        if int(request.headers.get("content-length") or 0) > limit:
+            return JSONResponse({"detail": "요청이 너무 큽니다."}, status_code=413)
+    except ValueError:
+        return JSONResponse({"detail": "요청 길이가 올바르지 않습니다."}, status_code=400)
+    body = bytearray()
+    async for chunk in request.stream():  # 길이 머리글 없이 오는 본문도 상한까지만 받는다
+        body += chunk
+        if len(body) > limit:
+            return JSONResponse({"detail": "요청이 너무 큽니다."}, status_code=413)
     headers = [(k, v) for k, v in request.headers.items() if k.lower() not in _HOP]
     try:
         r = await _admin_client.request(request.method, request.url.path, params=request.url.query or None,
-                                        headers=headers, content=await request.body())
+                                        headers=headers, content=bytes(body))
     except httpx.HTTPError:
         return JSONResponse({"detail": "관리·배치 서버(5031)에 연결할 수 없습니다. start-zipbomi.bat 창을 확인해 주세요."}, status_code=502)
     out = [(k, v) for k, v in r.headers.multi_items() if k.lower() not in _HOP and k.lower() != "content-encoding"]

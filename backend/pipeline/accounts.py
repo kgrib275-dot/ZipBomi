@@ -16,6 +16,7 @@ from __future__ import annotations
 import hashlib
 import hmac
 import secrets
+import time
 from datetime import datetime, timedelta
 
 from . import db
@@ -26,8 +27,13 @@ _SQL = (
     "CREATE TABLE IF NOT EXISTS accounts (id INTEGER PRIMARY KEY AUTOINCREMENT, email TEXT NOT NULL UNIQUE, raw TEXT NOT NULL UNIQUE, "
     "created_at TEXT NOT NULL, last_login_at TEXT)",
     "CREATE TABLE IF NOT EXISTS login_tokens (token_hash TEXT PRIMARY KEY, email TEXT NOT NULL, expires_at TEXT NOT NULL, used_at TEXT)",
+    # 기기별 로그인 (2026-11-03) — 브라우저 쿠키에는 계정 raw 대신 이 기기만의 값(sid 원값)을 심는다. DB 에는 해시만.
+    "CREATE TABLE IF NOT EXISTS account_sessions (sid_hash TEXT PRIMARY KEY, account_id INTEGER NOT NULL, created_at TEXT NOT NULL, "
+    "last_seen TEXT NOT NULL, ua TEXT NOT NULL DEFAULT '')",
+    "CREATE INDEX IF NOT EXISTS idx_account_sessions_acc ON account_sessions(account_id)",
 )
 _COLS = (("login_tokens", "code_hash", "TEXT"), ("login_tokens", "nonce_hash", "TEXT"), ("login_tokens", "tries", "INTEGER DEFAULT 0"),
+         ("login_tokens", "ncode_hash", "TEXT"),
          ("accounts", "revoke_hash", "TEXT"), ("accounts", "ask_credits", "INTEGER DEFAULT 1"), ("accounts", "ask_used", "INTEGER DEFAULT 0"))
 _ready: list = []
 
@@ -60,9 +66,9 @@ def new_link(email: str) -> tuple[str, str, str]:
     c = _conn()
     try:
         c.execute("DELETE FROM login_tokens WHERE expires_at < ?", (_now(),))
-        c.execute("INSERT INTO login_tokens (token_hash, email, expires_at, code_hash, nonce_hash, tries) VALUES (?,?,?,?,?,0)",
+        c.execute("INSERT INTO login_tokens (token_hash, email, expires_at, code_hash, nonce_hash, tries, ncode_hash) VALUES (?,?,?,?,?,0,?)",
                   (_h(token), email, (datetime.now() + timedelta(minutes=LINK_MINUTES)).isoformat(timespec="seconds"),
-                   _h(token + code), _h(nonce)))
+                   _h(token + code), _h(nonce), _h(nonce + code)))
         c.commit()
     finally:
         c.close()
@@ -92,6 +98,36 @@ def use_link(token: str, nonce: str | None, code: str | None) -> tuple[str | Non
                 c.execute("COMMIT")
                 return None, "invalid" if tries >= CODE_TRIES else "bad_code"
         c.execute("UPDATE login_tokens SET used_at=? WHERE token_hash=?", (_now(), _h(token)))
+        c.execute("COMMIT")
+        return row["email"], "ok"
+    except BaseException:
+        if c.in_transaction:
+            c.execute("ROLLBACK")
+        raise
+    finally:
+        c.close()
+
+
+def use_code(nonce: str | None, code: str) -> tuple[str | None, str]:
+    """로그인 창에 바로 넣은 6자리 코드로 확정 (2026-11-03). 링크를 요청한 브라우저(nonce 쿠키) + 메일의 코드 = 링크와 같은 2가지 확인.
+    휴대폰에서 메일 앱이 링크를 앱 안 브라우저로 열어 요청 기기로 인정되지 않던 문제를 피한다. (이메일, ok·bad_code·invalid)"""
+    if not nonce:
+        return None, "invalid"
+    c = _conn()
+    c.isolation_level = None
+    try:
+        c.execute("BEGIN IMMEDIATE")
+        row = c.execute("SELECT token_hash, email, expires_at, used_at, ncode_hash, tries FROM login_tokens WHERE nonce_hash=?",
+                        (_h(nonce),)).fetchone()
+        if not row or row["used_at"] or row["expires_at"] < _now() or (row["tries"] or 0) >= CODE_TRIES or not row["ncode_hash"]:
+            c.execute("COMMIT")
+            return None, "invalid"
+        if not hmac.compare_digest(_h(nonce + code), row["ncode_hash"]):
+            tries = (row["tries"] or 0) + 1
+            c.execute("UPDATE login_tokens SET tries=? WHERE token_hash=?", (tries, row["token_hash"]))
+            c.execute("COMMIT")
+            return None, "invalid" if tries >= CODE_TRIES else "bad_code"
+        c.execute("UPDATE login_tokens SET used_at=? WHERE token_hash=?", (_now(), row["token_hash"]))
         c.execute("COMMIT")
         return row["email"], "ok"
     except BaseException:
@@ -150,6 +186,7 @@ def rotate(acc: dict) -> str:
     c = _conn()
     try:
         c.execute("UPDATE accounts SET raw=?, revoke_hash=NULL WHERE id=?", (new, acc["id"]))
+        c.execute("DELETE FROM account_sessions WHERE account_id=?", (acc["id"],))  # 기기별 로그인도 모두 끊는다
         for table in ("visitor_state", "engagements", "subscribers", "profiles"):
             try:
                 c.execute(f"UPDATE {table} SET visitor=? WHERE visitor=?", ("c:" + new, old))
@@ -159,6 +196,103 @@ def rotate(acc: dict) -> str:
     finally:
         c.close()
     return new
+
+
+# ───────── 기기별 로그인 (2026-11-03) ─────────
+# 예전에는 로그인한 모든 기기의 쿠키가 계정 raw 하나였다 → 한 기기만 끊을 수 없고, 쿠키 하나가 새면 '모든 기기 로그아웃' 말고는 막을 길이 없었다.
+# 이제 로그인할 때마다 그 기기만의 무작위 값(sid)을 쿠키에 심고, 요청마다 sid → 계정 raw 로 바꿔 쓴다(resolve, api/deps.py).
+# 예전 방식 쿠키(계정 raw 그대로)도 그대로 받는다 — 다음 로그인 때 sid 로 바뀐다.
+SESSION_IDLE_DAYS = 365  # 1년 동안 안 쓴 기기는 로그아웃 (쿠키 수명과 같음)
+_SEEN_EVERY = 3600       # last_seen 은 1시간에 한 번만 고친다 (요청마다 쓰지 않게)
+_SESS_CACHE_SEC = 5      # 다른 프로세스에서 끊은 기기도 늦어도 5초 안에 끊기게
+_sess_cache: dict[str, tuple[float, str | None]] = {}
+
+
+def new_session(acc_id: int, ua: str = "") -> str:
+    sid = secrets.token_hex(16)
+    c = _conn()
+    try:
+        c.execute("INSERT INTO account_sessions (sid_hash, account_id, created_at, last_seen, ua) VALUES (?,?,?,?,?)",
+                  (_h(sid), acc_id, _now(), _now(), (ua or "")[:200]))
+        c.commit()
+    finally:
+        c.close()
+    return sid
+
+
+def resolve(cookie_raw: str | None) -> tuple[str | None, str | None]:
+    """쿠키 원값 → (이 요청이 쓸 방문자 raw, 기기 sid). 기기 로그인 값이면 계정 raw 로 바꾸고, 아니면 그대로(익명·예전 쿠키)."""
+    if not cookie_raw:
+        return cookie_raw, None
+    now = time.monotonic()
+    hit = _sess_cache.get(cookie_raw)
+    if hit and now - hit[0] < _SESS_CACHE_SEC:
+        return (hit[1], cookie_raw) if hit[1] else (cookie_raw, None)
+    raw = None
+    c = _conn()
+    try:
+        r = c.execute("SELECT s.last_seen, a.raw FROM account_sessions s JOIN accounts a ON a.id = s.account_id WHERE s.sid_hash=?",
+                      (_h(cookie_raw),)).fetchone()
+        if r:
+            idle = (datetime.now() - datetime.fromisoformat(r["last_seen"])).total_seconds()
+            if idle > SESSION_IDLE_DAYS * 86400:
+                c.execute("DELETE FROM account_sessions WHERE sid_hash=?", (_h(cookie_raw),))
+                c.commit()
+            else:
+                raw = r["raw"]
+                if idle > _SEEN_EVERY:
+                    try:
+                        c.execute("UPDATE account_sessions SET last_seen=? WHERE sid_hash=?", (_now(), _h(cookie_raw)))
+                        c.commit()
+                    except Exception:  # noqa: BLE001 - DB 가 바쁘면 다음에
+                        pass
+    finally:
+        c.close()
+    if len(_sess_cache) > 20000:
+        _sess_cache.clear()
+    _sess_cache[cookie_raw] = (now, raw)
+    return (raw, cookie_raw) if raw else (cookie_raw, None)
+
+
+def end_session(sid: str | None) -> None:
+    """이 기기만 로그아웃."""
+    if not sid:
+        return
+    _sess_cache.pop(sid, None)
+    c = _conn()
+    try:
+        c.execute("DELETE FROM account_sessions WHERE sid_hash=?", (_h(sid),))
+        c.commit()
+    finally:
+        c.close()
+
+
+def sessions(acc_id: int, current_sid: str | None) -> list[dict]:
+    """내 공간 '로그인한 기기' 목록 — 기기 표시는 sid 해시 앞 12자리(원값은 내보내지 않는다)."""
+    cur = _h(current_sid)[:12] if current_sid else ""
+    c = _conn()
+    try:
+        rows = c.execute("SELECT sid_hash, created_at, last_seen, ua FROM account_sessions WHERE account_id=? ORDER BY last_seen DESC",
+                         (acc_id,)).fetchall()
+    finally:
+        c.close()
+    return [{"id": r["sid_hash"][:12], "created_at": r["created_at"], "last_seen": r["last_seen"], "ua": r["ua"],
+             "current": r["sid_hash"][:12] == cur} for r in rows]
+
+
+def end_session_by_id(acc_id: int, short_id: str) -> bool:
+    """목록의 기기 하나를 로그아웃 — 그 계정의 기기만 지울 수 있다."""
+    c = _conn()
+    try:
+        rows = c.execute("SELECT sid_hash FROM account_sessions WHERE account_id=?", (acc_id,)).fetchall()
+        hit = [r["sid_hash"] for r in rows if r["sid_hash"][:12] == short_id]
+        if len(hit) != 1:
+            return False
+        c.execute("DELETE FROM account_sessions WHERE sid_hash=?", (hit[0],))
+        c.commit()
+        return True
+    finally:
+        c.close()
 
 
 def by_revoke(token: str) -> dict | None:
@@ -173,6 +307,7 @@ def by_revoke(token: str) -> dict | None:
 def delete_by_raw(raw: str) -> int:
     c = _conn()
     try:
+        c.execute("DELETE FROM account_sessions WHERE account_id IN (SELECT id FROM accounts WHERE raw=?)", (raw,))
         n = c.execute("DELETE FROM accounts WHERE raw=?", (raw,)).rowcount
         c.commit()
         return n
