@@ -36,6 +36,8 @@ _SQL = (
     "kind TEXT NOT NULL DEFAULT 'request', detail TEXT NOT NULL DEFAULT '', prev_hash TEXT NOT NULL, hash TEXT NOT NULL)",
     "CREATE INDEX IF NOT EXISTS ix_admin_audit_at ON admin_audit(at)",
     "CREATE INDEX IF NOT EXISTS ix_admin_audit_kind_ip ON admin_audit(kind, ip, at)",
+    # 마지막으로 로그인에 쓴 OTP 시간 칸(30초 단위 번호) — 같은 숫자를 다시 쓰지 못하게 (2026-11-03)
+    "CREATE TABLE IF NOT EXISTS admin_otp_used (id INTEGER PRIMARY KEY CHECK (id = 1), step INTEGER NOT NULL)",
 )
 _ready: list = []
 
@@ -66,17 +68,46 @@ def _totp(secret: str, step: int) -> str:
     return f"{(struct.unpack('>I', mac[o:o + 4])[0] & 0x7FFFFFFF) % 1_000_000:06d}"
 
 
-def otp_ok(code: str | None, now: float | None = None) -> bool:
+def otp_step(code: str | None, now: float | None = None) -> int | None:
+    """맞는 OTP 면 그 숫자의 30초 칸 번호, 아니면 None. 휴대폰 시계 차이로 앞뒤 한 칸(30초)까지 받는다."""
     secret = totp_secret()
-    if not secret:
-        return True
-    if not code or not code.isdigit() or len(code) != 6:
-        return False
+    if not secret or not code or not code.isdigit() or len(code) != 6:
+        return None
     step = int((now or time.time()) // 30)
     try:
-        return any(hmac.compare_digest(_totp(secret, step + d), code) for d in (-1, 0, 1))  # 앞뒤 30초 시계 차이 허용
+        for d in (-1, 0, 1):
+            if hmac.compare_digest(_totp(secret, step + d), code):
+                return step + d
     except (ValueError, base64.binascii.Error):
-        return False
+        return None
+    return None
+
+
+def otp_ok(code: str | None, now: float | None = None) -> bool:
+    """OTP 가 꺼져 있으면 True. 켜져 있으면 숫자가 맞는지만 본다 (다시 쓰기 막기는 _consume_step)."""
+    return True if not totp_secret() else otp_step(code, now) is not None
+
+
+def _consume_step(step: int) -> bool:
+    """이 OTP 칸을 '썼음'으로 남긴다. 이미 쓴 칸이거나 그보다 이전 칸이면 False — 화면에 보인 숫자를 누가 바로 다시 넣어도 통하지 않게.
+    프로세스가 여러 개여도 한 번만 통과하도록 BEGIN IMMEDIATE 로 묶는다."""
+    c = _conn()
+    c.isolation_level = None
+    try:
+        c.execute("BEGIN IMMEDIATE")
+        row = c.execute("SELECT step FROM admin_otp_used WHERE id = 1").fetchone()
+        if row and step <= row["step"]:
+            c.execute("COMMIT")
+            return False
+        c.execute("INSERT INTO admin_otp_used (id, step) VALUES (1, ?) ON CONFLICT(id) DO UPDATE SET step = excluded.step", (step,))
+        c.execute("COMMIT")
+        return True
+    except BaseException:
+        if c.in_transaction:
+            c.execute("ROLLBACK")
+        raise
+    finally:
+        c.close()
 
 
 def new_totp_secret() -> str:
@@ -113,10 +144,15 @@ def login(token: str, otp: str | None, ip: str | None, ua: str) -> tuple[str | N
     if locked(ip):
         audit("-", ip, "POST", "/api/auth/admin-login", 429, kind="login_locked")
         return None, "locked"
-    ok = bool(token) and hmac.compare_digest(token.encode(), expect.encode()) and otp_ok(otp)
-    if not ok:
+    token_ok = bool(token) and hmac.compare_digest(token.encode(), expect.encode())
+    step = otp_step(otp) if totp_secret() else None
+    if not token_ok or (totp_secret() and step is None):
         audit("-", ip, "POST", "/api/auth/admin-login", 401, kind="login_fail", detail="토큰 또는 OTP 불일치")
         return None, "bad"
+    # 토큰이 맞을 때만 OTP 칸을 소비한다 — 토큰을 모르는 사람이 숫자를 미리 '써 버려' 관리자를 막지 못하게
+    if step is not None and not _consume_step(step):
+        audit("-", ip, "POST", "/api/auth/admin-login", 401, kind="login_fail", detail="이미 사용한 OTP")
+        return None, "reused"
     sid = secrets.token_hex(32)
     now = time.time()
     c = _conn()

@@ -459,6 +459,8 @@ ZipBomi/
 - **관리자 로그인 세션** (`pipeline/admin_auth.py`, `POST /api/auth/admin-login`·`admin-logout`): 토큰(+ OTP)으로 로그인하면 HttpOnly·SameSite=Strict 쿠키 `zga`.
   토큰을 브라우저 저장소에 두지 않는다(예전 `zipgenie-admin-token` 은 지운다). 30분 미사용·8시간이면 끊기고, 같은 IP 5번 실패면 30분 잠금.
   `ADMIN_TOTP_SECRET` 을 넣으면 OTP 필수, `X-Admin-Token` 헤더 로그인은 막힌다.
+  한 번 로그인에 쓴 OTP 숫자는 다시 쓸 수 없다(`admin_otp_used` — 화면에 보인 숫자를 누가 바로 넣어도 거절, 토큰이 맞을 때만 소비, 2026-11-03).
+  OTP 의 남은 위험(가짜 관리자 페이지에 토큰·OTP 를 넣는 피싱)은 즐겨찾기한 주소로만 로그인하는 것으로 막는다 — 더 강하게 하려면 패스키(WebAuthn).
 - **관리자 접속기록** (`admin_audit` 표): 관리 API 요청(작업 상태 폴링 제외)·권한 없는 시도·로그인·실패·잠금·로그아웃·다운로드·전체 보기.
   누가(세션 해시 앞 10자리)·언제·IP·무엇을·결과·사유. 행마다 앞 행 해시를 이어 고치거나 지우면 `GET /api/admin/audit/verify` 가 찾는다. 2년 보관.
   관리 > 관리자·접속에서 보고 점검, 운영 점검 화면에도 OTP·위변조 상태 표시.
