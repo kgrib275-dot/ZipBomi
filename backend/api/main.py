@@ -227,6 +227,29 @@ async def _trial_gate(request: Request, call_next):
     return response
 
 
+# ───────── 관리 API 접속기록 (2026-11-03 ISMS-P 2.9.4 — pipeline/admin_auth.py) ─────────
+# 관리 요청을 실제로 처리하는 서버(관리·배치 서버 5031, 또는 넘기지 않는 개발 서버)에서 남긴다. 403(관리자 아님)도 남긴다.
+# 실행 로그 독이 몇 초마다 부르는 작업 상태 조회(GET /api/admin/jobs…)는 빼고, 다운로드·전체 보기 사유는 그 API 가 직접 남긴다.
+_AUDIT_SKIP_GET = ("/api/admin/jobs",)
+
+
+@app.middleware("http")
+async def _admin_audit(request: Request, call_next):
+    path = request.url.path
+    if not path.startswith("/api/admin/") or path == "/api/admin/audit/event" or             (request.method == "GET" and path.startswith(_AUDIT_SKIP_GET)):
+        return await call_next(request)
+    response = await call_next(request)
+    from starlette.concurrency import run_in_threadpool
+    from pipeline import admin_auth
+    ip, _ = settings_store.client_ip(request.client.host if request.client else None, dict(request.headers))
+    actor = getattr(request.state, "admin_actor", "-")
+    try:
+        await run_in_threadpool(admin_auth.audit, actor, ip, request.method, path, response.status_code, request.url.query)
+    except Exception:  # noqa: BLE001 - 기록 실패가 관리 작업을 막지 않게 (로그에는 남긴다)
+        log.exception("관리 접속기록 실패: %s %s", request.method, path)
+    return response
+
+
 # ───────── 관리 요청을 관리·배치 서버로 넘기기 (2026-11-02 동시 접속 대비) ─────────
 # 공개 서버를 여러 프로세스로 돌리면 관리 화면의 작업 상태·실행 로그(메모리)가 프로세스마다 갈라진다. 그래서 공개 서버(5030, 여러 프로세스)는
 # /api/admin/* 를 관리·배치 서버(5031, 프로세스 1개, 예약 작업 실행)로 그대로 넘긴다. Host·쿠키·Funnel 헤더·X-Forwarded-For 를 그대로 넘기므로
@@ -252,6 +275,9 @@ async def _admin_proxy(request: Request, call_next):
     if request.headers.get("x-admin-token") and await run_in_threadpool(lambda: _token_blocked(_client_ip(request)[0] or "?")):
         return JSONResponse({"detail": "관리 토큰 오류가 잦아 잠시 차단되었습니다. 10분 뒤 다시 시도해 주세요."}, status_code=429)
     if not await run_in_threadpool(is_admin, request):
+        from pipeline import admin_auth
+        ip, _ = settings_store.client_ip(request.client.host if request.client else None, dict(request.headers))
+        await run_in_threadpool(admin_auth.audit, "-", ip, request.method, request.url.path, 403, request.url.query)  # 권한 없는 접근 시도도 남긴다
         return JSONResponse({"detail": "관리자만 쓸 수 있습니다"}, status_code=403)
     limit = 61 * 1024 * 1024 if request.url.path == "/api/admin/redata/upload" else MAX_BODY_ADMIN
     try:

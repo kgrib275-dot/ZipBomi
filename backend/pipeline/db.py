@@ -950,6 +950,11 @@ DATA_RETENTION_DAYS = {"articles": 180, "run_logs": 180}
 
 def purge_expired() -> dict[str, int]:
     """보관 기간이 지난 기록을 지운다 (스케줄러 하루 정리). {이름: 지운 행 수}."""
+    try:  # 관리자 접속기록 2년 보관·끝난 관리자 세션 (2026-11-03 ISMS-P)
+        from . import admin_auth as _aa
+        _aa.purge()
+    except Exception:  # noqa: BLE001
+        pass
     try:
         from . import accounts as _acc
         _acc.count()  # accounts 표 준비 (visitor_state 정리 문장이 참조)

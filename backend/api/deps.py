@@ -16,7 +16,7 @@ from dataclasses import dataclass
 
 from fastapi import Depends, HTTPException, Request, Response
 
-from pipeline import accounts, engage, settings_store
+from pipeline import accounts, admin_auth, engage, settings_store
 
 COOKIE = "zgv"  # 다른 서비스(axv)와 같은 localhost 에서 쿠키가 섞이지 않게 이름을 달리한다
 COOKIE_MAX_AGE = 365 * 24 * 3600
@@ -71,17 +71,27 @@ def _client_ip(request: Request) -> tuple[str | None, bool]:
 
 
 def is_admin(request: Request) -> bool:
+    # 1) 관리자 로그인 세션 쿠키 (2026-11-03 ISMS-P — pipeline/admin_auth.py). 화면은 이것만 쓴다.
+    sid = request.cookies.get(admin_auth.COOKIE)
+    if sid and admin_auth.check(sid):
+        request.state.admin_actor = admin_auth.actor_of(sid)
+        return True
     token = os.environ.get("ADMIN_TOKEN", "").strip()
     given = request.headers.get("x-admin-token", "")
-    if token and given:
+    # 2) X-Admin-Token 헤더 — 스크립트·점검용. OTP(ADMIN_TOTP_SECRET)를 켜면 쓰지 않는다 (2단계 인증을 건너뛰지 못하게).
+    if token and given and not admin_auth.totp_secret():
         ip = _client_ip(request)[0] or "?"
         if _token_blocked(ip):
             return False
         if hmac.compare_digest(given.encode(), token.encode()):  # 시간차로 토큰을 추측하지 못하게
+            request.state.admin_actor = "token"
             return True
         _count_token_fail(request, ip)  # 헤더를 보냈는데 틀린 경우만 센다 — 로컬·등록 IP 의 헤더 없는 요청은 실패가 아니다
     raw = request.client.host if request.client else None
-    return settings_store.is_admin_request(raw, {k: v for k, v in request.headers.items()})
+    ok = settings_store.is_admin_request(raw, {k: v for k, v in request.headers.items()})
+    if ok:
+        request.state.admin_actor = "local-dev" if os.environ.get("ZIPGENIE_LOCAL_ADMIN") == "1" else "admin-ip"
+    return ok
 
 
 def caller(request: Request, response: Response) -> Caller:

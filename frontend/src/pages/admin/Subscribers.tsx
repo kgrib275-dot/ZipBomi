@@ -1,7 +1,7 @@
 // 구독·발송 — 구독자 / 뉴스레터 / 월 구독 / Teams / 문의 (app_pages/admin/subscribers.py).
 import { useEffect, useState } from "react";
 import { Alert, Tabs, useLoad } from "../../components/ui";
-import { A, AdminHead, CsvButton, DataTable, Expander, Field, Generic, Row, asArray, bool, isObj, num, pick, str, today, useAct, usePaged, useRemembered } from "./common";
+import { A, AdminHead, CsvButton, DataTable, Email, Expander, Field, Generic, Row, asArray, bool, isObj, num, pick, str, today, useAct, usePaged, useRemembered } from "./common";
 import { JobStatus, RunLogTable, StartJob, useJobs } from "./JobRunner";
 
 const SECTIONS = ["구독자", "뉴스레터", "월 구독", "Teams", "문의"];
@@ -50,7 +50,7 @@ function SubscribersTab() {
           <Alert kind="warn"><b>충전 요청 {requests.length}건</b> — 질문 횟수를 다 쓴 구독자가 충전을 기다립니다. 충전하면 구독자에게 안내 메일이 갑니다.</Alert>
           {requests.map((s) => (
             <div key={str(s.email)} className="list-row">
-              <div className="grow"><b>{str(s.email)}</b> · 질문 {num(s.ask_used)}/{num(s.ask_credits)} · 요청 {str(s.ask_requested_at).slice(0, 16).replace("T", " ")}</div>
+              <div className="grow"><b><Email v={s.email} /></b> · 질문 {num(s.ask_used)}/{num(s.ask_credits)} · 요청 {str(s.ask_requested_at).slice(0, 16).replace("T", " ")}</div>
               {chargeCtl(str(s.email))}
             </div>
           ))}
@@ -189,7 +189,7 @@ function MembersTab() {
         return (
           <div key={str(m.id)} className="list-row">
             <div className="grow">
-              <b>{str(m.email)}</b> · {state} · {str(m.expires)}까지 · 오늘 {num(pick(m, "used_today", "used"))}회
+              <b><Email v={m.email} /></b> · {state} · {str(m.expires)}까지 · 오늘 {num(pick(m, "used_today", "used"))}회
               {str(m.memo) && <div className="caption">{str(m.memo)}</div>}
             </div>
             <button className="btn sm" onClick={async () => { await act(() => A.post(`members/${m.id}/extend`, { months: 1 }), "1개월 연장했습니다."); reload(); }}>+1개월</button>

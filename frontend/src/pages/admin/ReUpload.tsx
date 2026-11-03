@@ -17,10 +17,6 @@ function send(file: File, dataset: string, onProgress: (p: number) => void): Pro
     const x = new XMLHttpRequest();
     x.open("POST", "/api/admin/redata/upload");
     x.setRequestHeader("X-Requested-With", "zipgenie");
-    try {
-      const tok = localStorage.getItem("zipgenie-admin-token");
-      if (tok) x.setRequestHeader("X-Admin-Token", tok);
-    } catch { /* 사생활 보호 모드 */ }
     x.upload.onprogress = (e) => e.lengthComputable && onProgress(e.loaded / e.total);
     x.onload = () => {
       let data: Row = {};

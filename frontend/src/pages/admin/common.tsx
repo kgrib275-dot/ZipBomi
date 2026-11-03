@@ -1,6 +1,6 @@
 // 관리 화면 공용 조각 — 관리 API 래퍼(403 → 토큰 입력), 토스트, 제목, 범용 표, 작은 막대 차트, CSV 내려받기.
 // 백엔드 응답 모양이 조금 달라도 깨지지 않도록 "객체 배열이면 표, 객체면 키-값" 식으로 범용 렌더링한다.
-import { Fragment, createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { ApiError, del, get, post, put } from "../../api";
 
 export type Row = Record<string, unknown>;
@@ -284,6 +284,9 @@ export function DataTable({ rows, cols, labels, render, empty = "데이터 없�
     rows.forEach((r) => Object.keys(r).forEach((k) => !seen.includes(k) && seen.push(k)));
     return seen;
   }, [rows, cols]);
+  // 개인정보 표시 제한 (2026-11-03 ISMS-P) — 표에 나오는 이메일은 가려서 보인다. 전체 보기는 위쪽 RevealToggle(사유 기록, 10분)
+  const reveal = useReveal();
+  const cell = (v: unknown) => (!reveal && typeof v === "string" && EMAIL_RE.test(v) ? maskEmail(v) : fmt(v));
   if (!rows.length) return <p className="caption">{empty}</p>;
   const keyOf = (r: Row, i: number) => (rowKey ? rowKey(r, i) : String(i));
   const allKeys = rows.map(keyOf);
@@ -314,7 +317,7 @@ export function DataTable({ rows, cols, labels, render, empty = "데이터 없�
                 )}
                 {columns.map((c) => (
                   <td key={c} className={typeof r[c] === "number" ? "num" : ""}>
-                    {render?.[c] ? render[c](r[c], r, i) : fmt(r[c])}
+                    {render?.[c] ? render[c](r[c], r, i) : cell(r[c])}
                   </td>
                 ))}
               </tr>
@@ -324,6 +327,43 @@ export function DataTable({ rows, cols, labels, render, empty = "데이터 없�
       </table>
     </div>
   );
+}
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+/** ab***@example.com — 앞 2글자만 */
+export function maskEmail(e: string): string {
+  const [local, domain] = e.split("@");
+  return `${local.slice(0, 2)}***@${domain}`;
+}
+
+// 관리 화면 전체의 '이메일 전체 보기' 상태 — 사유를 받아 접속기록에 남기고 10분 뒤 저절로 다시 가린다 (2026-11-03 ISMS-P 개인정보 표시 제한)
+const revealStore = { on: false, timer: 0 as number | undefined, subs: new Set<() => void>() };
+const setRevealOn = (on: boolean) => {
+  revealStore.on = on;
+  window.clearTimeout(revealStore.timer);
+  if (on) revealStore.timer = window.setTimeout(() => setRevealOn(false), 10 * 60 * 1000);
+  revealStore.subs.forEach((f) => f());
+};
+export function useReveal(): boolean {
+  return useSyncExternalStore((f) => { revealStore.subs.add(f); return () => { revealStore.subs.delete(f); }; }, () => revealStore.on);
+}
+/** 이메일 한 개 — 전체 보기 중이 아니면 가린다. */
+export function Email({ v }: { v: unknown }) {
+  const on = useReveal();
+  const s = str(v);
+  return <>{on || !EMAIL_RE.test(s) ? s : maskEmail(s)}</>;
+}
+/** 위쪽 막대의 '이메일 전체 보기' 단추. */
+export function RevealToggle() {
+  const on = useReveal();
+  const ask = async () => {
+    const reason = window.prompt("개인정보(이메일) 전체 보기 사유를 적어 주세요 (접속기록에 남고, 10분 뒤 다시 가려집니다)", "");
+    if (reason === null) return;
+    if (reason.trim().length < 4) { window.alert("사유를 4자 이상 적어 주세요."); return; }
+    try { await A.post("audit/event", { kind: "reveal", target: window.location.pathname, reason: reason.trim() }); setRevealOn(true); }
+    catch (e) { window.alert((e as Error).message || "기록하지 못했습니다."); }
+  };
+  return on ? <button type="button" className="btn sm" onClick={() => setRevealOn(false)}>이메일 다시 가리기</button>
+    : <button type="button" className="btn sm ghost" onClick={ask} title="관리 화면의 이메일은 가려서 보여요">이메일 전체 보기</button>;
 }
 /** 키-값 표 (객체 하나). */
 export function KV({ obj }: { obj: Row }) {
@@ -436,7 +476,15 @@ export function CsvButton({ name, rows, cols, label = "CSV 받기", fetchText }:
   return (
     <button
       className="btn sm"
-      onClick={() => act(async () => downloadBlob(name, fetchText ? await fetchText() : rowsToCsv(rows || [], cols)))}
+      onClick={() => act(async () => {
+        // 개인정보가 들어 있을 수 있는 내려받기는 사유를 받아 접속기록에 남긴다 (2026-11-03 ISMS-P · 안전성 확보조치 기준 제8조)
+        const reason = window.prompt(`'${name}' 내려받기 사유를 적어 주세요 (접속기록에 남습니다)`, "");
+        if (reason === null) return;
+        if (reason.trim().length < 4) throw new Error("사유를 4자 이상 적어 주세요.");
+        const text = fetchText ? await fetchText() : rowsToCsv(rows || [], cols);
+        await A.post("audit/event", { kind: "download", target: name, count: rows ? rows.length : undefined, reason: reason.trim() });
+        downloadBlob(name, text);
+      })}
     >
       ⬇ {label}
     </button>

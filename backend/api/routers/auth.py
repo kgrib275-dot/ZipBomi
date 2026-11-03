@@ -7,6 +7,7 @@
 """
 from __future__ import annotations
 
+import os
 import re
 import uuid
 
@@ -15,7 +16,7 @@ from fastapi import APIRouter, Body, HTTPException, Request, Response
 from api.deps import COOKIE, COOKIE_MAX_AGE, Caller, CallerDep, throttle
 from api.routers import me as me_state
 from api.routers.subscribe import _email, _mask, _may_mail, send_later
-from pipeline import accounts, db, email_check, engage, gate, mailer
+from pipeline import accounts, admin_auth, db, email_check, engage, gate, mailer
 
 router = APIRouter(tags=["auth"])
 _TOKEN_RE = re.compile(r"^[0-9a-f]{32}$")
@@ -192,3 +193,36 @@ def revoke(request: Request, response: Response, payload: dict = Body(...), c: C
     accounts.end_session(c.sid)
     _set_cookie(request, response, c, uuid.uuid4().hex)
     return {"ok": True, "message": "모든 기기에서 로그아웃했습니다. 본인이 다시 로그인하면 저장한 내용은 그대로 보입니다."}
+
+
+# ───────── 관리자 로그인 (2026-11-03 ISMS-P — pipeline/admin_auth.py) ─────────
+# /api/admin/* 가 아니라 여기 두는 까닭: 공개 서버는 /api/admin/* 를 관리자 확인 뒤에야 관리·배치 서버로 넘기므로, 로그인 자체는 그 밖에 있어야 한다.
+@router.get("/auth/admin-status")
+def admin_status(request: Request) -> dict:
+    from api.deps import is_admin
+    return {"configured": bool(os.environ.get("ADMIN_TOKEN", "").strip()), "otp": bool(admin_auth.totp_secret()), "admin": is_admin(request),
+            "idle_min": admin_auth.IDLE_SEC // 60, "max_hours": admin_auth.MAX_SEC // 3600}
+
+
+@router.post("/auth/admin-login")
+def admin_login(request: Request, response: Response, payload: dict = Body(...), c: Caller = CallerDep) -> dict:
+    token, otp = payload.get("token"), payload.get("otp")
+    if not isinstance(token, str) or len(token) > 512 or (otp is not None and not isinstance(otp, str)):
+        raise HTTPException(status_code=400, detail="입력값이 올바르지 않습니다.")
+    sid, res = admin_auth.login(token.strip(), (otp or "").strip() or None, c.ip, request.headers.get("user-agent") or "")
+    if res == "not_configured":
+        raise HTTPException(status_code=503, detail="관리자 토큰(.env ADMIN_TOKEN)이 설정되지 않았습니다.")
+    if res == "locked":
+        raise HTTPException(status_code=429, detail=f"로그인 실패가 {admin_auth.FAIL_LIMIT}번을 넘어 {admin_auth.FAIL_WINDOW_MIN}분 동안 잠겼습니다.")
+    if res != "ok":
+        raise HTTPException(status_code=401, detail="토큰 또는 OTP 가 맞지 않습니다.")
+    # 세션 쿠키 (창을 닫으면 사라짐) · HttpOnly · SameSite=Strict — 다른 사이트에서 연 링크·요청에는 실리지 않는다
+    response.set_cookie(admin_auth.COOKIE, sid, httponly=True, samesite="strict", secure=request.url.scheme == "https" or c.proxied, path="/")
+    return {"ok": True}
+
+
+@router.post("/auth/admin-logout")
+def admin_logout(request: Request, response: Response, c: Caller = CallerDep) -> dict:
+    admin_auth.logout(request.cookies.get(admin_auth.COOKIE), c.ip)
+    response.delete_cookie(admin_auth.COOKIE, path="/")
+    return {"ok": True}

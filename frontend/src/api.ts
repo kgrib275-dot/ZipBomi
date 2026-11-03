@@ -1,5 +1,5 @@
 // API 클라이언트 — 모든 화면이 이 함수만 쓴다. 오류는 {detail} 문구를 Error.message 로 던진다.
-// 관리 화면은 localStorage 'zipgenie-admin-token' 이 있으면 X-Admin-Token 헤더로 보낸다 (backend .env ADMIN_TOKEN).
+// 관리 화면은 관리자 로그인 세션 쿠키(zga, HttpOnly)로 확인한다 (2026-11-03 ISMS-P) — 토큰을 브라우저 저장소에 두지 않는다.
 
 export class ApiError extends Error {
   status: number;
@@ -11,13 +11,8 @@ export class ApiError extends Error {
   }
 }
 
-function adminToken(): string | null {
-  try {
-    return localStorage.getItem("zipgenie-admin-token");
-  } catch {
-    return null;
-  }
-}
+// 예전 화면이 브라우저 저장소에 남긴 관리 토큰은 지운다 (스크립트로 꺼내 갈 수 있는 곳에 두지 않게)
+try { localStorage.removeItem("zipgenie-admin-token"); } catch { /* 사생활 보호 모드 */ }
 
 export async function api<T = unknown>(path: string, init: RequestInit & { json?: unknown } = {}): Promise<T> {
   // X-Requested-With: 서버가 상태를 바꾸는 요청(POST·PUT·DELETE)에 요구한다 — 다른 사이트에서 보낸 위조 요청 차단 (backend/api/main.py)
@@ -27,8 +22,6 @@ export async function api<T = unknown>(path: string, init: RequestInit & { json?
     headers["Content-Type"] = "application/json";
     body = JSON.stringify(init.json);
   }
-  const tok = adminToken();
-  if (tok) headers["X-Admin-Token"] = tok;
   const res = await fetch(path.startsWith("/") ? path : `/api/${path}`, { ...init, headers, body, credentials: "same-origin" });
   if (res.status === 204) return undefined as T;
   const text = await res.text();

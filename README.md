@@ -124,7 +124,8 @@ ZIPGENIE_PORT=5030 ZIPGENIE_SCHEDULER=1 venv/bin/python serve.py
 | `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM`, `SMTP_TLS` | 선택 | 구독 확인·뉴스레터·청약 D-3·전세 만기 알림 메일. `SMTP_TLS` = `starttls`/`ssl`/`none` |
 | `ALERT_EMAIL` | 선택 | 수집·발송 실패 경보를 받을 관리자 메일 |
 | `SITE_URL` | 필수(메일 쓸 때) | 메일 속 링크·공유 주소의 기준. 외부에서 열리는 주소여야 메일 링크가 동작 |
-| `ADMIN_TOKEN` | **필수(운영)** | 관리 화면·관리 API (`X-Admin-Token` 헤더). 2026-11-03부터 이 PC 에서도 토큰을 넣어야 관리자 (11-5절) |
+| `ADMIN_TOKEN` | **필수(운영)** | 관리자 로그인 토큰. 관리 화면에서 로그인하면 세션 쿠키(30분 미사용·8시간 최대)를 받는다 (11-6절) |
+| `ADMIN_TOTP_SECRET` | 권장 | 관리자 OTP 2단계 인증 비밀값 — `backend/venv/Scripts/python backend/tools/admin_otp.py` 로 만들어 OTP 앱에 등록 |
 | `DATABRICKS_SERVER_HOSTNAME`, `DATABRICKS_HTTP_PATH`, `DATABRICKS_TOKEN` | 선택 | Databricks 적재 |
 | `DATABRICKS_CATALOG`, `DATABRICKS_SCHEMA` | 선택 | 적재 위치 (기본 `workspace.zipgenie`) |
 | `KAKAO_JS_KEY` | 선택 | 카카오 공유 |
@@ -449,6 +450,17 @@ ZipBomi/
 - 공용 캐시(`api/common.cached`)는 만료되면 직전 값을 바로 주고 뒤에서 다시 계산한다. 서버 시작 때 지도 시세·홈·현행 수치·데이터 랩을 미리 계산한다.
 - 데이터 랩 문서(약 1MB)는 계산할 때 gzip 으로 한 번만 압축해 두고, 화면에서는 그 부분에 가까워질 때 불러온다.
 - 모바일 메뉴는 화면보다 길면 메뉴 안에서 스크롤, 보미AI 패널은 좁은 화면에서 양옆 0(스크롤바 폭 때문에 왼쪽이 잘리던 문제).
+
+## 11-6. ISMS-P 기준 보안 (2026-11-03)
+항목별 상태·운영자 정기 점검·사고 대응은 [docs/ISMS-P.md](docs/ISMS-P.md). 코드로 넣은 것:
+- **관리자 로그인 세션** (`pipeline/admin_auth.py`, `POST /api/auth/admin-login`·`admin-logout`): 토큰(+ OTP)으로 로그인하면 HttpOnly·SameSite=Strict 쿠키 `zga`.
+  토큰을 브라우저 저장소에 두지 않는다(예전 `zipgenie-admin-token` 은 지운다). 30분 미사용·8시간이면 끊기고, 같은 IP 5번 실패면 30분 잠금.
+  `ADMIN_TOTP_SECRET` 을 넣으면 OTP 필수, `X-Admin-Token` 헤더 로그인은 막힌다.
+- **관리자 접속기록** (`admin_audit` 표): 관리 API 요청(작업 상태 폴링 제외)·권한 없는 시도·로그인·실패·잠금·로그아웃·다운로드·전체 보기.
+  누가(세션 해시 앞 10자리)·언제·IP·무엇을·결과·사유. 행마다 앞 행 해시를 이어 고치거나 지우면 `GET /api/admin/audit/verify` 가 찾는다. 2년 보관.
+  관리 > 관리자·접속에서 보고 점검, 운영 점검 화면에도 OTP·위변조 상태 표시.
+- **개인정보 표시 제한·다운로드 사유**: 관리 화면 표의 이메일은 가려서 보이고 '전체 보기'와 모든 CSV 내려받기는 사유(4자 이상)를 받아 기록한다(`POST /api/admin/audit/event`).
+- 처리방침 제8조 안전성 확보 조치 문구 갱신 — 관리 화면에서 새 버전 공지.
 
 ## 12. Databricks 적재
 - `pipeline/warehouse.py` — 운영 DB 는 로컬 SQLite 로 두고, 바뀐 행만 `<catalog>.<schema>`(기본 `workspace.zipgenie`) Delta 테이블로 MERGE.

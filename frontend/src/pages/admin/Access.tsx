@@ -28,9 +28,10 @@ export default function Access() {
 
   return (
     <div>
-      <AdminHead title="관리자·접속" note="이 PC에서 localhost로 접속하면 항상 관리자입니다. 공개 주소·원격 접속은 IP를 등록해야 관리 메뉴가 보입니다." />
+      <AdminHead title="관리자·접속" note="관리 화면은 관리자 로그인(토큰·OTP)으로만 열립니다. 관리 API 요청·로그인·다운로드·전체 보기는 모두 접속기록에 남습니다 (2년 보관)." />
+      <AdminAudit />
       <h3>관리자 IP</h3>
-      <p className="caption">내 IP: {myIp || "로컬"} · 공개 주소(Funnel)로 접속할 때는 이 IP를 등록해야 관리 메뉴가 보입니다.</p>
+      <p className="caption">내 IP: {myIp || "로컬"} · 등록 IP 는 .env ZIPGENIE_TRUST_ADMIN_IPS=1 일 때만 토큰 없이 관리자로 인정합니다 (기본 끔 — 2026-11-03).</p>
       {ips.error && <Alert kind="err">{ips.error}</Alert>}
       {list.map((a) => (
         <div key={str(a.id)} className="list-row">
@@ -73,5 +74,35 @@ export default function Access() {
       {actions.error && <Alert kind="err">{actions.error}</Alert>}
       <DataTable rows={actionRows as Row[]} tall empty="기록이 없습니다." />
     </div>
+  );
+}
+
+
+// 관리자 접속기록 (2026-11-03 ISMS-P 2.9.4) — GET /api/admin/audit, 위변조 검사 GET /api/admin/audit/verify (월 1회 이상 점검)
+const AUDIT_KINDS: [string, string][] = [["", "전체"], ["request", "관리 요청"], ["login", "로그인"], ["login_fail", "로그인 실패"], ["logout", "로그아웃"],
+  ["download", "다운로드"], ["reveal", "전체 보기"], ["audit_check", "점검"]];
+function AdminAudit() {
+  const [kind, setKind] = useState("");
+  const [q, setQ] = useState("");
+  const list = useLoad(() => A.get<{ rows: Row[]; keep_days: number }>(`audit?limit=500&kind=${encodeURIComponent(kind)}&q=${encodeURIComponent(q.trim())}`), [kind, q]);
+  const [check, setCheck] = useState<Row | null>(null);
+  const act = useAct();
+  const rows = list.data?.rows || [];
+  const pg = usePaged(`audit-${kind}`, rows, q, 30);
+  return (
+    <section>
+      <h3>관리자 접속기록</h3>
+      <p className="caption">누가(관리자 세션)·언제·어디서(IP)·무엇을(요청·결과)·왜(다운로드·전체 보기 사유) — {list.data?.keep_days ?? 730}일 보관. 행마다 앞 행과 이은 해시로 고치거나 지우면 점검에서 드러납니다.</p>
+      <div className="btn-row">
+        <select value={kind} onChange={(e) => setKind(e.target.value)}>{AUDIT_KINDS.map(([k, l]) => <option key={k} value={k}>{l}</option>)}</select>
+        <input placeholder="경로·IP·사유 검색" value={q} onChange={(e) => setQ(e.target.value)} />
+        <button className="btn sm" onClick={() => act(async () => setCheck(await A.get<Row>("audit/verify")))}>위변조 점검</button>
+      </div>
+      {check && <Alert kind={check.ok ? "ok" : "err"}>{check.ok ? `정상 — ${str(check.rows)}건, ${str(check.first)} ~ ${str(check.last)}` : `불일치 — ${str(check.broken_at)}번 기록(${str(check.at)})부터 사슬이 끊겼습니다. 기록이 고쳐졌거나 지워졌을 수 있습니다.`}</Alert>}
+      {list.error && <Alert kind="err">{list.error}</Alert>}
+      <DataTable rows={pg.shown} cols={["at", "actor", "ip", "kind", "method", "path", "status", "detail"]}
+        labels={{ at: "시각", actor: "관리자", ip: "IP", kind: "종류", method: "방식", path: "경로", status: "결과", detail: "내용·사유" }} />
+      {pg.pager}
+    </section>
   );
 }

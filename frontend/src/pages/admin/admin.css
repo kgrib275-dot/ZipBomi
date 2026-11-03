@@ -156,3 +156,6 @@ pre.code{background:var(--code-bg);border:1px solid var(--line);border-radius:10
 .pick-grp{margin:6px 0}
 .pick-grp .btn-row{margin-bottom:4px}
 .pick-grp .multi{max-height:none}
+
+/* 관리자 로그아웃 (2026-11-03 ISMS-P) */
+.adm-topbar{display:flex;justify-content:flex-end;gap:8px;margin:-6px 0 6px}

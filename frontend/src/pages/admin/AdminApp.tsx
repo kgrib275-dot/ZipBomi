@@ -1,10 +1,11 @@
 // 관리 영역 틀 — 왼쪽 메뉴(15개 화면) + 중첩 라우트. 관리자가 아니거나 API 가 403 을 돌려주면 토큰 입력 화면을 띄운다.
 import { lazy, Suspense, useEffect, useState } from "react";
 import { NavLink, Navigate, Route, Routes, useLocation } from "react-router-dom";
+import { ApiError, get, post } from "../../api";
 import { Alert } from "../../components/ui";
 import { useMe } from "../../me";
 import "./admin.css";
-import { ToastProvider, onForbidden } from "./common";
+import { RevealToggle, ToastProvider, onForbidden } from "./common";
 import { JobsProvider } from "./JobRunner";
 import { LogDock } from "./LogDock";
 
@@ -31,7 +32,6 @@ const PAGES: { path: string; label: string; grp?: string; C: React.LazyExoticCom
   { path: "privacy", label: "개인정보 처리방침", C: L(() => import("./PrivacySettings")) },
 ];
 
-const TOKEN_KEY = "zipgenie-admin-token";
 const NAV_KEY = "zipgenie-adm-nav";  // 접어 둔 그룹·전체 접힘 상태 (이 브라우저에만)
 
 /** 왼쪽 메뉴 — 16개 화면이 그룹별로 접힌다. 메뉴가 길어 좁은 화면에서는 본문이 아래로 밀렸다 (2026-10-30). */
@@ -73,34 +73,59 @@ function SideNav() {
   );
 }
 
-function TokenPrompt({ reason, onDone }: { reason: string; onDone: () => Promise<void> }) {
+/** 관리자 로그인 (2026-11-03 ISMS-P) — .env ADMIN_TOKEN + (ADMIN_TOTP_SECRET 이 있으면) OTP 6자리. 세션 쿠키는 HttpOnly 라 화면 스크립트가 읽지 못한다.
+ *  30분 동안 쓰지 않거나 8시간이 지나면 다시 로그인한다. 5번 틀리면 30분 잠금. */
+function AdminLogin({ reason, onDone }: { reason: string; onDone: () => Promise<void> }) {
   const [tok, setTok] = useState("");
+  const [otp, setOtp] = useState("");
   const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
+  const [st, setSt] = useState<{ otp: boolean; configured: boolean; idle_min: number; max_hours: number } | null>(null);
+  useEffect(() => { get<{ otp: boolean; configured: boolean; idle_min: number; max_hours: number }>("auth/admin-status").then(setSt).catch(() => undefined); }, []);
   const save = async () => {
-    setBusy(true);
+    setBusy(true); setErr("");
     try {
-      localStorage.setItem(TOKEN_KEY, tok.trim());
-    } catch {
-      /* 저장 못 해도 /api/me 는 다시 읽는다 */
-    }
-    await onDone();
-    setBusy(false);
+      await post("auth/admin-login", { token: tok.trim(), otp: st?.otp ? otp.trim() : undefined });
+      setTok(""); setOtp("");
+      await onDone();
+    } catch (e) {
+      setErr(e instanceof ApiError ? e.message : "로그인하지 못했습니다.");
+    } finally { setBusy(false); }
   };
   return (
     <div className="box adm-token">
       <div className="eyebrow">Admin</div>
-      <h2 className="sec-h" style={{ fontSize: "1.4rem" }}>🔒 관리자 확인</h2>
+      <h2 className="sec-h" style={{ fontSize: "1.4rem" }}>🔒 관리자 로그인</h2>
       <Alert kind="warn">{reason}</Alert>
-      <p className="caption">관리 화면은 backend .env 의 ADMIN_TOKEN 을 입력해야 열려요(이 PC 에서도 마찬가지 — 2026-11-03부터). 한 번 넣으면 이 브라우저에만 저장됩니다.</p>
-      <div className="field">
-        <label>관리자 토큰</label>
-        <input type="password" value={tok} onChange={(e) => setTok(e.target.value)} onKeyDown={(e) => e.key === "Enter" && save()} autoFocus />
-      </div>
-      <div className="btn-row">
-        <button className="btn primary" disabled={busy || !tok.trim()} onClick={save}>확인</button>
-        <button className="btn ghost" disabled={busy} onClick={() => { try { localStorage.removeItem(TOKEN_KEY); } catch { /* */ } setTok(""); onDone(); }}>토큰 지우기</button>
-      </div>
+      <p className="caption">backend .env 의 ADMIN_TOKEN{st?.otp ? " 과 OTP 앱의 6자리" : ""}로 로그인해요. 토큰은 브라우저에 저장하지 않고,
+        {st ? ` ${st.idle_min}분 동안 쓰지 않거나 ${st.max_hours}시간이 지나면` : " 일정 시간이 지나면"} 다시 로그인해야 해요. 5번 틀리면 30분 동안 잠겨요.</p>
+      {st && !st.configured && <Alert kind="err">.env 에 ADMIN_TOKEN 이 없어 관리자 로그인을 할 수 없습니다.</Alert>}
+      <form onSubmit={(e) => { e.preventDefault(); if (tok.trim()) save(); }}>
+        <div className="field">
+          <label htmlFor="adm-tok">관리자 토큰</label>
+          <input id="adm-tok" type="password" autoComplete="off" value={tok} onChange={(e) => setTok(e.target.value)} autoFocus />
+        </div>
+        {st?.otp && (
+          <div className="field">
+            <label htmlFor="adm-otp">OTP 6자리</label>
+            <input id="adm-otp" inputMode="numeric" autoComplete="one-time-code" maxLength={6} value={otp} onChange={(e) => setOtp(e.target.value.replace(/\D/g, ""))} />
+          </div>
+        )}
+        {err && <Alert kind="err">{err}</Alert>}
+        <div className="btn-row">
+          <button className="btn primary" disabled={busy || !tok.trim() || (!!st?.otp && otp.length !== 6)}>로그인</button>
+        </div>
+      </form>
     </div>
+  );
+}
+
+function AdminLogout() {
+  const { reload } = useMe();
+  return (
+    <button type="button" className="btn sm ghost adm-logout" onClick={async () => { await post("auth/admin-logout").catch(() => undefined); await reload(); }}>
+      관리자 로그아웃
+    </button>
   );
 }
 
@@ -110,7 +135,7 @@ export default function AdminApp() {
   const [dockH, setDockH] = useState(0);  // 실행 로그 독 높이 — 본문 아래 여백으로 써서 끝 내용이 가려지지 않게
 
   useEffect(() => {
-    onForbidden(() => setForbidden("관리 API 가 접근을 거부했습니다 (403). 토큰을 확인해 주세요."));
+    onForbidden(() => setForbidden("로그인이 끝났거나(30분 미사용·8시간 경과) 권한이 없습니다. 다시 로그인해 주세요."));
     return () => onForbidden(() => undefined);
   }, []);
 
@@ -118,8 +143,8 @@ export default function AdminApp() {
   if (!me.is_admin || forbidden) {
     return (
       <div className="container page">
-        <TokenPrompt
-          reason={forbidden || "관리자 IP 가 아니거나 토큰이 없습니다."}
+        <AdminLogin
+          reason={forbidden || "관리 화면은 관리자 로그인이 필요합니다."}
           onDone={async () => {
             await reload();
             setForbidden(null);
@@ -135,6 +160,7 @@ export default function AdminApp() {
         <div className="container adm">
           <SideNav />
           <main className="adm-main" style={dockH ? { paddingBottom: dockH + 12 } : undefined}>
+            <div className="adm-topbar"><RevealToggle /><AdminLogout /></div>
             <Suspense fallback={<div className="page-loading">불러오는 중…</div>}>
               <Routes>
                 <Route index element={<Navigate to="dashboard" replace />} />

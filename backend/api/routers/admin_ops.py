@@ -163,6 +163,14 @@ def _rows() -> list[dict]:
             "설정됨" if os.environ.get("ADMIN_TOKEN", "").strip() else "없음 — 로컬·등록 IP 판정만 사용",
             "" if os.environ.get("ADMIN_TOKEN", "").strip() else "원격에서 관리 화면을 쓰려면 .env ADMIN_TOKEN")
         add("보안", "접속 기록(IP) 보관", OK, "90일 후 자동 삭제")
+        # ISMS-P 2.5·2.9.4 (2026-11-03) — 관리자 2단계 인증·접속기록 위변조 점검
+        from pipeline import admin_auth
+        add("보안", "관리자 2단계 인증(OTP)", OK if admin_auth.totp_secret() else WARN,
+            "켜짐" if admin_auth.totp_secret() else "꺼짐 — 토큰만으로 로그인",
+            "" if admin_auth.totp_secret() else ".env ADMIN_TOTP_SECRET 에 OTP 비밀값을 넣고 OTP 앱에 등록 (docs/ISMS-P.md)")
+        chain = admin_auth.verify()
+        add("보안", "관리자 접속기록 위변조", OK if chain["ok"] else BAD, f"{chain['rows']}건 · {'정상' if chain['ok'] else '불일치'} (2년 보관)",
+            "" if chain["ok"] else f"{chain.get('broken_at')}번 기록부터 해시가 맞지 않음 — 관리 > 관리자·접속에서 확인")
         need = privacy.missing()
         add("보안", "개인정보 처리방침 필수 기재사항", BAD if need else OK, ("빠짐: " + ", ".join(need)) if need else "모두 입력됨",
             "관리 > 개인정보 처리방침에서 입력 (시행 전 담당 부서 검토)" if need else "")

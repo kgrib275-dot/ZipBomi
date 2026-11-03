@@ -1,7 +1,7 @@
 // 관리 > 회원 계정 (2026-11-02) — 메일 링크 로그인 계정 목록·저장 현황·강제 로그아웃·삭제 (backend/api/routers/admin_accounts.py).
 import { useMemo, useState } from "react";
 import { Alert, useLoad } from "../../components/ui";
-import { A, AdminHead, Row, useAct, usePaged } from "./common";
+import { A, AdminHead, Email, Row, maskEmail, useAct, usePaged } from "./common";
 
 type Acc = { id: number; email: string; created_at: string; last_login_at: string | null; last_seen: string | null; subscribed: boolean;
   ask_credits: number; ask_used: number;
@@ -15,14 +15,14 @@ export default function Accounts() {
   const rows = useMemo(() => (data?.rows || []).filter((r) => !q.trim() || r.email.toLowerCase().includes(q.trim().toLowerCase())), [data, q]);
   const pg = usePaged("accounts", rows as unknown as Row[], q, 20);
   const logout = async (r: Acc) => {
-    if (!window.confirm(`${r.email} 계정을 모든 기기에서 로그아웃할까요? 저장한 자료는 그대로 남습니다.`)) return;
+    if (!window.confirm(`${maskEmail(String(r.email))} 계정을 모든 기기에서 로그아웃할까요? 저장한 자료는 그대로 남습니다.`)) return;
     await act(() => A.post(`accounts/${r.id}/logout`), "모든 기기에서 로그아웃했습니다."); reload();
   };
   const grant = async (r: Acc, n: number) => {
-    await act(() => A.post(`accounts/${r.id}/ask-grant`, { n }), `${r.email} 보미AI ${n}회를 더했습니다.`); reload();
+    await act(() => A.post(`accounts/${r.id}/ask-grant`, { n }), `${maskEmail(String(r.email))} 보미AI ${n}회를 더했습니다.`); reload();
   };
   const remove = async (r: Acc) => {
-    if (!window.confirm(`${r.email} 계정과 저장 자료(관심 단지·알림·메모·참여 기록)를 모두 삭제할까요? 되돌릴 수 없습니다.`)) return;
+    if (!window.confirm(`${maskEmail(String(r.email))} 계정과 저장 자료(관심 단지·알림·메모·참여 기록)를 모두 삭제할까요? 되돌릴 수 없습니다.`)) return;
     await act(() => A.del(`accounts/${r.id}`), "삭제했습니다."); reload();
   };
   const d = (s: string | null) => (s ? s.slice(0, 16).replace("T", " ") : "-");
@@ -48,7 +48,7 @@ export default function Accounts() {
           <tbody>
             {(pg.shown as unknown as Acc[]).map((r) => (
               <tr key={r.id}>
-                <td><b>{r.email}</b></td>
+                <td><b><Email v={r.email} /></b></td>
                 <td style={{ whiteSpace: "nowrap" }}>{d(r.created_at)}</td>
                 <td style={{ whiteSpace: "nowrap" }}>{d(r.last_login_at)}</td>
                 <td style={{ whiteSpace: "nowrap" }}>{d(r.last_seen)}</td>
