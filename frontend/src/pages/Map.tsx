@@ -123,6 +123,9 @@ const binColor = (bins: number[], v: number | null) => {
 };
 
 // ───────── 팝업 HTML ─────────
+// 네이버 지도 검색 주소 — 키 없이 열린다 (2026-11-03). 공고는 공급 위치(주소), 시세는 시군구 이름으로 찾는다.
+const naverSearch = (q: string) => `https://map.naver.com/p/search/${encodeURIComponent(q)}`;
+
 function noticePopup(n: Notice): string {
   return `<div class="mp-pop">
     <div class="mp-pop-tag" style="--c:${STATUS_COLOR[n.status]}">${STATUS_LABEL[n.status]}</div>
@@ -135,6 +138,7 @@ function noticePopup(n: Notice): string {
       <dt>당첨 발표</dt><dd>${esc(dot(n.winner_date) || "-")}</dd>
     </dl>
     ${n.url ? `<a class="mp-pop-link" href="${esc(n.url)}" target="_blank" rel="noopener noreferrer">청약홈에서 공고 보기 ↗</a>` : ""}
+    <a class="mp-pop-link" href="${esc(naverSearch(n.address || n.name))}" target="_blank" rel="noopener noreferrer">네이버 지도에서 보기 ↗</a>
   </div>`;
 }
 function listingPopup(l: Listing, admin: boolean): string {
@@ -162,6 +166,7 @@ function pricePopup(p: PriceItem, months: number): string {
       <dt>거래 건수</dt><dd>${p.deals.toLocaleString("ko-KR")}건</dd>
     </dl>
     <a class="mp-pop-link" href="/deals?lawd=${esc(p.lawd_cd)}" data-act="deals" data-lawd="${esc(p.lawd_cd)}">실거래가 자세히 →</a>
+    <a class="mp-pop-link" href="${esc(naverSearch(`${p.region} ${p.sigungu}`))}" target="_blank" rel="noopener noreferrer">네이버 지도에서 보기 ↗</a>
   </div>`;
 }
 const listingIcon = (l: Listing, admin: boolean) => L.divIcon({
@@ -221,11 +226,14 @@ export default function MapPage() {
   };
   const [extCenter, setExtCenter] = useState<[number, number]>([37.5665, 126.978]);
   const [extZoom, setExtZoom] = useState(11);
-  const openOuter = (who: "naver" | "google") => {
+  // 지도 회사 키가 없을 때 — 지금 보던 위치를 그 회사 지도 새 창으로 연다 (2026-11-03: 예전엔 단추가 꺼져 있었다).
+  // 네이버 주소 형식 c=경도,위도,확대 는 실제 브라우저로 위치가 맞게 열리는 것을 확인했다.
+  const openOuter = (who: Engine) => {
     const m = mapRef.current;
     if (!m) return;
-    const c = m.getCenter(), z = m.getZoom();
-    const url = who === "naver" ? `https://map.naver.com/p?c=${c.lng.toFixed(6)},${c.lat.toFixed(6)},${Math.min(z, 19)},0,0,0,dh`
+    const c = m.getCenter(), z = Math.max(6, Math.min(m.getZoom() + 1, 19));
+    const url = who === "naver" ? `https://map.naver.com/p?c=${c.lng.toFixed(6)},${c.lat.toFixed(6)},${z},0,0,0,dh`
+      : who === "kakao" ? `https://map.kakao.com/link/map/${encodeURIComponent("지도 위치")},${c.lat.toFixed(6)},${c.lng.toFixed(6)}`
       : `https://www.google.com/maps/@${c.lat.toFixed(6)},${c.lng.toFixed(6)},${z}z`;
     window.open(url, "_blank", "noopener");
   };
@@ -496,12 +504,12 @@ export default function MapPage() {
         </div>
         <div className="mp-bar-r">
           <div className="seg mp-base" role="group" aria-label="바탕지도">
-            {(Object.keys(BASES) as BaseKey[]).map((k) => <button key={k} type="button" className={!engine && base === k ? "on" : ""} onClick={() => { setBase(k); setEngine(null); }}>{BASES[k].label}</button>)}
+            {(Object.keys(BASES) as BaseKey[]).map((k) => <button key={k} type="button" className={!(engine && mapKeys[engine]) && base === k ? "on" : ""} onClick={() => { setBase(k); setEngine(null); }}>{BASES[k].label}</button>)}
           </div>
           <div className="seg mp-base" role="group" aria-label="지도 회사">
             {(["naver", "kakao", "google"] as Engine[]).map((k) => (
-              <button key={k} type="button" className={engine === k ? "on" : ""} disabled={!mapKeys[k]} onClick={() => setEngine(engine === k ? null : k)}
-                title={mapKeys[k] ? `${ENGINE_LABEL[k]}로 보기` : `${ENGINE_LABEL[k]} — 관리자가 지도 키를 등록하면 쓸 수 있어요`}>{ENGINE_LABEL[k]}</button>
+              <button key={k} type="button" className={engine === k && mapKeys[k] ? "on" : ""} onClick={() => (mapKeys[k] ? setEngine(engine === k ? null : k) : openOuter(k))}
+                title={mapKeys[k] ? `${ENGINE_LABEL[k]} 지도로 이 화면에서 보기` : `${ENGINE_LABEL[k]} 지도에서 지금 위치 열기 (새 창)`}>{ENGINE_LABEL[k]}{mapKeys[k] ? "" : " ↗"}</button>
             ))}
           </div>
           <label className="sr-only" htmlFor="mp-jump">지역 바로가기</label>
