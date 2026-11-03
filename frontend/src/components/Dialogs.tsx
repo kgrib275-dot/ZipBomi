@@ -56,7 +56,7 @@ function SubscribeDialog({ source, onClose }: { source: string; onClose: () => v
   // 결과 문구가 대화상자 아래쪽(모바일에서 화면 밖)에 생겨 '아무 반응이 없는' 것처럼 보이지 않게 보이는 곳으로 옮긴다
   useEffect(() => { if (msg) msgRef.current?.scrollIntoView({ block: "nearest", behavior: "smooth" }); }, [msg]);
   const send = async (addr: string, typoOk = false) => {
-    if (!agree) return setMsg({ kind: "err", text: "만 14세 이상이며 개인정보 수집·이용에 동의해야 구독할 수 있습니다." });
+    if (!agree) return setMsg({ kind: "err", text: "만 14세 이상인지와 개인정보 수집·이용 안내를 확인해 주세요." });
     setBusy(true);
     try {
       const r = await post<{ message: string }>("subscribe", { email: addr, industries: inds, agree, source, ref: state.ref || "", typo_ok: typoOk });
@@ -116,8 +116,8 @@ function SubscribeDialog({ source, onClose }: { source: string; onClose: () => v
             ))}
           </div>
         </div>
-        <p className="caption"><b>개인정보 수집·이용 안내</b> · 항목: 이메일(필수), 관심 지역(선택) · 목적: 주간 뉴스레터 발송·구독 확인 · 보유: 구독 해지 시까지(해지 후 30일 이내 파기) · 동의를 거부할 수 있으며, 거부하면 구독할 수 없습니다. 메일은 발송 업체에 위탁해 보냅니다. <Link to="/privacy" onClick={onClose}>개인정보 처리방침</Link></p>
-        <label className="check"><input type="checkbox" checked={agree} onChange={(e) => setAgree(e.target.checked)} /> 만 14세 이상이며 개인정보 수집·이용에 동의합니다 (필수)</label>
+        <p className="caption"><b>개인정보 수집·이용 안내</b> · 항목: 이메일(필수), 관심 지역(선택) · 목적: 주간 뉴스레터 발송·구독 확인 · 보유: 구독 해지 시까지(해지 후 30일 이내 파기) · 구독에 꼭 필요한 정보만 받으며, 입력하지 않으면 구독할 수 없습니다. 메일은 발송 업체에 위탁해 보냅니다. <Link to="/privacy" onClick={onClose}>개인정보 처리방침</Link></p>
+        <label className="check"><input type="checkbox" checked={agree} onChange={(e) => setAgree(e.target.checked)} /> 만 14세 이상이며, 위 개인정보 수집·이용 안내를 확인했습니다 (필수)</label>
         <div ref={msgRef}>
           {msg && <Alert kind={msg.kind}>{msg.text}</Alert>}
           {msg?.suggest && (
@@ -155,8 +155,8 @@ function ContactDialog({ onClose, preset = "" }: { onClose: () => void; preset?:
         </div>
         <div className="field"><label>부서 · 직책 (선택)</label><input type="text" maxLength={100} value={f.company} onChange={(e) => setF({ ...f, company: e.target.value })} /></div>
         <div className="field"><label>내용</label><textarea required rows={5} maxLength={5000} value={f.message} onChange={(e) => setF({ ...f, message: e.target.value })} /></div>
-        <p className="caption"><b>개인정보 수집·이용 안내</b> · 항목: 이름·이메일·문의 내용(필수), 부서·직책(선택) · 목적: 문의 확인 및 답변 · 보유: 접수 후 12개월 · 동의를 거부할 수 있으며, 거부하면 문의를 접수할 수 없습니다. <Link to="/privacy" onClick={onClose}>개인정보 처리방침</Link></p>
-        <label className="check"><input type="checkbox" checked={f.agree} onChange={(e) => setF({ ...f, agree: e.target.checked })} /> 만 14세 이상이며 개인정보 수집·이용에 동의합니다 (필수)</label>
+        <p className="caption"><b>개인정보 수집·이용 안내</b> · 항목: 이름·이메일·문의 내용(필수), 부서·직책(선택) · 목적: 문의 확인 및 답변 · 보유: 접수 후 12개월 · 답변에 꼭 필요한 정보만 받으며, 입력하지 않으면 문의를 접수할 수 없습니다. <Link to="/privacy" onClick={onClose}>개인정보 처리방침</Link></p>
+        <label className="check"><input type="checkbox" checked={f.agree} onChange={(e) => setF({ ...f, agree: e.target.checked })} /> 만 14세 이상이며, 위 개인정보 수집·이용 안내를 확인했습니다 (필수)</label>
         <button className="btn primary block" style={{ marginTop: 12 }}>보내기 →</button>
       </form>
       {msg && <Alert kind={msg.kind}>{msg.text}</Alert>}
@@ -189,8 +189,8 @@ function MembershipDialog({ onClose }: { onClose: () => void }) {
           <div className="field"><label>이메일</label><input type="email" required maxLength={254} value={f.email} onChange={(e) => setF({ ...f, email: e.target.value })} /></div>
         </div>
         <div className="field"><label>부서 · 직책 (선택)</label><input type="text" maxLength={100} value={f.company} onChange={(e) => setF({ ...f, company: e.target.value })} /></div>
-        <p className="caption"><b>개인정보 수집·이용 안내</b> · 항목: 이름·이메일(필수), 부서·직책(선택) · 목적: 월 구독 안내·구독 코드 발송 · 보유: 신청 정보 12개월, 이용 정보 종료 후 6개월 · 동의를 거부할 수 있으며, 거부하면 신청할 수 없습니다. <Link to="/privacy" onClick={onClose}>개인정보 처리방침</Link></p>
-        <label className="check"><input type="checkbox" checked={f.agree} onChange={(e) => setF({ ...f, agree: e.target.checked })} /> 만 14세 이상이며 개인정보 수집·이용에 동의합니다 (필수)</label>
+        <p className="caption"><b>개인정보 수집·이용 안내</b> · 항목: 이름·이메일(필수), 부서·직책(선택) · 목적: 월 구독 안내·구독 코드 발송 · 보유: 신청 정보 12개월, 이용 정보 종료 후 6개월 · 안내에 꼭 필요한 정보만 받으며, 입력하지 않으면 신청할 수 없습니다. <Link to="/privacy" onClick={onClose}>개인정보 처리방침</Link></p>
+        <label className="check"><input type="checkbox" checked={f.agree} onChange={(e) => setF({ ...f, agree: e.target.checked })} /> 만 14세 이상이며, 위 개인정보 수집·이용 안내를 확인했습니다 (필수)</label>
         <button className="btn primary block" style={{ marginTop: 12 }}>신청하기 →</button>
       </form>
       {msg && <Alert kind={msg.kind}>{msg.text}</Alert>}

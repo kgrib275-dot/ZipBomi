@@ -76,7 +76,7 @@ function PolicyView({ content, effective, announced }: { content: Content; effec
       </p>
 
       <H>제1조 처리하는 개인정보의 항목, 처리 목적, 보유 기간</H>
-      <P>운영자는 아래 목적으로만 개인정보를 처리하며, 목적이 바뀌면 별도 동의를 받는 등 필요한 조치를 합니다. 직접 입력하는 정보는 수집할 때 목적·항목·보유 기간과 거부할 권리를 알리고 동의를 받습니다.</P>
+      <P>운영자는 아래 목적으로만 개인정보를 처리하며, 목적이 바뀌면 별도 동의를 받는 등 필요한 조치를 합니다. 직접 입력하는 정보는 수집할 때 목적·항목·보유 기간을 알립니다. 이용자가 요청한 서비스(구독·로그인·문의)에 꼭 필요한 정보는 안내를 확인받아 처리하고(개인정보 보호법 제15조 제1항 제4호), 꼭 필요하지 않은 선택 정보는 따로 동의를 받습니다.</P>
       <PolicyTable rows={content.records} cols={[["name", "처리 업무"], ["purpose", "처리 목적"], ["required", "필수 항목"], ["optional", "선택 항목"], ["auto", "자동 생성·수집 항목"], ["keep", "보유 기간"]]} />
       <p className="caption">민감정보·고유식별정보(주민등록번호 등)는 처리하지 않습니다. 결제는 사이트에서 처리하지 않습니다.</p>
 
@@ -142,8 +142,6 @@ function PolicyView({ content, effective, announced }: { content: Content; effec
       <UL>
         <li>개인정보분쟁조정위원회: (국번 없이) 1833-6972 · www.kopico.go.kr</li>
         <li>개인정보침해신고센터(한국인터넷진흥원): (국번 없이) 118 · privacy.kisa.or.kr</li>
-        <li>대검찰청: (국번 없이) 1301 · www.spo.go.kr</li>
-        <li>경찰청: (국번 없이) 182 · ecrm.police.go.kr</li>
       </UL>
 
       <H>제13조 개인정보 처리방침의 변경</H>

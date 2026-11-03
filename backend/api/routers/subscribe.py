@@ -199,7 +199,7 @@ def refer(k: str = Query(""), c: Caller = CallerDep) -> dict:
 @router.post("/contact")
 def contact(payload: dict = Body(...), c: Caller = CallerDep) -> dict:
     if payload.get("agree") is not True:
-        raise HTTPException(status_code=400, detail="개인정보 수집·이용에 동의해야 문의를 남길 수 있습니다.")
+        raise HTTPException(status_code=400, detail="개인정보 수집·이용 안내를 확인해야 문의를 남길 수 있습니다.")
     name = str(payload.get("name") or "").strip()[:100]
     message = str(payload.get("message") or "").strip()[:5000]
     company = str(payload.get("company") or "").strip()[:100]

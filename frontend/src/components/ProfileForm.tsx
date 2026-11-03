@@ -34,7 +34,7 @@ export default function ProfileForm({ source }: { source: string }) {
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!agree) return setMsg({ kind: "err", text: "동의해야 저장할 수 있습니다." });
+    if (!agree) return setMsg({ kind: "err", text: "위 안내를 확인하고 동의해야 저장할 수 있습니다." });
     setBusy(true);
     try {
       const region = f.country === "대한민국" && f.region !== "-" ? f.region : "";
@@ -72,7 +72,7 @@ export default function ProfileForm({ source }: { source: string }) {
             <div className="field"><label>시·도 (대한민국)</label>
               <select value={f.region || "-"} onChange={(e) => setF({ ...f, region: e.target.value })}>{["-", ...KR_REGIONS].map((r) => <option key={r}>{r}</option>)}</select></div>
           </div>
-          <label className="check"><input type="checkbox" checked={agree} onChange={(e) => setAgree(e.target.checked)} /> 만 14세 이상이며 위 수집·이용에 동의합니다</label>
+          <label className="check"><input type="checkbox" checked={agree} onChange={(e) => setAgree(e.target.checked)} /> 만 14세 이상이며, 위 안내를 확인하고 선택 정보 제공에 동의합니다</label>
           <button className="btn primary" style={{ marginTop: 10 }} disabled={busy}>저장</button>
         </form>
         {msg && <Alert kind={msg.kind}>{msg.text}</Alert>}

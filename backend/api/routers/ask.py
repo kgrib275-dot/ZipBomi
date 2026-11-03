@@ -281,7 +281,7 @@ def membership_request(payload: dict = Body(...), c: Caller = CallerDep) -> dict
     if not _cfg().get("membership"):
         raise HTTPException(status_code=404, detail="월 구독 신청을 받지 않습니다.")
     if payload.get("agree") is not True:
-        raise HTTPException(status_code=400, detail="개인정보 수집·이용에 동의해야 신청할 수 있습니다.")
+        raise HTTPException(status_code=400, detail="개인정보 수집·이용 안내를 확인해야 신청할 수 있습니다.")
     name = str(payload.get("name") or "").strip()[:100]
     email = str(payload.get("email") or "").strip()[:254]
     company = str(payload.get("company") or "").strip()[:100]
