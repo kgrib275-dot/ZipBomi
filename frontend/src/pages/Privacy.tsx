@@ -22,6 +22,8 @@ type Content = {
   entrustments?: Row[];
   overseas?: Row[];
   backup_days?: number;
+  // 2026-11-04 — 광고 사업자를 넣고 공지한 버전에만 있다 (제9조의2)
+  ads?: { vendor: string; items: string; method: string; purpose: string; keep: string; who: string; policy?: string; refuse: string[]; kids: string; contact: string };
 };
 type Privacy = {
   active: boolean;
@@ -121,7 +123,7 @@ function PolicyView({ content, effective, announced }: { content: Content; effec
       <H>제9조 개인정보 자동 수집 장치(쿠키)의 설치·운영 및 거부</H>
       {content.cookies ? (
         <UL>
-          <li>사이트는 아래 쿠키만 씁니다.
+          <li>{content.ads ? "사이트가 직접 쓰는 쿠키는 아래와 같습니다. 광고 사업자의 쿠키는 제9조의2를 보세요." : "사이트는 아래 쿠키만 씁니다."}
             <ul>{content.cookies.map((c) => <li key={c.name}><b>{c.name}</b> — {c.purpose} (보관: {c.keep})</li>)}</ul></li>
           {content.storage && <li>{content.storage}</li>}
           <li><b>거부 방법</b>: 브라우저 설정에서 쿠키를 차단하거나 삭제할 수 있습니다 (예: Chrome·Edge → 설정 → 개인정보 및 보안 → 쿠키 및 사이트 데이터).</li>
@@ -136,6 +138,22 @@ function PolicyView({ content, effective, announced }: { content: Content; effec
           <li>공유 버튼(카카오톡·LinkedIn)과 번역(EN) 버튼은 누를 때만 해당 서비스로 연결되며, 화면 글꼴은 Google Fonts에서 받아 옵니다.</li>
         </UL>
       )}
+
+      {content.ads && (<>
+        <H>제9조의2 행태정보의 수집·이용 및 거부 (맞춤형 광고)</H>
+        <P>사이트에는 광고가 있으며, 광고 사업자가 이용자의 관심사에 맞춘 광고를 보여 주기 위해 아래 정보(행태정보)를 수집합니다.</P>
+        <UL>
+          <li><b>수집하는 항목</b>: {content.ads.items}</li>
+          <li><b>수집 방법</b>: {content.ads.method}</li>
+          <li><b>수집 목적</b>: {content.ads.purpose}</li>
+          <li><b>보유·이용 기간</b>: {content.ads.keep}</li>
+          <li><b>수집·처리하는 자</b>: {content.ads.who}{content.ads.policy && <> (<a href={content.ads.policy} target="_blank" rel="noopener noreferrer">광고 사업자의 광고·쿠키 정책</a>)</>}</li>
+          <li><b>거부 방법</b> — 거부해도 사이트 이용에는 제한이 없습니다.
+            <ul>{content.ads.refuse.map((r) => <li key={r}>{r}</li>)}</ul></li>
+          <li>{content.ads.kids}</li>
+          <li>{content.ads.contact}</li>
+        </UL>
+      </>)}
 
       <H>제10조 자동화된 결정</H>
       <P>운영자는 정보주체에게 법적 효과나 중대한 영향을 미치는 자동화된 결정을 하지 않습니다. 사이트의 AI는 기사 선별·요약과 질문 답변에만 쓰입니다.</P>

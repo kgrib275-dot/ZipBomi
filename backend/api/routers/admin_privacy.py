@@ -13,9 +13,9 @@ from pipeline import privacy, settings_store
 router = APIRouter(prefix="/admin/privacy", tags=["admin-privacy"], dependencies=[Depends(require_admin)])
 
 _FIELDS = ("operator", "officer_name", "officer_dept", "officer_email", "officer_phone", "request_dept",
-           "smtp_vendor", "smtp_country", "databricks_region", "admin_measures")
+           "smtp_vendor", "smtp_country", "databricks_region", "admin_measures", "ads_vendor")
 _MAX = {"operator": 100, "officer_name": 60, "officer_dept": 60, "officer_email": 120, "officer_phone": 40,
-        "request_dept": 100, "smtp_vendor": 80, "smtp_country": 40, "databricks_region": 40, "admin_measures": 500}
+        "request_dept": 100, "smtp_vendor": 80, "smtp_country": 40, "databricks_region": 40, "admin_measures": 500, "ads_vendor": 80}
 
 
 def _view() -> dict:

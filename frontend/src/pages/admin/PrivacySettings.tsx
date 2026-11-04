@@ -10,8 +10,8 @@ const FIELDS: [keyof Settings, string, string?][] = [
   ["request_dept", "열람청구 접수·처리 부서 (비우면 보호책임자와 같음)"],
   ["smtp_vendor", "메일 발송 위탁 업체 (SMTP)", "예) Microsoft 365, 사내 메일 서버"], ["smtp_country", "메일 업체 처리 국가"], ["databricks_region", "Databricks 저장 지역(국가)"],
 ];
-type Settings = { operator: string; officer_name: string; officer_dept: string; officer_email: string; officer_phone: string; request_dept: string; smtp_vendor: string; smtp_country: string; databricks_region: string; admin_measures: string };
-const EMPTY: Settings = { operator: "", officer_name: "", officer_dept: "", officer_email: "", officer_phone: "", request_dept: "", smtp_vendor: "", smtp_country: "", databricks_region: "", admin_measures: "" };
+type Settings = { operator: string; officer_name: string; officer_dept: string; officer_email: string; officer_phone: string; request_dept: string; smtp_vendor: string; smtp_country: string; databricks_region: string; admin_measures: string; ads_vendor: string };
+const EMPTY: Settings = { operator: "", officer_name: "", officer_dept: "", officer_email: "", officer_phone: "", request_dept: "", smtp_vendor: "", smtp_country: "", databricks_region: "", admin_measures: "", ads_vendor: "" };
 
 export default function PrivacySettings() {
   const { data, error, reload } = useLoad(() => A.get<Row>("privacy"), []);
@@ -58,6 +58,10 @@ export default function PrivacySettings() {
         {FIELDS.slice(6).map(([k, l, p]) => <Field key={k} label={l}><input type="text" maxLength={80} placeholder={p} value={s[k]} onChange={(e) => setS({ ...s, [k]: e.target.value })} /></Field>)}
       </div>
       <Field label="관리적 보호조치 (실제로 하는 것만 — 예: 내부관리계획 수립, 취급자 교육)"><textarea rows={3} maxLength={500} value={s.admin_measures} onChange={(e) => setS({ ...s, admin_measures: e.target.value })} /></Field>
+      <Field label="광고 사업자 (광고를 붙일 때만 — 넣으면 처리방침에 광고 쿠키·맞춤형 광고(행태정보) 조항과 거부 방법이 생깁니다)">
+        <input type="text" maxLength={80} placeholder="예) Google LLC (Google AdSense) — 광고가 없으면 비워 두세요" value={s.ads_vendor} onChange={(e) => setS({ ...s, ads_vendor: e.target.value })} />
+      </Field>
+      {s.ads_vendor.trim() && <p className="caption">⚖ 광고 시작은 중요 변경이에요 — 새 버전을 <b>'중요 변경'(30일 공지)</b>으로 공지하고, <b>시행일 이후에</b> 광고를 켜세요.</p>}
       <button className="btn primary" onClick={async () => {
         const body = Object.fromEntries(Object.entries(s).map(([k, v]) => [k, v.trim()]));
         body.smtp_country = body.smtp_country || "대한민국";

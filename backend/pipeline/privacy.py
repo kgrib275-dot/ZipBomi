@@ -28,7 +28,10 @@ DEFAULTS = {
     "smtp_country": "대한민국",  # 그 업체의 처리 국가 (국외면 국외 이전으로 표시)
     "databricks_region": "미국",  # Databricks 저장 지역
     "admin_measures": "",    # 관리적 보호조치(내부관리계획·교육 등) — 실제로 하는 것만
+    "ads_vendor": "",        # 광고 사업자 (예: Google LLC (Google AdSense)) — 넣으면 처리방침에 광고 쿠키·행태정보 조항이 생긴다 (2026-11-04)
 }
+# 처리방침 '기재사항' 표에는 넣지 않는 설정 — 광고는 snapshot 의 "ads" 로 따로 고정한다 (광고를 안 켠 지금 버전이 바뀌지 않게)
+_NOT_IN_SETTINGS = {"ads_vendor"}
 REQUIRED = {"operator": "개인정보처리자(운영자) 명칭", "officer_name": "개인정보 보호책임자 성명 또는 직책",
             "officer_email": "보호책임자 연락처(이메일)"}
 NOTICE_DAYS, MAJOR_NOTICE_DAYS = 7, 30  # 시행 전 공지 기간 (정보주체 권리에 중요한 변경은 30일)
@@ -207,14 +210,49 @@ STORAGE = ("브라우저 저장소(localStorage·sessionStorage)에는 화면 �
            "이 브라우저의 쿠키 또는 로그인 계정과 연결됩니다.")
 COOKIE_REFUSE = ("쿠키를 막으면 로그인과 둘러보기가 동작하지 않아 서비스를 이용하기 어렵습니다(사이트 이용에 꼭 필요한 쿠키만 씁니다). "
                  "광고·행태 추적용 쿠키는 쓰지 않습니다.")
+COOKIE_REFUSE_ADS = ("사이트가 직접 쓰는 쿠키(위 목록)를 막으면 로그인과 둘러보기가 동작하지 않아 서비스를 이용하기 어렵습니다. "
+                     "광고 쿠키만 막거나 맞춤형 광고를 끄면 관심사와 관계없는 일반 광고가 보이며, 서비스 이용에는 제한이 없습니다.")
+
+
+def ads() -> dict | None:
+    """광고를 켰을 때 처리방침 제9조의2(행태정보) 내용. 광고 사업자를 비워 두면 None — 조항 자체를 싣지 않는다.
+
+    개인정보보호위원회 「맞춤형 광고 행태정보 처리 가이드라인」·처리방침 작성지침의 기재 항목
+    (수집 항목·방법·목적·보유 기간, 수집·처리하는 자, 거부 방법, 14세 미만 아동)을 채운다.
+    법률 검토를 대신하지 않는다."""
+    vendor = settings().get("ads_vendor", "").strip()
+    if not vendor:
+        return None
+    google = "google" in vendor.lower()
+    return {
+        "vendor": vendor,
+        "items": "사이트·화면 방문 기록, 광고 노출·클릭 기록, 쿠키·광고 식별자, 접속 IP 주소, 기기·브라우저 정보(종류·언어·화면 크기 등)",
+        "method": "이용자가 광고가 있는 화면을 열 때 광고 사업자의 스크립트와 쿠키가 자동으로 수집합니다. 운영자는 이 정보를 받지 않으며 이름·이메일과 연결하지 않습니다.",
+        "purpose": "관심사에 맞춘 광고(맞춤형 광고) 제공, 광고 노출 횟수 조절, 광고 성과 측정, 부정 클릭 방지",
+        "keep": "광고 사업자의 정책에 따릅니다" + (" (Google: 광고 쿠키는 보통 13개월 이내)" if google else ""),
+        "who": f"{vendor} — 광고 사업자가 직접 수집·처리하며, 처리 국가는 광고 사업자의 정책에 따릅니다" + (" (Google LLC: 미국 등)" if google else ""),
+        "policy": "https://policies.google.com/technologies/ads" if google else "",
+        "refuse": ([
+            "맞춤형 광고 끄기: Google 내 광고 센터(https://myadcenter.google.com)에서 '맞춤 광고'를 끕니다.",
+        ] if google else [f"맞춤형 광고 끄기: {vendor} 의 광고 설정 페이지에서 끕니다."]) + [
+            "브라우저에서 제3자 쿠키를 차단하거나 삭제합니다 (Chrome·Edge → 설정 → 개인정보 및 보안 → 쿠키 및 사이트 데이터 → '타사 쿠키 차단').",
+            "휴대폰: Android → 설정 → Google → 광고 → '광고 ID 삭제', iPhone → 설정 → 개인정보 보호 및 보안 → 추적 → '앱이 추적을 요청하도록 허용' 끄기.",
+        ],
+        "kids": "운영자는 만 14세 미만 아동을 대상으로 하는 맞춤형 광고를 하지 않으며, 만 14세 미만임을 알게 된 경우 맞춤형 광고에 이용하지 않습니다.",
+        "contact": "행태정보 관련 문의·피해 신고는 제11조의 보호책임자에게 할 수 있으며, 운영자는 광고 사업자에게 전달하는 등 필요한 조치를 합니다.",
+    }
 
 
 def snapshot() -> dict:
     """지금 기능·설정으로 만든 처리방침 내용 (공지할 때 이대로 고정된다)."""
     s = settings()
-    return {"settings": {k: s[k] for k in DEFAULTS}, "records": records(), "entrustments": entrustments(),
-            "overseas": overseas(), "retention": dict(db.RETENTION_DAYS), "backup_days": 14,
-            "measures": list(MEASURES), "cookies": [dict(c) for c in COOKIES], "storage": STORAGE, "cookie_refuse": COOKIE_REFUSE}
+    out = {"settings": {k: s[k] for k in DEFAULTS if k not in _NOT_IN_SETTINGS}, "records": records(), "entrustments": entrustments(),
+           "overseas": overseas(), "retention": dict(db.RETENTION_DAYS), "backup_days": 14,
+           "measures": list(MEASURES), "cookies": [dict(c) for c in COOKIES], "storage": STORAGE, "cookie_refuse": COOKIE_REFUSE}
+    ad = ads()
+    if ad:  # 광고를 안 켰으면 키 자체를 넣지 않는다 — 예전에 공지한 버전과 똑같이 남도록
+        out["ads"], out["cookie_refuse"] = ad, COOKIE_REFUSE_ADS
+    return out
 
 
 def _conn():
@@ -290,7 +328,7 @@ def changed_parts() -> list[str]:
         return []
     old, new = vs[0]["content"] or {}, json.loads(json.dumps(snapshot(), ensure_ascii=False))
     names = {"settings": "기재사항(운영자·보호책임자 등)", "records": "처리 업무 표(수집 항목·목적·보유)", "entrustments": "처리 위탁",
-             "overseas": "국외 이전", "retention": "보유 기간", "backup_days": "백업 보관 기간", "measures": "제8조 안전성 확보 조치",
+             "overseas": "국외 이전", "retention": "보유 기간", "backup_days": "백업 보관 기간", "measures": "제8조 안전성 확보 조치", "ads": "제9조의2 행태정보(맞춤형 광고)",
              "cookies": "제9조 쿠키", "storage": "제9조 브라우저 저장소", "cookie_refuse": "제9조 쿠키 거부 시 불이익"}
     return [names.get(k, k) for k in sorted(set(old) | set(new)) if old.get(k) != new.get(k)]
 
