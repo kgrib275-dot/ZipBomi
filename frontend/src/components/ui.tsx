@@ -41,7 +41,8 @@ export function Alert({ kind = "info", children }: { kind?: "info" | "ok" | "war
 }
 
 /** keep: 편집 중인 폼처럼 실수로 닫히면 안 되는 창 — 바깥 클릭·Esc 로 닫지 않는다 */
-export function Dialog({ title, onClose, wide, xl, keep, children }: { title: string; onClose: () => void; wide?: boolean; xl?: boolean; keep?: boolean; children: React.ReactNode }) {
+// noBackdropClose: 창 바깥(여백)을 눌러도 닫히지 않는다 — 입력 중이던 내용이 실수로 사라지지 않게 (×·Esc 로는 닫힌다, 2026-11-05)
+export function Dialog({ title, onClose, wide, xl, keep, noBackdropClose, children }: { title: string; onClose: () => void; wide?: boolean; xl?: boolean; keep?: boolean; noBackdropClose?: boolean; children: React.ReactNode }) {
   const box = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => !keep && e.key === "Escape" && onClose();
@@ -72,7 +73,7 @@ export function Dialog({ title, onClose, wide, xl, keep, children }: { title: st
     return () => { window.removeEventListener("keydown", trap); root.classList.remove("dlg-open"); before?.focus?.(); };
   }, []);
   return (
-    <div className="dlg-bg" onMouseDown={(e) => !keep && e.target === e.currentTarget && onClose()}>
+    <div className="dlg-bg" onMouseDown={(e) => !keep && !noBackdropClose && e.target === e.currentTarget && onClose()}>
       <div ref={box} className={`dlg ${wide ? "wide" : ""} ${xl ? "xl" : ""}`} role="dialog" aria-modal="true" aria-label={title}>
         <div className="dlg-h">
           <h3>{title}</h3>

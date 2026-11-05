@@ -7,10 +7,25 @@ import { ApiError, post } from "../api";
 import { announceAuth, useMe } from "../me";
 import { Alert, Dialog } from "./ui";
 
+// 로그인 메일을 보낸 뒤의 '코드 입력 단계'를 기억한다 (2026-11-05) — 메일 앱·다른 브라우저로 갔다 오는 사이 휴대폰이 이 탭을 정리해 화면이 새로 불러와져도
+// 창이 사라지지 않게. 보낸 시각만 저장하고 이메일 같은 개인정보는 넣지 않는다(이 탭을 닫으면 지워짐). 링크·코드 유효 시간(30분)이 지나면 무시한다.
+// 사용자가 ×로 닫으면(DISMISS) 새로 불러와져도 저절로 다시 열지는 않고, 다시 열면 코드 입력 단계부터 이어 간다.
+const WAIT_KEY = "zg-login-wait", DISMISS_KEY = "zg-login-dismiss", WAIT_MS = 30 * 60 * 1000;
+const RESTORED_MSG = "로그인 메일을 보냈어요. 메일에 적힌 6자리 코드를 넣어 주세요. (링크는 30분 안에 한 번만 쓸 수 있어요.)";
+const ss = (f: (s: Storage) => void) => { try { f(sessionStorage); } catch { /* 저장이 막힌 브라우저 — 기억만 못 할 뿐 로그인은 된다 */ } };
+export function loginWaiting(): boolean {
+  try { const t = Number(sessionStorage.getItem(WAIT_KEY)); return t > 0 && Date.now() - t < WAIT_MS; } catch { return false; }
+}
+export function loginShouldReopen(): boolean {
+  try { return loginWaiting() && sessionStorage.getItem(DISMISS_KEY) !== "1"; } catch { return false; }
+}
+export function clearLoginWait() { ss((s) => { s.removeItem(WAIT_KEY); s.removeItem(DISMISS_KEY); }); }
+
 export default function LoginDialog({ onClose }: { onClose: () => void }) {
   const [email, setEmail] = useState("");
   const [busy, setBusy] = useState(false);
-  const [msg, setMsg] = useState("");
+  const [msg, setMsg] = useState(() => (loginWaiting() ? RESTORED_MSG : ""));
+  const close = () => { ss((s) => s.setItem(DISMISS_KEY, "1")); onClose(); };
   const [err, setErr] = useState("");
   const [suggest, setSuggest] = useState("");
   const [code, setCode] = useState("");
@@ -33,6 +48,7 @@ export default function LoginDialog({ onClose }: { onClose: () => void }) {
     try {
       const r = await post<{ message: string }>("auth/request", { email: addr.trim(), typo_ok: typoOk, agree: true });
       setMsg(r.message); setCode("");
+      ss((s) => { s.setItem(WAIT_KEY, String(Date.now())); s.removeItem(DISMISS_KEY); });
     } catch (e) {
       if (e instanceof ApiError && e.data?.suggest) setSuggest(String(e.data.suggest));
       setErr(e instanceof Error ? e.message : "보내지 못했습니다.");
@@ -41,6 +57,7 @@ export default function LoginDialog({ onClose }: { onClose: () => void }) {
   // 로그인한 뒤에는 보던 화면에서 이어 간다 (2026-11-03) — 둘러보기가 끝나 막혔던 화면이면 자료를 다시 불러오고,
   // 로그인 전용 화면(/login, /about?login=1)에서 왔으면 ?next= 주소나 내 공간으로.
   const afterLogin = () => {
+    clearLoginWait();
     onClose();
     const sp = new URLSearchParams(window.location.search);
     const next = sp.get("next");
@@ -63,7 +80,7 @@ export default function LoginDialog({ onClose }: { onClose: () => void }) {
     } finally { setBusy(false); }
   };
   return (
-    <Dialog title={msg ? "메일을 확인해 주세요" : "집보미 로그인"} onClose={onClose}>
+    <Dialog title={msg ? "메일을 확인해 주세요" : "집보미 로그인"} onClose={close} noBackdropClose>
       {msg ? (
         <form onSubmit={(e) => { e.preventDefault(); if (code.length === 6) verify(); }}>
           <p>{msg}</p>
@@ -76,7 +93,7 @@ export default function LoginDialog({ onClose }: { onClose: () => void }) {
           <button className="btn primary block" disabled={busy || code.length !== 6}>{busy ? "확인 중…" : "로그인하기"}</button>
           <p className="caption">메일 앱에서 버튼을 눌러 다른 화면에서 로그인했더라도, 이 창에 코드를 넣으면 여기서도 로그인돼요.</p>
           <p className="caption">로그인하면 이 브라우저에 저장해 둔 관심 단지·알림·저장한 노트가 계정으로 옮겨지고, 다른 기기에서도 똑같이 보여요.
-            메일이 오지 않으면 <button type="button" className="linkish" disabled={busy} onClick={() => { setMsg(""); setErr(""); }}>주소를 다시 넣기</button></p>
+            메일이 오지 않으면 <button type="button" className="linkish" disabled={busy} onClick={() => { clearLoginWait(); setMsg(""); setErr(""); }}>주소를 다시 넣기</button></p>
         </form>
       ) : (
         <form onSubmit={(e) => { e.preventDefault(); if (!agree) { setErr("만 14세 이상인지와 개인정보 수집·이용 안내를 확인해 주세요."); return; } if (email.trim()) send(); }}>

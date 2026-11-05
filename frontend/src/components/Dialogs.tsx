@@ -5,7 +5,7 @@ import { Link } from "react-router-dom";
 import { ApiError, post, track } from "../api";
 import { useMe } from "../me";
 import { Alert, Dialog } from "./ui";
-import LoginDialog from "./LoginDialog";
+import LoginDialog, { clearLoginWait, loginShouldReopen } from "./LoginDialog";
 import { scheduleText, useNewsletter } from "../newsletter";
 
 export const INDUSTRIES = ["서울", "경기", "인천", "부산·울산·경남", "대구·경북", "대전·세종·충청", "광주·전라", "강원·제주"];
@@ -25,6 +25,14 @@ export function DialogProvider({ children }: { children: React.ReactNode }) {
   const [member, setMember] = useState(false);
   const [login, setLogin] = useState(false);
   const openLogin = useCallback(() => { track("login_open"); setLogin(true); }, []);
+  // 메일을 보낸 뒤 화면이 새로 불러와졌으면(다른 앱·브라우저에 다녀오는 사이 탭이 정리된 경우) 로그인 창을 코드 입력 단계로 되살린다 (2026-11-05)
+  const { me } = useMe();
+  const restored = useRef(false);
+  useEffect(() => {
+    if (!me) return;
+    if (me.account) { clearLoginWait(); return; }
+    if (!restored.current && loginShouldReopen()) { restored.current = true; setLogin(true); }
+  }, [me]);
   const openSubscribe = useCallback((source: string) => {
     track("subscribe_open", source);
     setSub(source);
@@ -85,7 +93,7 @@ function SubscribeDialog({ source, onClose }: { source: string; onClose: () => v
   // 신청이 끝나면 입력란 대신 '다음에 할 일' 화면 — 전엔 안내문 아래 입력란·구독 버튼이 그대로 남아 끝난 건지 알 수 없었다 (2026-10-30)
   if (msg?.kind === "ok") {
     return (
-      <Dialog title="확인 메일을 보냈습니다" onClose={onClose}>
+      <Dialog noBackdropClose title="확인 메일을 보냈습니다" onClose={onClose}>
         <div className="sub-done">
           <div className="sub-done-ic">📬</div>
           <p className="sub-done-mail"><b>{email.trim()}</b></p>
@@ -100,7 +108,7 @@ function SubscribeDialog({ source, onClose }: { source: string; onClose: () => v
     );
   }
   return (
-    <Dialog title="주간 맞춤 브리핑 받기" onClose={onClose}>
+    <Dialog noBackdropClose title="주간 맞춤 브리핑 받기" onClose={onClose}>
       <p className="sec-p" style={{ margin: "0 0 10px" }}>{scheduleText(nl)}, 내 관심 단지와 내 조건 기준으로 3분. 관심 단지 거래 흐름과 내 유형에 영향 있는 노트만 골라 보내 드립니다.
         {!nl.enabled && " 청약 D-3·전세 만기 알림 메일은 지금도 받을 수 있어요."}</p>
       <div style={{ display: "grid", gap: 8, margin: "2px 0 8px" }}>
@@ -207,7 +215,7 @@ export function ContactForm({ preset = "", kind, onNavigate }: { preset?: string
 
 function ContactDialog({ onClose, preset = "", kind }: { onClose: () => void; preset?: string; kind?: string }) {
   return (
-    <Dialog title="집보미에 문의하기" onClose={onClose} wide>
+    <Dialog noBackdropClose title="집보미에 문의하기" onClose={onClose} wide>
       <p className="caption">서비스 이용, 잘못된 정보 제보, 개인정보·권리침해 요청, 제휴 등 무엇이든 남겨 주세요. 먼저 <Link to="/help" onClick={onClose}>자주 묻는 질문</Link>에서 답을 찾을 수도 있어요.</p>
       <ContactForm preset={preset} kind={kind} onNavigate={onClose} />
     </Dialog>
@@ -227,7 +235,7 @@ function MembershipDialog({ onClose }: { onClose: () => void }) {
     }
   };
   return (
-    <Dialog title="질문하기 월 구독 신청" onClose={onClose}>
+    <Dialog noBackdropClose title="질문하기 월 구독 신청" onClose={onClose}>
       <ul style={{ margin: "0 0 10px", paddingLeft: 18, color: "var(--ink-2)", fontSize: ".9rem" }}>
         <li>하루 <b>30회</b>까지 질문 (무료는 3회)</li>
         <li>기간: 30일 · 가격·결제 방법은 담당자가 메일로 안내</li>

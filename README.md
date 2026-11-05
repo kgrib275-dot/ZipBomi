@@ -524,6 +524,10 @@ ZipBomi/
 - **AI 수집 로봇 차단**: `app/web.py AI_BOTS`(GPTBot·ClaudeBot·CCBot·PerplexityBot 등 26종)를 `robots.txt` 에 Disallow 로 올리고, 이름을 밝히고 오는 것은 서버가 403 으로 막는다(`api/main.py _no_ai_crawlers`).
   검색 로봇(구글·네이버·다음)과 링크 미리보기(카카오·페이스북)는 통과. **이름을 속이는 프로그램은 못 막는다** — 도메인을 연결하면 Cloudflare 의 'AI 봇 차단'·'Bot Fight Mode' 를 함께 켠다.
 - **기본 다크 모드**: 저장된 선택이 없으면 다크(기기 설정과 무관). 전환 단추 순서는 다크 → 라이트 → 시스템(기기 설정 따름). 공유 글 페이지(`/n/`)도 다크 고정.
+- **로그인 창 보호 (2026-11-05)**: 창 **바깥(여백)을 눌러도 닫히지 않는다**(로그인·구독·문의·월 구독 창 — ×·Esc 로는 닫힘, `ui.tsx Dialog noBackdropClose`).
+  메일을 보낸 뒤에는 '코드 입력 단계'를 `sessionStorage zg-login-wait`(보낸 시각만, 이메일 없음, 30분, 탭을 닫으면 지워짐)에 기억해 두어,
+  메일 앱·다른 브라우저에 다녀오는 사이 휴대폰이 탭을 정리해 화면이 새로 불러와져도 창이 코드 입력 단계로 되살아난다(메일을 또 보내지 않아 하루 10번 한도를 아낀다).
+  ×로 닫으면 저절로 다시 열지 않고(다시 열면 코드 단계부터), '주소를 다시 넣기'·로그인 완료·30분 경과 시 기억을 지운다. 처리방침 '브라우저 저장소' 문구에도 반영(새 버전 공지 필요).
 
 ## 12. Databricks 적재
 - `pipeline/warehouse.py` — 운영 DB 는 로컬 SQLite 로 두고, 바뀐 행만 `<catalog>.<schema>`(기본 `workspace.zipgenie`) Delta 테이블로 MERGE.
