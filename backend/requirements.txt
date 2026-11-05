@@ -1,6 +1,6 @@
-fastapi==0.115.6
+fastapi==0.121.3
 uvicorn[standard]==0.32.1
-python-multipart==0.0.17
+python-multipart==0.0.20
 python-dotenv==1.2.4
 pandas>=2.2,<3.1  # 사내 앱 제어 정책상 3.1 DLL이 차단됨
 httpx==0.28.1

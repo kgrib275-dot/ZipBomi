@@ -606,20 +606,23 @@ def delete_subscriber(email: str) -> None:
     _drop_subscriber_profile(email)
 
 
-def add_contact(name: str, email: str, company: str, message: str) -> None:
+def add_contact(name: str, email: str, company: str, message: str, kind: str = "") -> None:
+    _contacts_cols()
     _exec(
-        "INSERT INTO contacts (name, email, company, message, created_at) VALUES (?,?,?,?,?)",
-        (name, email, company, message, _now()),
+        "INSERT INTO contacts (name, email, company, message, created_at, kind) VALUES (?,?,?,?,?,?)",
+        (name, email, company, message, _now(), kind),
     )
 
 
 def _contacts_cols() -> None:
-    """문의 처리 표시 열 (2026-11-03 문의함) — 없으면 만든다."""
+    """문의 처리 표시 열(2026-11-03 문의함)·문의 종류 열(2026-11-05 고객센터) — 없으면 만든다."""
     conn = connect()
     try:
-        if "handled_at" not in {r[1] for r in conn.execute("PRAGMA table_info(contacts)")}:
-            conn.execute("ALTER TABLE contacts ADD COLUMN handled_at TEXT")
-            conn.commit()
+        have = {r[1] for r in conn.execute("PRAGMA table_info(contacts)")}
+        for col in ("handled_at", "kind"):
+            if col not in have:
+                conn.execute(f"ALTER TABLE contacts ADD COLUMN {col} TEXT")
+        conn.commit()
     finally:
         conn.close()
 
