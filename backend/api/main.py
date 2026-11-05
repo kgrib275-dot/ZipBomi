@@ -205,19 +205,6 @@ def _new_trial_cookie(request: Request) -> str:
     return gate.new_cookie(settings_store.rate_key(ip))
 
 
-# AI 학습·수집용 크롤러 — 자기 이름(User-Agent)을 밝히는 것만 막는다. 검색 로봇(Google·네이버·다음)과 링크 미리보기(카카오·페이스북)는 그대로 둔다.
-# 이름을 속이는 프로그램은 못 막으므로 진짜 방어는 아래 로그인 문턱(데이터 API 401)과 Cloudflare 봇 차단이다. robots.txt 에도 같은 목록 (app/web.py AI_BOTS).
-from app.web import AI_BOTS  # noqa: E402
-_AI_BOT_RE = re.compile("|".join(re.escape(b) for b in AI_BOTS), re.I)
-
-
-@app.middleware("http")
-async def _no_ai_crawlers(request: Request, call_next):
-    if request.url.path != "/robots.txt" and _AI_BOT_RE.search(request.headers.get("user-agent", "")):
-        return JSONResponse({"detail": "AI 학습·수집용 접근은 허용하지 않습니다."}, status_code=403)
-    return await call_next(request)
-
-
 @app.middleware("http")
 async def _trial_gate(request: Request, call_next):
     """1분 둘러보기 뒤 메일 로그인 요구 (pipeline/gate.py, 2026-11-02). 관리자·열어 둔 API·화면(HTML)은 막지 않는다.
@@ -319,6 +306,20 @@ async def _admin_proxy(request: Request, call_next):
     for k, v in out:
         resp.headers.append(k, v)
     return resp
+
+
+# AI 학습·수집용 크롤러 — 자기 이름(User-Agent)을 밝히는 것만 막는다. 검색 로봇(Google·네이버·다음)과 링크 미리보기(카카오·페이스북)는 그대로 둔다.
+# 가장 바깥에 둔다(맨 마지막에 선언) — 로봇이 둘러보기 쿠키·IP 한도(하루 5번)를 쓰지 못하게 문턱보다 먼저 거른다.
+# 이름을 속이는 프로그램은 못 막으므로 진짜 방어는 아래 로그인 문턱(데이터 API 401)과 Cloudflare 봇 차단이다. robots.txt 에도 같은 목록 (app/web.py AI_BOTS).
+from app.web import AI_BOTS  # noqa: E402
+_AI_BOT_RE = re.compile("|".join(re.escape(b) for b in AI_BOTS), re.I)
+
+
+@app.middleware("http")
+async def _no_ai_crawlers(request: Request, call_next):
+    if request.url.path != "/robots.txt" and _AI_BOT_RE.search(request.headers.get("user-agent", "")):
+        return JSONResponse({"detail": "AI 학습·수집용 접근은 허용하지 않습니다."}, status_code=403)
+    return await call_next(request)
 
 
 from fastapi.exceptions import RequestValidationError  # noqa: E402
