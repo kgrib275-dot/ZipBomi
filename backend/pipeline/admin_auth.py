@@ -137,7 +137,7 @@ def locked(ip: str | None) -> bool:
 
 
 def login(token: str, otp: str | None, ip: str | None, ua: str) -> tuple[str | None, str]:
-    """(세션 원값, 결과). 결과: ok · locked · bad · not_configured."""
+    """(세션 원값, 결과). 결과: ok · locked · bad · reused · not_configured."""
     expect = os.environ.get("ADMIN_TOKEN", "").strip()
     if not expect:
         return None, "not_configured"

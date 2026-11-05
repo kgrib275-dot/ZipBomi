@@ -372,6 +372,10 @@ async def spa(path: str):
             return FileResponse(icon, media_type="image/svg+xml", headers={"Cache-Control": "public, max-age=86400"})
     file = DIST / path
     if path and file.is_file() and DIST in file.resolve().parents:
+        if path == "sw.js":  # 서비스 워커는 하루 캐시하면 새 버전이 늦게 퍼진다 — 항상 확인하게 (PWA, 2026-11-05)
+            return FileResponse(file, media_type="text/javascript", headers={"Cache-Control": "no-cache", "Service-Worker-Allowed": "/"})
+        if path == "manifest.webmanifest":
+            return FileResponse(file, media_type="application/manifest+json", headers={"Cache-Control": "public, max-age=86400"})
         return FileResponse(file, headers={"Cache-Control": "public, max-age=86400"})  # 로고·파비콘 등
     html = _index_html()
     if html is None:

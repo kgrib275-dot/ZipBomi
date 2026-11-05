@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import html
 import logging
+import sqlite3
 from datetime import date, datetime
 
 from pipeline import db, mailer, profile
@@ -83,7 +84,8 @@ def _notices(ids: list[str]) -> dict[str, dict]:
         rows = c.execute(f"SELECT notice_id, name, region, house_type, category, receipt_start, receipt_end, winner_date, url "
                          f"FROM re_apply_notice WHERE notice_id IN ({','.join('?' * len(ids))})", ids).fetchall()
         return {r["notice_id"]: dict(r) for r in rows}
-    except Exception:  # noqa: BLE001 - 표가 아직 없으면 알림 없음
+    except sqlite3.Error as e:  # 표가 아직 없거나 DB 가 잠긴 경우 — 알림은 건너뛰되 흔적은 남긴다
+        log.warning("청약 공고 조회 실패(알림 건너뜀): %s", e)
         return {}
     finally:
         c.close()
@@ -96,7 +98,8 @@ def _account_profiles() -> list[tuple[str, dict]]:
     try:
         try:
             rows = c.execute("SELECT a.email, v.data FROM accounts a JOIN visitor_state v ON v.visitor = 'c:' || a.raw").fetchall()
-        except Exception:  # noqa: BLE001 - 표가 아직 없으면 계정 알림 없음
+        except sqlite3.Error as e:  # 표가 아직 없거나 DB 가 잠긴 경우 — 계정 알림은 건너뛰되 흔적은 남긴다
+            log.warning("계정 프로필 조회 실패(계정 알림 건너뜀): %s", e)
             return []
     finally:
         c.close()

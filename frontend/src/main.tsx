@@ -29,3 +29,10 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
 
 initTranslate(); // 영어로 보기를 골라 둔 방문자만 번역 위젯을 불러온다
 startFx(); // 스포트라이트·카드 기울기·등장·진행 바·히어로 구체 (v1 app/fx.py)
+
+// 설치 가능한 앱(PWA) — HTTPS 로 열렸을 때만 서비스 워커를 등록한다 (개발 서버 http 에서는 캐시가 헷갈리지 않게 건너뜀)
+if (location.protocol === "https:" && "serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("/sw.js").catch(() => {});
+  });
+}

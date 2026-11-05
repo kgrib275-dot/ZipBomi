@@ -1,0 +1,16 @@
+{
+  "name": "집보미 ZIPBOMI",
+  "short_name": "집보미",
+  "description": "집을 봐 주는 비서 — 실거래가·청약·대출·세금을 한곳에서",
+  "lang": "ko",
+  "start_url": "/?source=pwa",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#120F08",
+  "theme_color": "#120F08",
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
