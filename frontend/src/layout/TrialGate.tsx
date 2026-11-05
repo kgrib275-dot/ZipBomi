@@ -1,8 +1,11 @@
 // 1분 둘러보기 (2026-11-02) — 로그인하지 않은 방문자는 처음 들어온 뒤 1분 동안 둘러보고, 그 뒤에는 메일 로그인을 요청한다.
 // 2026-11-03: 소개 페이지로 옮기지 않고 보던 화면 위에 로그인 창을 띄운다 — 읽던 글·공유받은 화면이 사라지지 않고, 로그인하면 그 화면에서 이어진다.
+// 2026-11-05: 사용자 요청으로 다시 잠근다 — 둘러보기가 끝나고 로그인하지 않았으면 소개·고객센터·처리방침(OPEN)만 볼 수 있고,
+// 다른 화면은 소개(/about?login=1&next=가려던 주소)로 돌려보내 로그인 창을 연다. 창을 닫아도 다른 화면으로 가면 다시 돌아온다.
+// 화면 코드만이 아니라 서버도 같은 기준으로 데이터 API 를 막는다(401) — 이 화면 코드를 고쳐도 데이터는 열리지 않는다.
 // 남은 시간은 서버가 /api/me 의 trial_left 로 알려 준다(쿠키·IP 기준, backend/pipeline/gate.py). 서버도 같은 기준으로 API 를 막는다(401).
-import { useEffect, useRef, useState } from "react";
-import { useLocation } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useDialogs } from "../components/Dialogs";
 import { useMe } from "../me";
 
@@ -12,7 +15,7 @@ export default function TrialGate() {
   const { me } = useMe();
   const { openLogin } = useDialogs();
   const loc = useLocation();
-  const asked = useRef(false);
+  const nav = useNavigate();
   const [left, setLeft] = useState<number | null>(null);
   const [blocked, setBlocked] = useState(false);
   useEffect(() => {
@@ -31,12 +34,10 @@ export default function TrialGate() {
   }, []);
   const open = OPEN.some((p) => loc.pathname === p || loc.pathname.startsWith(p + "/"));
   useEffect(() => {
-    if (blocked && !open && !me?.account && !me?.is_admin && !asked.current) {
-      asked.current = true;
-      (window as unknown as { __zgGateBlocked?: boolean }).__zgGateBlocked = true;  // 로그인 뒤 이 화면을 다시 불러온다 (LoginDialog)
-      openLogin();
+    if (blocked && !open && !me?.account && !me?.is_admin) {
+      nav(`/about?login=1&next=${encodeURIComponent(loc.pathname + loc.search)}`, { replace: true });  // About 이 로그인 창을 연다
     }
-  }, [blocked, open, me, openLogin]);
+  }, [blocked, open, me, nav, loc.pathname, loc.search]);
   if (!me || me.account || me.is_admin || left === null) return null;
   if (!blocked) return (
     <div className="trial-bar" role="status">

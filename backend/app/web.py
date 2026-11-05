@@ -91,9 +91,6 @@ li{margin:4px 0}strong{color:#fff}
 .list small{display:block;color:#B8AB8A;font-size:15px}
 footer{color:#B8AB8A;font-size:15px;padding-top:30px;padding-bottom:40px}
 .ai{font-size:14px;color:#B8AB8A;margin:18px 0}
-@media (prefers-color-scheme: light){body{background:#FBF8F1;color:#1E1A0E}a{color:#8A6400}.logo{color:#1E1A0E}
-header{border-bottom-color:#E6DCC6}.meta{color:#8A6400}h2{color:#5A4300}.sum{color:#3A3220}strong{color:#000}
-.src{background:#F3EDE0;border-color:#E6DCC6}.list a{color:#1E1A0E;border-bottom-color:#E6DCC6}.list small,footer,.ai{color:#6B5E44}}
 """
 
 
@@ -179,8 +176,16 @@ def sitemap(request: Request) -> Response:
                     media_type="application/xml")
 
 
+# AI 학습·수집 로봇 (2026-11-05) — robots.txt 로 먼저 거절하고, 이름을 밝히고 오는 것은 서버도 403 으로 막는다 (api/main.py _no_ai_crawlers).
+AI_BOTS = ("GPTBot", "ChatGPT-User", "OAI-SearchBot", "ClaudeBot", "Claude-Web", "Claude-User", "Claude-SearchBot", "anthropic-ai", "CCBot",
+           "PerplexityBot", "Perplexity-User", "Bytespider", "Amazonbot", "meta-externalagent", "meta-externalfetcher", "FacebookBot",
+           "cohere-ai", "Diffbot", "ImagesiftBot", "Omgilibot", "Timpibot", "YouBot", "DuckAssistBot", "MistralAI-User", "AI2Bot", "PanguBot")
+ROBOTS_ONLY_TOKENS = ("Google-Extended", "Applebot-Extended")  # User-Agent 로는 오지 않고 robots.txt 에서만 구분되는 학습 거부 표시
+
+
 def robots(request: Request) -> Response:
-    return PlainTextResponse("User-agent: *\nAllow: /\nDisallow: /admin\nDisallow: /r/\nDisallow: /refer\nDisallow: /unsubscribe\nDisallow: /confirm\nDisallow: /me\nDisallow: /my-homes\n"
+    ai = "".join(f"User-agent: {b}\n" for b in AI_BOTS + ROBOTS_ONLY_TOKENS) + "Disallow: /\n\n"
+    return PlainTextResponse(ai + "User-agent: *\nAllow: /\nDisallow: /admin\nDisallow: /r/\nDisallow: /refer\nDisallow: /unsubscribe\nDisallow: /confirm\nDisallow: /me\nDisallow: /my-homes\n"
                              f"Sitemap: {_site(request)}/sitemap.xml\n")
 
 

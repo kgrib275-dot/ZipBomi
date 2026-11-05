@@ -3,16 +3,17 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="robots" content="noai, noimageai" />
     <meta name="theme-color" content="#120F08" media="(prefers-color-scheme: dark)" />
     <meta name="theme-color" content="#FFFBF0" media="(prefers-color-scheme: light)" />
     <meta name="description" content="집보미(ZIPBOMI) — 집에 관한 모든 것. 아파트 실거래가·청약 일정·대출 한도·세금·정책 변화를 한곳에서 숫자와 함께 정리합니다." />
     <script>
-      /* 화면 테마 — 첫 그림 전에 data-theme 를 건다 (깜빡임 방지). 값은 layout/Theme.tsx 가 저장한다. */
+      /* 화면 테마 — 첫 그림 전에 data-theme 를 건다 (깜빡임 방지). 값은 layout/Theme.tsx 가 저장한다.
+         저장값이 없으면 다크(기본), "system" 이면 기기 설정을 따른다 (2026-11-05). */
       (function () {
-        try {
-          var t = localStorage.getItem("ax_theme");
-          if (t === "light" || t === "dark") document.documentElement.setAttribute("data-theme", t);
-        } catch (e) {}
+        var t = "dark";
+        try { t = localStorage.getItem("ax_theme") || "dark"; } catch (e) {}
+        if (t !== "system") document.documentElement.setAttribute("data-theme", t === "light" ? "light" : "dark");
       })();
     </script>
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />

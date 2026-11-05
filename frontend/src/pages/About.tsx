@@ -1,6 +1,6 @@
 // 소개 (/about) — Streamlit 판 app_pages/about.py 이식. 숫자 띠·흐름선 스타일은 Home.css 를 같이 쓴다.
 import { useEffect } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { get } from "../api";
 import { useDialogs } from "../components/Dialogs";
 import { FAQ } from "../faq";
@@ -50,8 +50,10 @@ const MORE: [string, string, string, string][] = [
 export default function AboutPage() {
   const { openSubscribe, openContact, openLogin } = useDialogs();
   // 1분 둘러보기가 끝나 넘어온 경우 — 로그인 창을 바로 연다 (layout/TrialGate.tsx)
-  const needLogin = typeof window !== "undefined" && new URLSearchParams(window.location.search).get("login") === "1";
-  useEffect(() => { if (needLogin) openLogin(); }, [needLogin, openLogin]);
+  const loc = useLocation();
+  const needLogin = new URLSearchParams(loc.search).get("login") === "1";
+  // 주소가 바뀔 때마다(닫은 뒤 다른 화면을 누른 경우 포함) 다시 연다 — 로그인 전에는 소개만 쓸 수 있다 (2026-11-05)
+  useEffect(() => { if (needLogin) openLogin(); }, [needLogin, loc.search, openLogin]);
   const { data } = useLoad(() => get<About>("about"));
   const c = data?.counts || {};
   const nSources = c.sources ?? Object.values(data?.sources || {}).reduce((a, v) => a + v.length, 0);
