@@ -155,7 +155,7 @@ ZIPGENIE_PORT=5030 ZIPGENIE_SCHEDULER=1 venv/bin/python serve.py
 | `ZIPGENIE_TRUST_ADMIN_IPS` | (없음) | `1` 이면 관리 > 관리자 IP 에 등록한 IP 를 토큰 없이 관리자로 (X-Forwarded-For 위조 위험 — 기본 끔) |
 | `ZIPGENIE_LOGIN_MAIL_CAP` | 150 | 하루 로그인 메일 상한 (로그인 1번 = 링크 메일 + 알림 메일 2통) |
 | `ZIPGENIE_MAIL_CAP` | 120 | 하루 구독 확인·질문하기 연결 메일 상한 (로그인 메일과 따로 센다) |
-| `ZIPGENIE_IP_TRIALS` | 50 | 같은 IP 에서 하루 새로 시작할 수 있는 1분 둘러보기 수 (이동통신망 등 공유 IP 대비) |
+| `ZIPGENIE_IP_TRIALS` | 5 | 같은 IP 에서 하루 새로 시작할 수 있는 1분 둘러보기 수 (2026-11-05 50 → 5, 자동 수집 방지). 학교·회사·이동통신망처럼 한 IP 를 많은 사람이 나눠 쓰면 이 값을 올린다 |
 
 ---
 
@@ -402,7 +402,7 @@ ZipBomi/
 
 **로그인 전 1분 둘러보기** (`pipeline/gate.py`, `layout/TrialGate.tsx`)
 - 처음 방문 시각을 서명 쿠키(`zgt`)로 기억. 1분이 지나면 공개 API 가 401 `{login_required}` → 화면은 `/about?login=1` 로 옮겨 로그인 창.
-- 같은 IP 는 하루 `ZIPGENIE_IP_TRIALS`(50)개까지 새 둘러보기를 받는다(`trial_ip` 표). 넘으면 새 쿠키는 이미 끝난 둘러보기로 준다 — 쿠키를 지워 가며 1분을 계속 받지 못하게.
+- 같은 IP 는 하루 `ZIPGENIE_IP_TRIALS`(5)개까지 새 둘러보기를 받는다(`trial_ip` 표). 넘으면 새 쿠키는 이미 끝난 둘러보기로 준다 — 쿠키를 지워 가며 1분을 계속 받지 못하게.
 - 늘 열린 API: `/api/me*`, `/api/auth/*`, 소개·처리방침·구독·문의·방문 기록. 화면(HTML)·공유 미리보기·사이트맵은 막지 않는다. 관리자는 막지 않는다.
 
 **보미AI** (옛 질문하기) — 오른쪽 패널(`layout/AskPanel.tsx`, ✦ 버튼)로 보던 화면 옆에서 질문, `/ask` 는 전체 화면.
