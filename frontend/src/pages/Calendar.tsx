@@ -19,7 +19,7 @@ type ScoreRow = { notice_id: string; model_no: string; house_ty: string; reside:
   name: string; region: string; winner_date: string | null; notice_date: string | null; url: string };
 type ScoreRes = { rows: ScoreRow[]; matched: number; stored: number; configured: boolean; status: string; source: string };
 
-const TABS = ["분양 일정", "당첨 가점 비교"];
+const TABS = ["청약 일정 달력", "지난 당첨 가점 비교"];
 const DOW = ["일", "월", "화", "수", "목", "금", "토"];
 const MAX_ALERTS = 20;
 
@@ -38,14 +38,17 @@ function shift(ym: string, n: number): string {
 export default function CalendarPage() {
   const [sp, setSp] = useSearchParams();
   const tab = sp.get("tab") === "scores" ? TABS[1] : TABS[0];
-  useEffect(() => { document.title = "분양 일정 · 당첨 가점 — 집보미"; }, []);
+  useEffect(() => { document.title = "청약 일정 · 당첨 가점 — 집보미"; }, []);
   return (
     <div className="re-page">
       <div>
-        <div className="eyebrow">분양 일정</div>
-        <h2 className="sec-h">이번 달 <span className="grad">청약 일정</span></h2>
+        {/* 메뉴 이름과 맞춘다: '청약 일정 달력' 탭은 달력 제목, '지난 당첨 가점' 탭은 가점 제목 (2026-11-05) */}
+        <div className="eyebrow">{tab === TABS[0] ? "청약 일정" : "당첨 가점"}</div>
+        <h2 className="sec-h">{tab === TABS[0] ? <>이번 달 <span className="grad">청약 일정</span></> : <>지난 <span className="grad">당첨 가점 · 경쟁률</span></>}</h2>
         <p className="sec-p">
-          청약홈·LH 공고의 접수·발표 일정을 달력으로 봅니다. 관심 공고에 🔔를 누르면 접수 3일 전에 메일로 알려 드려요.{" "}
+          {tab === TABS[0]
+            ? "청약홈·LH 공고의 접수·발표 일정을 달력으로 봅니다. 관심 공고에 🔔를 누르면 접수 3일 전에 메일로 알려 드려요."
+            : "최근 12개월 청약 결과를 지역별로 모았어요. 내 가점과 견주어 보세요."}{" "}
           <Link className="re-link" to="/deals?tab=apply">공고 목록 →</Link>
         </p>
       </div>

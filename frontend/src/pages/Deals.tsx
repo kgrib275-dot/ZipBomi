@@ -212,8 +212,8 @@ export default function Deals() {
     <div className="re-page">
       <div>
         <div className="eyebrow">실거래가 · 청약</div>
-        <h2 className="sec-h">{tab === "apply" ? <>청약 <span className="grad">분양 공고</span></> : <>부동산 <span className="grad">실거래가</span></>}</h2>
-        <p className="sec-p">국토교통부 신고 자료로 매매·전월세 거래를, 청약홈·LH 공고로 분양 일정을 봅니다. 관심 단지는 ☆로 모아 두세요. <Link className="re-link" to="/calc">내 집 계산기 →</Link></p>
+        <h2 className="sec-h">{tab === "apply" ? <>청약 <span className="grad">공고</span></> : <>부동산 <span className="grad">실거래가</span></>}</h2>
+        <p className="sec-p">국토교통부 신고 자료로 매매·전월세 거래를, 청약홈·LH 공고로 청약 일정을 봅니다. 관심 단지는 ☆로 모아 두세요. <Link className="re-link" to="/calc">내 집 계산기 →</Link></p>
       </div>
 
       <div className="btn-row re-tabs" role="tablist" aria-label="보기">

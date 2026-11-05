@@ -479,7 +479,7 @@ function SubTab({ v, on }: { v: Sub; on: (p: Partial<Sub>) => void }) {
           <div className="re-metric"><div className="k">통장 가입</div><div className="v">{s3}<small className="caption"> / 17</small></div></div>
         </div>
         <p className="calc-note">점수표는 「주택공급에 관한 규칙」 가점제 기준입니다. 단지마다 당첨 커트라인이 다르니 지난 당첨 가점을 함께 보세요.</p>
-        <div className="btn-row"><Link className="btn sm" to="/calendar?tab=scores">최근 당첨 가점과 비교 →</Link><Link className="btn sm ghost" to="/calendar">분양 일정 보기</Link></div>
+        <div className="btn-row"><Link className="btn sm" to="/calendar?tab=scores">최근 당첨 가점과 비교 →</Link><Link className="btn sm ghost" to="/calendar">청약 일정 보기</Link></div>
       </div>
     </div>
   );

@@ -22,7 +22,7 @@ type MenuItem = { to?: string; label: string; items?: readonly (readonly [string
 // 퀴즈·테스트는 '더 보기' 안에서 제목('-')으로 묶었다. 항목 이름은 짧게(무엇을 하는 곳인지만).
 const MENU: MenuItem[] = [
   { to: "/map", label: "시세", items: [["/map", "지도로 보기"], ["/deals", "실거래가 조회"], ["/lab", "지역 비교 · 데이터 랩"], ["/my-homes", "관심 단지"]] },
-  { to: "/calendar", label: "청약", items: [["/calendar", "분양 일정"], ["/deals?tab=apply", "청약 공고"], ["/calendar?tab=scores", "당첨 가점 · 경쟁률"]] },
+  { to: "/calendar", label: "청약", items: [["/calendar", "청약 일정 달력"], ["/deals?tab=apply", "청약 공고 목록"], ["/calendar?tab=scores", "지난 당첨 가점 · 경쟁률"]] },
   { to: "/notes", label: "소식", items: [["/", "이번 주 시장"], ["/notes", "시장 해설 노트"], ["/now", "규제 · 금리 현황"]] },
   { to: "/calc", label: "계산기" },
   { label: "더 보기", items: [["-", "재미로 알아보기"], ...PLAY, ["-", "집보미"], ["/about", "서비스 소개"], ["/help", "고객센터 · 문의"]] },
@@ -31,7 +31,7 @@ const MENU: MenuItem[] = [
 // 화면을 옮겨도 탭 제목이 처음 연 화면 그대로였다 (2026-11-03) — 경로별 기본 제목. 노트·달력처럼 자기 제목을 정하는 화면은 그 뒤(useEffect)에 덮어쓴다.
 const TITLES: Record<string, string> = {
   "/": "집보미 — 이번 주 부동산 시장", "/home": "집보미 — 이번 주 부동산 시장", "/map": "지도로 보기", "/deals": "실거래가 조회", "/lab": "데이터 랩",
-  "/my-homes": "관심 단지", "/calendar": "분양 일정 · 당첨 가점", "/notes": "시장 해설 노트", "/now": "규제 · 금리 현황", "/calc": "내 집 계산기",
+  "/my-homes": "관심 단지", "/calendar": "청약 일정 · 당첨 가점", "/notes": "시장 해설 노트", "/now": "규제 · 금리 현황", "/calc": "내 집 계산기",
   "/today": "오늘의 퀴즈", "/terms": "부동산 용어 퀴즈", "/type": "부동산 성향 16유형", "/career": "내 집 마련 전략 찾기", "/diagnosis": "내 집 마련 준비도 진단",
   "/habit": "부동산 공부 습관 진단", "/about": "서비스 소개", "/help": "고객센터", "/privacy": "개인정보 처리방침", "/my": "내 공간", "/me": "내 프로필", "/ask": "보미AI",
   "/login": "로그인", "/letter": "뉴스레터 미리 보기", "/refer": "추천 현황", "/confirm": "구독 확인", "/unsubscribe": "구독 해지", "/admin": "관리",

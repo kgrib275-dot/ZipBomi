@@ -65,7 +65,7 @@ export default function MySpace() {
                 onChange={(e) => setMemo(e.target.value)} onBlur={() => { if (memo !== data.memo) { setState({ my_memo: memo }); reload(); } }} />
               <span className="caption">칸 밖을 누르면 저장돼요.</span></div>} />
           <TodoBox />
-          {empty && <Alert kind="info">아직 모아 둔 것이 없어요. <Link to="/deals">실거래가</Link>에서 단지 앞 ☆, <Link to="/calendar">분양 일정</Link>에서 🔔, <Link to="/notes">노트</Link>에서 ☆를 누르면 여기에 모여요.</Alert>}
+          {empty && <Alert kind="info">아직 모아 둔 것이 없어요. <Link to="/deals">실거래가</Link>에서 단지 앞 ☆, <Link to="/calendar">청약 일정</Link>에서 🔔, <Link to="/notes">노트</Link>에서 ☆를 누르면 여기에 모여요.</Alert>}
           <section className="my-sec">
             <div className="my-h"><h3>관심 단지·지역 <small>{data.watch.length}</small></h3><Link to="/my-homes">관리 →</Link></div>
             {!data.watch.length ? <p className="caption">실거래가 화면에서 단지 이름 앞 ☆를 누르면 최근 거래가 여기 모여요.</p> : (
@@ -88,8 +88,8 @@ export default function MySpace() {
           <CompareTable watch={data.watch} />
 
           <section className="my-sec">
-            <div className="my-h"><h3>관심·알림 청약 <small>{data.apply.length}</small></h3><Link to="/calendar">분양 일정 →</Link></div>
-            {!data.apply.length ? <p className="caption">분양 일정에서 🔔, 청약 공고에서 ☆를 누르면 여기 모여요.</p> : (
+            <div className="my-h"><h3>관심·알림 청약 <small>{data.apply.length}</small></h3><Link to="/calendar">청약 일정 →</Link></div>
+            {!data.apply.length ? <p className="caption">청약 일정에서 🔔, 청약 공고에서 ☆를 누르면 여기 모여요.</p> : (
               <ul className="my-list">
                 {data.apply.map((n) => {
                   const b = applyBadge(n.receipt_start, n.receipt_end);
@@ -193,7 +193,7 @@ function AllSettings() {
     ["화면", "테스트 결과", tests || "없음", "/type"],
     ["이 브라우저", "화면 테마", lsv("zipgenie-theme") === "light" ? "라이트" : lsv("zipgenie-theme") === "dark" ? "다크" : "기기 설정 따름", ""],
     ["이 브라우저", "지도 바탕", lsv("zg-map-base") === "sat" ? "위성 사진" : "일반 지도", "/map"],
-    ["이 브라우저", "분양 일정 지역", lsv("zg-cal-sido") || "전국", "/calendar"],
+    ["이 브라우저", "청약 일정 지역", lsv("zg-cal-sido") || "전국", "/calendar"],
     ["이 브라우저", "가장 비싼 거래 보기", [lsv("zg-top-sido") ? { all: "전국", 11: "서울", 41: "경기", 26: "부산" }[lsv("zg-top-sido") as "all"] : "전국", { apt: "아파트", offi: "오피스텔", nrg: "상가·업무" }[(lsv("zg-top-kind") || "apt") as "apt"]].join(" · "), "/"],
     ["이 브라우저", "목록 표시 개수", ["notes", "deals", "apply"].map((k) => `${{ notes: "노트", deals: "실거래", apply: "공고" }[k]} ${lsv(`zg-size-${k}`) || "기본"}`).join(" · "), ""],
   ];

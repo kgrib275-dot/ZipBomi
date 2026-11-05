@@ -45,7 +45,7 @@ export default function AlertBell() {
         <div className="bell-pop" role="dialog" aria-label="내 알림">
           <div className="bell-h"><b>내 알림</b><span className="caption">{items.length ? `${items.length}개` : ""}</span></div>
           {!items.length ? (
-            <p className="bell-empty">아직 켠 알림이 없어요.<br /><Link to="/calendar" onClick={() => setOpen(false)}>분양 일정</Link>에서 공고마다 🔔를 누르거나,{" "}
+            <p className="bell-empty">아직 켠 알림이 없어요.<br /><Link to="/calendar" onClick={() => setOpen(false)}>청약 일정</Link>에서 공고마다 🔔를 누르거나,{" "}
               <Link to="/me" onClick={() => setOpen(false)}>내 프로필</Link>에서 전세 만기 알림을 켜 보세요.</p>
           ) : (
             <ul className="bell-list">
@@ -67,7 +67,7 @@ export default function AlertBell() {
           {!data?.subscribed && items.length > 0 && (
             <div className="bell-foot">메일로도 받으려면 <button type="button" className="linkish" onClick={() => { setOpen(false); openSubscribe("bell"); }}>뉴스레터를 구독</button>하세요. 구독 전에는 여기서만 보여요.</div>
           )}
-          <div className="bell-foot"><Link to="/calendar" onClick={() => setOpen(false)}>분양 일정에서 알림 관리 →</Link></div>
+          <div className="bell-foot"><Link to="/calendar" onClick={() => setOpen(false)}>청약 일정에서 알림 관리 →</Link></div>
         </div>
       )}
     </div>

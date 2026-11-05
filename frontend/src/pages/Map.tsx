@@ -654,7 +654,7 @@ export default function MapPage() {
         </aside>
       </div>
 
-      <p className="caption mp-foot">지도 © OpenStreetMap contributors ·분양 공고 위치가 표시되지 않은 곳은 시군구 중심에 대략 찍습니다(점선 테두리). 시세는 국토교통부 실거래가 신고 자료입니다.</p>
+      <p className="caption mp-foot">지도 © OpenStreetMap contributors ·청약 공고 위치가 표시되지 않은 곳은 시군구 중심에 대략 찍습니다(점선 테두리). 시세는 국토교통부 실거래가 신고 자료입니다.</p>
 
       {form && <ListingDialog form={form} setForm={setForm} saving={saving} onSave={submit} />}
     </div>

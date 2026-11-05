@@ -183,7 +183,7 @@ def render(item: dict) -> tuple[str, str]:
                 f'{when}예요. 청약홈·LH 공고문에서 자격과 준비 서류를 다시 확인하세요.</p>'
                 f'<table style="font-size:14px;border-collapse:collapse">{table}</table>'
                 + (_btn(n["url"], "공고 원문 보기") if str(n.get("url") or "").startswith("http") else "")
-                + f'<p style="font-size:13px"><a href="{base}/calendar" style="color:#FFD54A">분양 일정 전체 보기 →</a> · '
+                + f'<p style="font-size:13px"><a href="{base}/calendar" style="color:#FFD54A">청약 일정 전체 보기 →</a> · '
                   f'<a href="{base}/calc" style="color:#FFD54A">내 청약 가점 계산 →</a></p>')
         return f"[집보미] {dday} 청약 {item['what']} — {n.get('name', '')[:40]}", _wrap(f"{dday} · 청약 {item['what']} 알림", body, item["token"])
     step = item["step"]

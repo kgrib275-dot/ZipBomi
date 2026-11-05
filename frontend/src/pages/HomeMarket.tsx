@@ -270,7 +270,7 @@ export function MarketBoard() {
                 })}
               </ul>
             ) : <p className="caption">앞으로 2주 안에 잡힌 일정이 없어요.</p>}
-            <Link className="more" to="/calendar">분양 일정 전체 →</Link>
+            <Link className="more" to="/calendar">청약 일정 전체 →</Link>
           </div>
           <div className="mkt-box">
             <h3>최근 읽은 기사</h3>
