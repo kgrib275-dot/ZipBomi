@@ -206,10 +206,34 @@ def refer(k: str = Query(""), c: Caller = CallerDep) -> dict:
                       "text": "시세·정책·청약 소식을 매주 한 번 정리해 보내 주는 부동산 뉴스레터인데, 내 집 마련 준비에 꽤 도움이 됩니다. 구독은 무료예요."}}
 
 
+# 문의 종류 (2026-11-05 고객센터) — 프런트 components/Dialogs.tsx CONTACT_KINDS 와 같게. 처리 기한(일)은 문의함에 표시한다:
+# 개인정보 열람·정정·삭제 요청은 처리방침에 적은 10일(개인정보 보호법 시행령), 권리침해 신고는 자체 목표 3일.
+CONTACT_KINDS = ("일반 문의", "오류·잘못된 정보 제보", "로그인·계정 문제", "보미AI 사용 신청", "개인정보 열람·정정·삭제 요청",
+                 "저작권·권리침해 신고", "보안 취약점 제보", "제휴·광고 문의")
+CONTACT_DUE_DAYS = {"개인정보 열람·정정·삭제 요청": 10, "저작권·권리침해 신고": 3}
+CONTACT_URGENT = ("개인정보 열람·정정·삭제 요청", "저작권·권리침해 신고", "보안 취약점 제보")
+
+
+def _notify_contact(kind: str) -> None:
+    """새 문의를 관리자에게 알린다 — 메일에는 이름·내용을 싣지 않는다(종류와 미처리 건수만). 종류별로 하루 한 번."""
+    try:
+        from pipeline import alerts
+        n = db.contacts_open()
+        due = CONTACT_DUE_DAYS.get(kind)
+        body = f"문의 종류: {kind} · 처리 안 한 문의 {n}건" + (f" · 접수 후 {due}일 안에 답해야 합니다" if due else "")
+        alerts.notify("새 문의가 접수됐어요", body, key=f"contact:{kind}", path="/admin/contacts", label="문의함 열기")
+    except Exception:  # noqa: BLE001 - 알림 실패가 문의 접수를 막지 않게
+        pass
+
+
 @router.post("/contact")
 def contact(payload: dict = Body(...), c: Caller = CallerDep) -> dict:
     if payload.get("agree") is not True:
         raise HTTPException(status_code=400, detail="개인정보 수집·이용 안내를 확인해야 문의를 남길 수 있습니다.")
+    if str(payload.get("website") or "").strip():  # 사람에게는 보이지 않는 칸 — 채워져 있으면 자동 입력 프로그램: 접수한 척하고 버린다
+        return {"ok": True, "message": "문의가 접수됐습니다. 확인 후 답장 드리겠습니다."}
+    kind = str(payload.get("kind") or "").strip()
+    kind = kind if kind in CONTACT_KINDS else "일반 문의"
     name = str(payload.get("name") or "").strip()[:100]
     message = str(payload.get("message") or "").strip()[:5000]
     company = str(payload.get("company") or "").strip()[:100]
@@ -218,5 +242,7 @@ def contact(payload: dict = Body(...), c: Caller = CallerDep) -> dict:
     email = _email(payload.get("email"))
     if not engage.attempt("contact_try", c.visitor, c.ip, per_visitor=3, per_ip=10):
         raise HTTPException(status_code=429, detail="문의가 너무 잦습니다. 잠시 후 다시 시도해 주세요.")
-    db.add_contact(name, email, company, message)
+    db.add_contact(name, email, company, message, kind)
+    import threading
+    threading.Thread(target=_notify_contact, args=(kind,), daemon=True).start()  # 메일 발송이 느려도 접수 응답은 바로
     return {"ok": True, "message": "문의가 접수됐습니다. 확인 후 답장 드리겠습니다."}

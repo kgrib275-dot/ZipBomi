@@ -15,7 +15,7 @@ const BENEFITS: [string, string, string][] = [
   ["📎", "주간 PDF 리포트", "저장해 두고 다시 보기 좋은 카드형 요약 리포트"],
 ];
 
-type Ctx = { openSubscribe: (source: string) => void; openContact: (preset?: string) => void; openMembership: () => void; openLogin: () => void };
+type Ctx = { openSubscribe: (source: string) => void; openContact: (preset?: string, kind?: string) => void; openMembership: () => void; openLogin: () => void };
 const DlgCtx = createContext<Ctx>({ openSubscribe: () => undefined, openContact: () => undefined, openMembership: () => undefined, openLogin: () => undefined });
 export const useDialogs = () => useContext(DlgCtx);
 
@@ -30,7 +30,10 @@ export function DialogProvider({ children }: { children: React.ReactNode }) {
     setSub(source);
   }, []);
   const [contactPreset, setContactPreset] = useState("");
-  const openContact = useCallback((preset?: string) => { setContactPreset(typeof preset === "string" ? preset : ""); setContact(true); }, []);
+  const [contactKind, setContactKind] = useState("");
+  const openContact = useCallback((preset?: string, kind?: string) => {
+    setContactPreset(typeof preset === "string" ? preset : ""); setContactKind(typeof kind === "string" ? kind : ""); setContact(true);
+  }, []);
   const openMembership = useCallback(() => {
     track("member_request_open");
     setMember(true);
@@ -39,7 +42,7 @@ export function DialogProvider({ children }: { children: React.ReactNode }) {
     <DlgCtx.Provider value={{ openSubscribe, openContact, openMembership, openLogin }}>
       {children}
       {sub && <SubscribeDialog source={sub} onClose={() => setSub(null)} />}
-      {contact && <ContactDialog preset={contactPreset} onClose={() => setContact(false)} />}
+      {contact && <ContactDialog preset={contactPreset} kind={contactKind} onClose={() => setContact(false)} />}
       {member && <MembershipDialog onClose={() => setMember(false)} />}
       {login && <LoginDialog onClose={() => setLogin(false)} />}
     </DlgCtx.Provider>
@@ -136,10 +139,28 @@ function SubscribeDialog({ source, onClose }: { source: string; onClose: () => v
   );
 }
 
-function ContactDialog({ onClose, preset = "" }: { onClose: () => void; preset?: string }) {
+// 문의 종류 — 백엔드 api/routers/subscribe.py CONTACT_KINDS 와 같아야 한다. 종류를 고르면 아래 안내가 바뀐다 (2026-11-05 고객센터).
+export const CONTACT_KINDS = ["일반 문의", "오류·잘못된 정보 제보", "로그인·계정 문제", "보미AI 사용 신청", "개인정보 열람·정정·삭제 요청", "저작권·권리침해 신고", "보안 취약점 제보", "제휴·광고 문의"] as const;
+const KIND_HINT: Record<string, string> = {
+  "오류·잘못된 정보 제보": "어느 화면(주소)의 어떤 값이 어떻게 다른지, 알고 있는 올바른 값과 출처를 적어 주세요.",
+  "로그인·계정 문제": "쓰는 기기·브라우저와 어디서 막히는지 적어 주세요. 비밀번호·코드 같은 값은 절대 적지 마세요.",
+  "보미AI 사용 신청": "사용 목적과 희망 횟수를 적어 주세요.",
+  "개인정보 열람·정정·삭제 요청": "본인 확인을 위해 로그인·구독에 쓴 이메일 주소로 보내 주세요. 무엇을 열람·정정·삭제하고 싶은지만 적고, 주민등록번호 같은 정보는 적지 마세요. 접수 뒤 10일 이내에 조치하고 결과를 알려 드려요.",
+  "저작권·권리침해 신고": "① 침해를 주장하는 페이지 주소(URL) ② 권리자 성명과 권리를 가진 근거 ③ 침해 내용 ④ 연락처를 적어 주세요. 확인한 뒤 필요하면 고치거나 내립니다.",
+  "보안 취약점 제보": "재현 방법만 간단히 적어 주세요. 다른 사람의 정보를 열어 보거나 서비스에 부담을 주는 시험은 하지 말아 주세요.",
+  "제휴·광고 문의": "회사(단체)와 하고 싶은 일을 적어 주세요.",
+};
+function kindFor(preset: string, kind?: string): string {
+  if ((CONTACT_KINDS as readonly string[]).includes(kind || "")) return kind as string;
+  return preset.startsWith("[보미AI 사용 신청]") ? "보미AI 사용 신청" : "일반 문의";
+}
+
+/** 문의 입력 양식 — 대화상자(ContactDialog)와 고객센터 화면(/help)이 같이 쓴다. */
+export function ContactForm({ preset = "", kind, onNavigate }: { preset?: string; kind?: string; onNavigate?: () => void }) {
   // 2026-11-03: 접수되면 완료 화면으로 바꾸고 보내는 동안 단추를 잠근다 — 예전엔 다시 누르면 같은 문의가 또 접수됐다.
   // '부서·직책' 칸은 회사용 서비스 시절 흔적이라 뺐다 (개인용 서비스 — 최소 수집).
-  const [f, setF] = useState({ name: "", email: "", message: preset, agree: false });
+  const [f, setF] = useState({ name: "", email: "", message: preset, agree: false, kind: kindFor(preset, kind), website: "" });
+  useEffect(() => { if (kind) setF((x) => ({ ...x, kind: kindFor(x.message, kind) })); }, [kind]);
   const [msg, setMsg] = useState<{ kind: "ok" | "err"; text: string } | null>(null);
   const [busy, setBusy] = useState(false);
   const [sent, setSent] = useState(false);
@@ -155,25 +176,40 @@ function ContactDialog({ onClose, preset = "" }: { onClose: () => void; preset?:
     } finally { setBusy(false); }
   };
   if (sent) return (
-    <Dialog title="문의가 접수됐어요" onClose={onClose}>
-      <p>확인 후 {f.email} 으로 답장 드릴게요. 보통 1~2일 걸려요.</p>
-      <button className="btn primary block" onClick={onClose}>확인</button>
-    </Dialog>
+    <div role="status">
+      <Alert kind="ok">문의가 접수됐어요. 확인 후 <b>{f.email}</b> 으로 답장 드릴게요. {f.kind === "개인정보 열람·정정·삭제 요청" ? "개인정보 요청은 10일 이내에 처리합니다." : "보통 1~2일 걸려요."}</Alert>
+      <p className="caption">답장이 스팸함으로 갈 수 있으니 함께 확인해 주세요. 같은 내용을 다시 보내실 필요는 없어요.</p>
+    </div>
   );
+  const hint = KIND_HINT[f.kind];
+  return (
+    <form onSubmit={submit}>
+      <div className="field"><label htmlFor="ct-kind">문의 종류</label>
+        <select id="ct-kind" value={f.kind} onChange={(e) => setF({ ...f, kind: e.target.value })}>{CONTACT_KINDS.map((k) => <option key={k}>{k}</option>)}</select>
+      </div>
+      {hint && <Alert kind={f.kind === "개인정보 열람·정정·삭제 요청" || f.kind === "저작권·권리침해 신고" ? "warn" : "info"}>{hint}</Alert>}
+      <div className="row2">
+        <div className="field"><label htmlFor="ct-name">이름</label><input id="ct-name" type="text" required maxLength={100} autoComplete="name" value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} /></div>
+        <div className="field"><label htmlFor="ct-email">이메일 (답장 받을 주소)</label><input id="ct-email" type="email" required maxLength={254} autoComplete="email" value={f.email} onChange={(e) => setF({ ...f, email: e.target.value })} /></div>
+      </div>
+      <div className="field"><label htmlFor="ct-msg">내용</label><textarea id="ct-msg" required rows={5} maxLength={5000} value={f.message} onChange={(e) => setF({ ...f, message: e.target.value })} /></div>
+      {/* 사람 눈에는 안 보이는 칸 — 자동 입력 프로그램이 채우면 접수하지 않는다 */}
+      <div aria-hidden="true" style={{ position: "absolute", left: -9999, width: 1, height: 1, overflow: "hidden" }}>
+        <label>웹사이트<input type="text" tabIndex={-1} autoComplete="off" value={f.website} onChange={(e) => setF({ ...f, website: e.target.value })} /></label>
+      </div>
+      <p className="caption"><b>개인정보 수집·이용 안내</b> · 항목: 이름·이메일·문의 내용(필수) · 목적: 문의 확인 및 답변 · 보유: 접수 후 12개월 · 답변에 꼭 필요한 정보만 받으며, 입력하지 않으면 문의를 접수할 수 없습니다. <Link to="/privacy" onClick={onNavigate}>개인정보 처리방침</Link></p>
+      <label className="check"><input type="checkbox" checked={f.agree} onChange={(e) => setF({ ...f, agree: e.target.checked })} /> 만 14세 이상이며, 위 개인정보 수집·이용 안내를 확인했습니다 (필수)</label>
+      <button className="btn primary block" style={{ marginTop: 12 }} disabled={busy}>{busy ? "보내는 중…" : "보내기 →"}</button>
+      {msg && <Alert kind={msg.kind}>{msg.text}</Alert>}
+    </form>
+  );
+}
+
+function ContactDialog({ onClose, preset = "", kind }: { onClose: () => void; preset?: string; kind?: string }) {
   return (
     <Dialog title="집보미에 문의하기" onClose={onClose} wide>
-      <p className="caption">서비스 이용, 제휴, 잘못된 정보 제보 등 무엇이든 남겨 주세요. 확인 후 답장 드릴게요.</p>
-      <form onSubmit={submit}>
-        <div className="row2">
-          <div className="field"><label htmlFor="ct-name">이름</label><input id="ct-name" type="text" required maxLength={100} value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} /></div>
-          <div className="field"><label htmlFor="ct-email">이메일</label><input id="ct-email" type="email" required maxLength={254} value={f.email} onChange={(e) => setF({ ...f, email: e.target.value })} /></div>
-        </div>
-        <div className="field"><label htmlFor="ct-msg">내용</label><textarea id="ct-msg" required rows={5} maxLength={5000} value={f.message} onChange={(e) => setF({ ...f, message: e.target.value })} /></div>
-        <p className="caption"><b>개인정보 수집·이용 안내</b> · 항목: 이름·이메일·문의 내용(필수) · 목적: 문의 확인 및 답변 · 보유: 접수 후 12개월 · 답변에 꼭 필요한 정보만 받으며, 입력하지 않으면 문의를 접수할 수 없습니다. <Link to="/privacy" onClick={onClose}>개인정보 처리방침</Link></p>
-        <label className="check"><input type="checkbox" checked={f.agree} onChange={(e) => setF({ ...f, agree: e.target.checked })} /> 만 14세 이상이며, 위 개인정보 수집·이용 안내를 확인했습니다 (필수)</label>
-        <button className="btn primary block" style={{ marginTop: 12 }} disabled={busy}>{busy ? "보내는 중…" : "보내기 →"}</button>
-      </form>
-      {msg && <Alert kind={msg.kind}>{msg.text}</Alert>}
+      <p className="caption">서비스 이용, 잘못된 정보 제보, 개인정보·권리침해 요청, 제휴 등 무엇이든 남겨 주세요. 먼저 <Link to="/help" onClick={onClose}>자주 묻는 질문</Link>에서 답을 찾을 수도 있어요.</p>
+      <ContactForm preset={preset} kind={kind} onNavigate={onClose} />
     </Dialog>
   );
 }

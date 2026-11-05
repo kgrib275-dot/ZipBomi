@@ -296,7 +296,7 @@ def engagement(days: int = 14, sample: int = 0) -> dict:
 # ───────────────────────── 방문 패턴 (page_view 기반) ─────────────────────────
 # 화면 이동(page_view, App.tsx PageView)과 구독·질문 기록을 방문자(익명 쿠키)별로 엮는다. 관리자 이동·예시 데이터(s:)는 뺀다.
 
-PAGE_LABELS = {"/": "홈", "/notes": "노트", "/today": "오늘의 부동산", "/lab": "데이터 랩", "/ask": "질문하기", "/about": "소개",
+PAGE_LABELS = {"/": "홈", "/notes": "노트", "/today": "오늘의 부동산", "/lab": "데이터 랩", "/ask": "질문하기", "/about": "소개", "/help": "고객센터",
                "/type": "유형 테스트", "/terms": "용어 퀴즈", "/diagnosis": "자가진단", "/habit": "습관 진단", "/career": "내 집 마련 전략", "/deals": "실거래가", "/calc": "계산기",
                "/letter": "뉴스레터", "/refer": "추천", "/confirm": "구독 확인", "/unsubscribe": "구독 해지", "/privacy": "개인정보 처리방침"}
 SESSION_GAP_MIN = 30  # 이 시간 넘게 이동이 없으면 새 방문(세션)으로 본다 — 웹 분석 도구들의 관례

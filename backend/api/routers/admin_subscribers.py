@@ -381,8 +381,23 @@ def teams_send(request: Request) -> dict:
 
 @router.get("/contacts")
 def contacts() -> dict:
-    rows = [{k: c.get(k) for k in ("id", "created_at", "name", "email", "message", "handled_at")} for c in db.contacts()]
-    return {"contacts": rows, "count": len(rows), "open": sum(1 for r in rows if not r["handled_at"])}
+    from datetime import date, datetime, timedelta
+    from api.routers.subscribe import CONTACT_DUE_DAYS, CONTACT_URGENT
+    rows = []
+    for c in db.contacts():
+        r = {k: c.get(k) for k in ("id", "created_at", "name", "email", "message", "handled_at")}
+        r["kind"] = c.get("kind") or "일반 문의"
+        r["urgent"] = r["kind"] in CONTACT_URGENT
+        days = CONTACT_DUE_DAYS.get(r["kind"])
+        try:  # 처리 기한 — 접수일 + N일 (처리 안 한 것만 남은 일수를 센다)
+            due = datetime.fromisoformat(str(r["created_at"])).date() + timedelta(days=days) if days else None
+        except ValueError:
+            due = None
+        r["due"] = due.isoformat() if due else None
+        r["days_left"] = (due - date.today()).days if due and not r["handled_at"] else None
+        rows.append(r)
+    return {"contacts": rows, "count": len(rows), "open": sum(1 for r in rows if not r["handled_at"]),
+            "urgent_open": sum(1 for r in rows if r["urgent"] and not r["handled_at"])}
 
 
 @router.post("/contacts/{cid}/handled")

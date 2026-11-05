@@ -6,7 +6,7 @@ import { useLocation } from "react-router-dom";
 import { useDialogs } from "../components/Dialogs";
 import { useMe } from "../me";
 
-const OPEN = ["/about", "/privacy", "/login", "/confirm", "/unsubscribe", "/admin"];
+const OPEN = ["/about", "/help", "/privacy", "/login", "/confirm", "/unsubscribe", "/admin"];
 
 export default function TrialGate() {
   const { me } = useMe();

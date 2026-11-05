@@ -12,6 +12,7 @@ const Today = L(() => import("./pages/Today"));
 const Lab = L(() => import("./pages/Lab"));
 const Ask = L(() => import("./pages/Ask"));
 const About = L(() => import("./pages/About"));
+const Help = L(() => import("./pages/Help"));
 const TypeTest = L(() => import("./pages/TypeTest"));
 const Terms = L(() => import("./pages/Terms"));
 const Diagnosis = L(() => import("./pages/Diagnosis"));
@@ -55,6 +56,7 @@ export default function App() {
             <Route path="/lab" element={<Lab />} />
             <Route path="/ask" element={<Ask />} />
             <Route path="/about" element={<About />} />
+            <Route path="/help" element={<Help />} />
             <Route path="/type" element={<TypeTest />} />
             <Route path="/terms" element={<Terms />} />
             <Route path="/diagnosis" element={<Diagnosis />} />

@@ -73,7 +73,7 @@ export default function Dashboard() {
         ))}
       </div>
 
-      <h3 style={{ margin: "18px 0 8px" }}>지난 기사로 채우기</h3>
+      <h3 style={{ margin: "18px 0 8px" }}>지난 기사로 채우기 <span className="caption">· 노트·주간 흐름 초안을 과거 자료로 만들 때</span></h3>
       <Backfill onStarted={reload} />
 
       <h3 style={{ margin: "18px 0 8px" }}>데이터 랩 운영 지표 <span className="caption">· 공개 데이터 랩에서 옮겨 온 숫자 {str(lab.asof) && `(기준 ${str(lab.asof)})`}</span></h3>
@@ -105,36 +105,43 @@ function Backfill({ onStarted }: { onStarted: () => void }) {
   const [preview, setPreview] = useState<Row | null>(null);
   const counts = isObj(preview?.counts) ? (preview!.counts as Record<string, number>) : {};
   const fallback = isObj(preview?.fallback) ? (preview!.fallback as Record<string, number>) : {};
+  // 2026-11-05 — 두 기능을 따로 카드로 나누고(위 작업 단추 칸에 억지로 맞추지 않음) 입력칸은 이름을 위에 둔다. 넓으면 두 칸, 좁으면 한 칸.
   return (
-    <div className="jobs-grid">
-      <div>
-        <div className="btn-row" style={{ gap: 6, marginBottom: 6 }}>
-          <label className="caption">합계 <input type="number" min={1} max={100} value={total} onChange={(e) => setTotal(Number(e.target.value) || 30)} style={{ width: 64 }} /></label>
-          <label className="caption">분류별 최소 <input type="number" min={0} max={50} value={perCat} onChange={(e) => setPerCat(Number(e.target.value) || 0)} style={{ width: 56 }} /></label>
-          <button className="btn sm" onClick={async () => setPreview((await act(() => A.post<Row>("notes/backfill", { dry_run: true, total, per_category_min: perCat }))) || null)}>미리보기</button>
+    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(min(320px,100%),1fr))", gap: 12, alignItems: "start" }}>
+      <div className="box">
+        <b>노트 초안 채우기</b>
+        <p className="caption" style={{ margin: "4px 0 12px" }}>아직 노트가 없는 4점↑ 기사를 분류별로 고르게 골라 초안을 씁니다(모자란 분류는 3점까지). 노트 날짜 = 원문 발행일.</p>
+        <div className="row2">
+          <div className="field"><label htmlFor="bf-total">합계 (편)</label><input id="bf-total" type="number" min={1} max={100} value={total} onChange={(e) => setTotal(Number(e.target.value) || 30)} /></div>
+          <div className="field"><label htmlFor="bf-cat">분류별 최소 (편)</label><input id="bf-cat" type="number" min={0} max={50} value={perCat} onChange={(e) => setPerCat(Number(e.target.value) || 0)} /></div>
         </div>
-        <button className="btn block" onClick={async () => {
-          if (!window.confirm(`노트 초안 ${total}편을 지난 기사로 채울까요? (분류별 최소 ${perCat}편, 검토 큐에 초안으로 들어갑니다)`)) return;
-          const r = await act(() => A.post<Row>("notes/backfill", { total, per_category_min: perCat }));
-          if (r) { toast(str(r.message), bool(r.started) ? "ok" : "err"); onStarted(); }
-        }}>노트 초안 채우기</button>
-        <div className="caption">아직 노트가 없는 4점↑ 기사를 분류별로 고르게 골라 초안 작성 (모자란 분류는 3점까지). 노트 날짜 = 원문 발행일.</div>
+        <div className="btn-row">
+          <button className="btn" onClick={async () => setPreview((await act(() => A.post<Row>("notes/backfill", { dry_run: true, total, per_category_min: perCat }))) || null)}>미리보기</button>
+          <button className="btn primary" onClick={async () => {
+            if (!window.confirm(`노트 초안 ${total}편을 지난 기사로 채울까요? (분류별 최소 ${perCat}편, 검토 큐에 초안으로 들어갑니다)`)) return;
+            const r = await act(() => A.post<Row>("notes/backfill", { total, per_category_min: perCat }));
+            if (r) { toast(str(r.message), bool(r.started) ? "ok" : "err"); onStarted(); }
+          }}>노트 초안 채우기</button>
+        </div>
         {preview && (
-          <div className="caption" style={{ marginTop: 6 }}>
+          <div className="caption" style={{ marginTop: 8 }}>
             미리보기: {Object.entries(counts).filter(([, n]) => n).map(([c, n]) => `${c} ${n}`).join(" · ") || "후보 없음"}
             {Object.keys(fallback).length > 0 && <> · 3점으로 채움: {Object.entries(fallback).map(([c, n]) => `${c} ${n}`).join(", ")}</>}
           </div>
         )}
       </div>
-      <div>
-        <div className="btn-row" style={{ gap: 6, marginBottom: 6 }}>
-          <label className="caption">지난 <input type="number" min={1} max={12} value={weeks} onChange={(e) => setWeeks(Number(e.target.value) || 3)} style={{ width: 52 }} />주</label>
+      <div className="box">
+        <b>지난 주간 흐름 채우기</b>
+        <p className="caption" style={{ margin: "4px 0 12px" }}>주마다 그 주 날짜의 노트(초안 포함)로 흐름을 써서 초안으로 저장합니다. 이미 있는 주·노트 없는 주는 건너뜁니다.</p>
+        <div className="row2">
+          <div className="field"><label htmlFor="bf-weeks">몇 주 전까지 (주)</label><input id="bf-weeks" type="number" min={1} max={12} value={weeks} onChange={(e) => setWeeks(Number(e.target.value) || 3)} /></div>
         </div>
-        <button className="btn block" onClick={async () => {
-          const r = await act(() => A.post<Row>("issues/backfill", { weeks }));
-          if (r) { toast(str(r.message), bool(r.started) ? "ok" : "err"); onStarted(); }
-        }}>지난 주간 흐름 초안 만들기</button>
-        <div className="caption">주마다 그 주 날짜의 노트(초안 포함)로 흐름을 써서 초안으로 저장합니다. 이미 있는 주·노트 없는 주는 건너뜁니다.</div>
+        <div className="btn-row">
+          <button className="btn primary" onClick={async () => {
+            const r = await act(() => A.post<Row>("issues/backfill", { weeks }));
+            if (r) { toast(str(r.message), bool(r.started) ? "ok" : "err"); onStarted(); }
+          }}>지난 주간 흐름 초안 만들기</button>
+        </div>
       </div>
     </div>
   );

@@ -30,8 +30,8 @@ def _once_today(key: str) -> bool:
         conn.close()
 
 
-def notify(title: str, body: str, key: str | None = None) -> None:
-    """Teams·메일로 알린다. key가 같으면 하루 한 번만."""
+def notify(title: str, body: str, key: str | None = None, path: str = "/admin/ops", label: str = "운영 점검 열기") -> None:
+    """Teams·메일로 알린다. key가 같으면 하루 한 번만. 메일 끝의 링크는 path(관리 화면 주소)·label 로 바꿀 수 있다."""
     log.warning("[경보] %s — %s", title, body)
     if os.environ.get("ZIPGENIE_DB"):
         return  # 시험용 DB로 돌 때는 보내지 않는다
@@ -45,7 +45,7 @@ def notify(title: str, body: str, key: str | None = None) -> None:
                 teams.post(w["url"], teams.build_alert_card(title, body, site), retries=0)
         to = os.environ.get("ALERT_EMAIL", "").strip()
         if to and mailer.is_configured():
-            html = f"<p><b>{_esc(title)}</b></p><p>{_esc(body)}</p><p><a href='{site}/admin/ops'>운영 점검 열기</a></p>"
+            html = f"<p><b>{_esc(title)}</b></p><p>{_esc(body)}</p><p><a href='{site}{_esc(path)}'>{_esc(label)}</a></p>"
             mailer.send([(to, "")], f"[집보미 경보] {title}", lambda _t: html)
     except Exception:  # noqa: BLE001 - 경보 실패가 본 작업을 막지 않게
         log.exception("경보 전송 실패")

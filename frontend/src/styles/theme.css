@@ -121,7 +121,7 @@ b.kw{color:var(--accent-2);font-weight:700}
 /* 입력 */
 .field{display:flex;flex-direction:column;gap:6px;margin-bottom:12px}
 .field label{font-size:.92rem;color:var(--ink-2)}
-input[type=text],input[type=email],input[type=number],input[type=date],input[type=password],textarea,select{
+input[type=text],input[type=email],input[type=number],input[type=date],input[type=password],input[type=search],textarea,select{
   width:100%;background:var(--surface);border:1px solid var(--line);color:var(--ink);padding:10px 12px;border-radius:var(--radius);
   font:inherit;font-size:1rem}
 input:focus,textarea:focus,select:focus{outline:none;border-color:var(--accent)}
@@ -439,3 +439,4 @@ html.dlg-open,html.dlg-open body{overflow:hidden}
 .lab-page .doc-frame{min-height:1200px}
 .re-chart-wrap,.lm-chart{min-height:180px}
 .as{min-height:520px}
+.sr-only{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}

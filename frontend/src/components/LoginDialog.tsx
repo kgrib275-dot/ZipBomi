@@ -45,7 +45,9 @@ export default function LoginDialog({ onClose }: { onClose: () => void }) {
     const sp = new URLSearchParams(window.location.search);
     const next = sp.get("next");
     const loginPage = window.location.pathname === "/login" || (window.location.pathname === "/about" && sp.get("login") === "1");
-    if (loginPage) nav(next && next.startsWith("/") && !next.startsWith("//") ? next : "/my");
+    // 이 사이트 안의 주소만 — '//' 뿐 아니라 '/\'(브라우저가 '//' 처럼 읽음)·제어 문자도 막는다 (2026-11-05 react-router 열린 리다이렉트 권고)
+    const safe = !!next && next.startsWith("/") && !next.startsWith("//") && !next.includes("\\") && !/[\u0000-\u001f\u007f]/.test(next);
+    if (loginPage) nav(safe ? (next as string) : "/my");
     else if ((window as unknown as { __zgGateBlocked?: boolean }).__zgGateBlocked) window.location.reload();
   };
   const verify = async () => {

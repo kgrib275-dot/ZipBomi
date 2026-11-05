@@ -172,7 +172,7 @@ def sitemap(request: Request) -> Response:
             (f"{site}/lab", None), (f"{site}/ask", None), (f"{site}/letter", None), (f"{site}/about", None),
             (f"{site}/type", None), (f"{site}/diagnosis", None), (f"{site}/terms", None),
             (f"{site}/habit", None), (f"{site}/career", None), (f"{site}/deals", None), (f"{site}/calc", None),
-            (f"{site}/privacy", None), (f"{site}/map", None), (f"{site}/now", None), (f"{site}/calendar", None)]  # 2026-11-03 지도·현행 수치·분양 일정 추가
+            (f"{site}/privacy", None), (f"{site}/help", None), (f"{site}/map", None), (f"{site}/now", None), (f"{site}/calendar", None)]  # 2026-11-03 지도·현행 수치·분양 일정 추가
     urls += [(f"{site}/n/{n['id']}", n["published"]) for n in db.notes("published")]
     xml = "".join(f"<url><loc>{escape(u)}</loc>" + (f"<lastmod>{escape(d)}</lastmod>" if d else "") + "</url>" for u, d in urls)
     return Response(f'<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">{xml}</urlset>',
