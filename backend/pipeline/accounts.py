@@ -31,6 +31,8 @@ _SQL = (
     "CREATE TABLE IF NOT EXISTS account_sessions (sid_hash TEXT PRIMARY KEY, account_id INTEGER NOT NULL, created_at TEXT NOT NULL, "
     "last_seen TEXT NOT NULL, ua TEXT NOT NULL DEFAULT '')",
     "CREATE INDEX IF NOT EXISTS idx_account_sessions_acc ON account_sessions(account_id)",
+    # 캘린더 구독 주소 (2026-11-17) — 휴대폰·PC 캘린더 앱이 로그인 없이 받아 가는 비밀 주소. DB 에는 해시만 (주소는 만들 때 한 번만 보여 준다).
+    "CREATE TABLE IF NOT EXISTS cal_feed (account_id INTEGER PRIMARY KEY, token_hash TEXT NOT NULL UNIQUE, created_at TEXT NOT NULL, last_fetch_at TEXT)",
 )
 _COLS = (("login_tokens", "code_hash", "TEXT"), ("login_tokens", "nonce_hash", "TEXT"), ("login_tokens", "tries", "INTEGER DEFAULT 0"),
          ("login_tokens", "ncode_hash", "TEXT"), ("login_tokens", "code_used_at", "TEXT"),
@@ -189,6 +191,7 @@ def rotate(acc: dict) -> str:
     try:
         c.execute("UPDATE accounts SET raw=?, revoke_hash=NULL WHERE id=?", (new, acc["id"]))
         c.execute("DELETE FROM account_sessions WHERE account_id=?", (acc["id"],))  # 기기별 로그인도 모두 끊는다
+        c.execute("DELETE FROM cal_feed WHERE account_id=?", (acc["id"],))  # 캘린더 구독 주소도 멈춘다 (새로 만들어야 함)
         for table in ("visitor_state", "engagements", "subscribers", "profiles"):
             try:
                 c.execute(f"UPDATE {table} SET visitor=? WHERE visitor=?", ("c:" + new, old))
@@ -323,6 +326,12 @@ def delete_by_raw(raw: str) -> int:
     c = _conn()
     try:
         c.execute("DELETE FROM account_sessions WHERE account_id IN (SELECT id FROM accounts WHERE raw=?)", (raw,))
+        c.execute("DELETE FROM cal_feed WHERE account_id IN (SELECT id FROM accounts WHERE raw=?)", (raw,))
+        for (email,) in c.execute("SELECT email FROM accounts WHERE raw=?", (raw,)).fetchall():
+            try:  # 계정 전용 알림 기록(내 일정·관심 단지)도 함께 (2026-11-17) — 구독자 알림 기록은 구독 해지 때 따로 지운다
+                c.execute("DELETE FROM reminder_log WHERE email=? AND kind IN ('my', 'watch')", (email,))
+            except Exception:  # noqa: BLE001 - 표가 아직 없으면 건너뜀
+                pass
         n = c.execute("DELETE FROM accounts WHERE raw=?", (raw,)).rowcount
         c.commit()
         return n
@@ -378,3 +387,59 @@ def ask_grant(acc_id: int, n: int) -> tuple[int, int]:
     finally:
         c.close()
     return ask_state(acc_id)
+
+
+# ───────── 캘린더 구독 주소 (2026-11-17, api/routers/cal_feed.py) ─────────
+# 주소 = {사이트}/cal/<토큰>.ics. 토큰은 128비트 무작위, DB 에는 sha256 해시만. 새로 만들면 예전 주소는 바로 멈춘다.
+# '모든 기기에서 로그아웃'(rotate)과 계정 삭제 때도 지운다.
+_FEED_SEEN_EVERY = 3600
+
+
+def cal_create(acc_id: int) -> str:
+    token = secrets.token_hex(16)
+    c = _conn()
+    try:
+        c.execute("INSERT INTO cal_feed (account_id, token_hash, created_at, last_fetch_at) VALUES (?,?,?,NULL) "
+                  "ON CONFLICT(account_id) DO UPDATE SET token_hash=excluded.token_hash, created_at=excluded.created_at, last_fetch_at=NULL",
+                  (acc_id, _h("cal:" + token), _now()))
+        c.commit()
+    finally:
+        c.close()
+    return token
+
+
+def cal_off(acc_id: int) -> None:
+    c = _conn()
+    try:
+        c.execute("DELETE FROM cal_feed WHERE account_id=?", (acc_id,))
+        c.commit()
+    finally:
+        c.close()
+
+
+def cal_status(acc_id: int) -> dict | None:
+    c = _conn()
+    try:
+        r = c.execute("SELECT created_at, last_fetch_at FROM cal_feed WHERE account_id=?", (acc_id,)).fetchone()
+        return dict(r) if r else None
+    finally:
+        c.close()
+
+
+def cal_account(token: str) -> dict | None:
+    """구독 주소의 토큰 → 계정 (없거나 멈춘 주소면 None). 받아 간 시각은 1시간에 한 번만 고친다."""
+    if not (isinstance(token, str) and len(token) == 32 and all(ch in "0123456789abcdef" for ch in token)):
+        return None
+    c = _conn()
+    try:
+        r = c.execute("SELECT a.id, a.email, a.raw, f.last_fetch_at FROM cal_feed f JOIN accounts a ON a.id = f.account_id "
+                      "WHERE f.token_hash=?", (_h("cal:" + token),)).fetchone()
+        if not r:
+            return None
+        last = r["last_fetch_at"]
+        if not last or (datetime.now() - datetime.fromisoformat(last)).total_seconds() > _FEED_SEEN_EVERY:
+            c.execute("UPDATE cal_feed SET last_fetch_at=? WHERE account_id=?", (_now(), r["id"]))
+            c.commit()
+        return {"id": r["id"], "email": r["email"], "raw": r["raw"]}
+    finally:
+        c.close()

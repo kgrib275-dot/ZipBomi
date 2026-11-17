@@ -185,7 +185,7 @@ ROBOTS_ONLY_TOKENS = ("Google-Extended", "Applebot-Extended")  # User-Agent ë¡œë
 
 def robots(request: Request) -> Response:
     ai = "".join(f"User-agent: {b}\n" for b in AI_BOTS + ROBOTS_ONLY_TOKENS) + "Disallow: /\n\n"
-    return PlainTextResponse(ai + "User-agent: *\nAllow: /\nDisallow: /admin\nDisallow: /r/\nDisallow: /refer\nDisallow: /unsubscribe\nDisallow: /confirm\nDisallow: /me\nDisallow: /my-homes\n"
+    return PlainTextResponse(ai + "User-agent: *\nAllow: /\nDisallow: /admin\nDisallow: /r/\nDisallow: /refer\nDisallow: /unsubscribe\nDisallow: /confirm\nDisallow: /me\nDisallow: /my-homes\nDisallow: /cal/\n"
                              f"Sitemap: {_site(request)}/sitemap.xml\n")
 
 

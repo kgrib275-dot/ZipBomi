@@ -8,6 +8,7 @@ import { Alert, Tabs, useLoad } from "../components/ui";
 import { useMe } from "../me";
 import { useProfile } from "../profile";
 import ApplyStats from "./ApplyStats";
+import { type CalEvent, downloadIcs, googleCalUrl } from "../calendarLink";
 import "./RealEstate.css";
 import "./LabMarket.css";
 
@@ -77,6 +78,7 @@ function CalendarTab() {
   const [sido, setSidoRaw] = useState(() => { try { return localStorage.getItem("zg-cal-sido") || ""; } catch { return ""; } });
   const setSido = (v: string) => { setSidoRaw(v); setMineOnly(false); try { localStorage.setItem("zg-cal-sido", v); } catch { /* 무시 */ } };
   const [pick, setPick] = useState<string | null>(null);
+  const [calOpen, setCalOpen] = useState<string | null>(null); // 📅 캘린더로 보내기 펼친 공고 (날짜별 같은 공고가 여러 번 나와 날짜+id)
   const sidos = useMySidos();
   const { me } = useMe();
   const { profile, save } = useProfile();
@@ -184,8 +186,11 @@ function CalendarTab() {
                     {/* 접수가 끝난 공고에는 알림을 새로 켤 수 없다 (2026-11-03) — 이미 켜 둔 것은 끌 수 있게 남긴다 */}
                     {(on || n.long_open || !n.dates.end || n.dates.end >= new Date().toLocaleDateString("sv-SE")) &&
                       <button type="button" className={`cal-ico${on ? " on" : ""}`} aria-pressed={on} onClick={() => toggle(n.id)} title={on ? "알림 끄기" : "접수 3일 전 알림 받기"} aria-label={on ? "알림 끄기" : "알림 받기"}>🔔</button>}
+                    <button type="button" className={`cal-ico${calOpen === k + n.id ? " on" : ""}`} aria-expanded={calOpen === k + n.id}
+                      onClick={() => setCalOpen(calOpen === k + n.id ? null : k + n.id)} title="내 캘린더(구글·아이폰·아웃룩)에 넣기" aria-label="캘린더에 넣기">📅</button>
                     {n.url && <a className="cal-ico" href={n.url} target="_blank" rel="noopener" title="공고 원문" aria-label="공고 원문">↗</a>}
                   </div>
+                  {calOpen === k + n.id && <NoticeCal n={n} />}
                 </div>
               );
             })}
@@ -199,6 +204,32 @@ function CalendarTab() {
         {!d?.applyhome && " 청약홈 공고는 자료 갱신 중이에요."}
       </p>
     </>
+  );
+}
+
+/** 공고 하나의 접수 시작·마감·발표를 바깥 캘린더로 (2026-11-17) — 브라우저에서만 처리, 집보미 서버는 외부로 보내지 않는다 */
+function noticeEvents(n: Notice): CalEvent[] {
+  const memo = ["청약홈·LH 공고문으로 자격과 일정을 꼭 확인하세요.", n.url].filter(Boolean).join("\n");
+  const out: CalEvent[] = [];
+  if (n.dates.start) out.push({ date: n.dates.start.slice(0, 10), title: `[청약 접수 시작] ${n.name}`, memo });
+  if (n.dates.end && !n.long_open) out.push({ date: n.dates.end.slice(0, 10), title: `[청약 접수 마감] ${n.name}`, memo });
+  if (n.dates.winner) out.push({ date: n.dates.winner.slice(0, 10), title: `[당첨 발표] ${n.name}`, memo });
+  if (!out.length && n.dates.notice) out.push({ date: n.dates.notice.slice(0, 10), title: `[청약 공고] ${n.name}`, memo });
+  return out.filter((e) => /^\d{4}-\d{2}-\d{2}$/.test(e.date));
+}
+
+function NoticeCal({ n }: { n: Notice }) {
+  const evs = noticeEvents(n);
+  if (!evs.length) return <div className="cal-send caption">이 공고에는 캘린더에 넣을 날짜가 없어요. 공고 원문을 확인하세요.</div>;
+  return (
+    <div className="cal-send">
+      {evs.map((e) => (
+        <a key={e.title} className="btn sm ghost" href={googleCalUrl(e)} target="_blank" rel="noopener noreferrer" title="구글 캘린더 '일정 추가' 화면이 열려요">
+          G+ {e.title.slice(1, e.title.indexOf("]"))} {e.date.slice(5).replace("-", ".")}</a>
+      ))}
+      <button type="button" className="btn sm" onClick={() => downloadIcs(evs, `zipbomi-apply-${n.id}.ics`)}>📥 .ics {evs.length}건</button>
+      <span className="caption">.ics는 아이폰·아웃룩·삼성 캘린더에서 열면 담겨요.{n.long_open ? " 상시·선착순 공고라 마감일은 넣지 않았어요." : ""}</span>
+    </div>
   );
 }
 

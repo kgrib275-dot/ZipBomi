@@ -107,6 +107,10 @@ def clean(p) -> dict | None:
     # 알림 메일 (pipeline/reminders.py) — 구독자에게만 실제로 나간다. 전세 만기 알림은 만기일이 있을 때만 의미가 있다.
     if p.get("alert_lease") is True and "lease_end" in out:
         out["alert_lease"] = True
+    # 로그인 계정 메일 알림 (2026-11-17, pipeline/reminders.plan_digests): 내 일정·알림·할 일 하루 전, 관심 단지 새 실거래
+    for k in ("alert_my", "alert_watch"):
+        if p.get(k) is True:
+            out[k] = True
     ids = p.get("alert_apply")
     if isinstance(ids, list):
         keep = [i for i in dict.fromkeys(ids) if isinstance(i, str) and re.fullmatch(r"[A-Za-z0-9_-]{1,48}", i)][:20]

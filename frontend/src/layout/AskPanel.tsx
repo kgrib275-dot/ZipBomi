@@ -6,12 +6,14 @@ import { Link } from "react-router-dom";
 import { ApiError, get, post } from "../api";
 import { useDialogs } from "../components/Dialogs";
 import { useMe } from "../me";
+import type { Source } from "../components/AskSources";
 
-type Turn = { role: "user" | "assistant"; content: string };
+type Turn = { role: "user" | "assistant"; content: string; sources?: Source[] };
 type Usage = { enabled: boolean; quota: number; used: number; limit_hit: boolean; linked: boolean; need_grant?: boolean; is_admin: boolean;
   email_masked?: string; member?: { expires?: string } | null };
 // 일정 담기는 버튼을 누를 일이 있을 때만 받아 온다 (패널은 모든 화면에 실리므로 처음 내려받는 양을 늘리지 않게)
 const AskToCalendar = lazy(() => import("../components/AskToCalendar"));
+const AskSources = lazy(() => import("../components/AskSources"));
 const HKEY = "zipgenie-ask-history";
 const MKEY = "zipgenie-ask-mine";
 const SUGGEST = ["내 관심 단지 최근 거래 흐름 요약해 줘", "이번 주 꼭 알아야 할 부동산 소식 3가지", "내 가점으로 해볼 만한 청약은?", "스트레스 DSR이 내 대출 한도에 주는 영향은?"];
@@ -76,8 +78,8 @@ export default function AskPanel() {
     const next: Turn[] = [...hist, { role: "user", content: t }];
     setHist(next);
     try {
-      const r = await post<{ answer: string }>("ask", { question: t, mine, history: hist.slice(-6) });
-      setHist([...next, { role: "assistant", content: r.answer }]);
+      const r = await post<{ answer: string; sources?: Source[] }>("ask", { question: t, mine, history: hist.slice(-6).map((h) => ({ role: h.role, content: h.content })) });
+      setHist([...next, { role: "assistant", content: r.answer, sources: r.sources || [] }]);
     } catch (e) {
       setHist(hist);
       setQ(t);
@@ -115,7 +117,7 @@ export default function AskPanel() {
         )}
         {hist.map((t, i) => (
           <div key={i} className={`ap-msg ${t.role}`}>
-            {t.role === "assistant" ? <><Text s={t.content} /><Suspense fallback={null}><AskToCalendar text={t.content} compact /></Suspense></> : t.content}
+            {t.role === "assistant" ? <><Text s={t.content} /><Suspense fallback={null}>{!!t.sources?.length && <AskSources sources={t.sources} compact />}<AskToCalendar text={t.content} compact /></Suspense></> : t.content}
           </div>
         ))}
         {busy && <div className="ap-msg assistant typing">답을 찾는 중…</div>}

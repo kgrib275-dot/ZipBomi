@@ -8,10 +8,10 @@ import { ApiError, get, post } from "../api";
 import { SubscribeCTA, useDialogs } from "../components/Dialogs";
 import { Alert, Guide, useLoad } from "../components/ui";
 import AskToCalendar from "../components/AskToCalendar";
+import AskSources, { type Source } from "../components/AskSources";
 import { useMe } from "../me";
 import "./Ask.css";
 
-type Source = { title: string; url: string; kind: string; sim: number };
 type Turn = { role: "user" | "assistant"; content: string; sources?: Source[]; weak?: boolean };
 type Usage = { enabled: boolean; quota: number; used: number; limit_hit: boolean; linked: boolean; need_grant?: boolean; email_masked?: string; requested?: boolean; member?: { expires?: string } | null; is_admin: boolean; free_credits: number; member_daily: number; plan_price?: string; global_hit?: boolean; web_search?: boolean; membership?: boolean };
 
@@ -131,7 +131,7 @@ export default function Ask() {
       <Guide title="이렇게 물어보세요" items={[
         ["지역·주제", "'송파구 재건축 소식 알려줘'처럼 지역·주제를 넣으면 근거 노트를 붙여 답해요."],
         ["목록·기간", "'이번 달 정책·세금·대출 노트만 모아줘'처럼 조건을 주면 정확한 목록을 찾아요."],
-        ["근거 확인", "답 아래 '근거 자료'를 펼치면 참고한 노트·기사로 바로 갈 수 있습니다."],
+        ["근거 확인", "답 아래 '근거 자료'를 펼치면 참고한 노트·기사로 바로 갈 수 있고, 노트는 ☆로 내 공간에 저장해 둘 수 있어요."],
         ["일정 담기", "답에 접수·발표 같은 날짜가 나오면 '📅 일정 담기'로 골라서 내 달력에 넣고, 구글 캘린더·.ics로도 보낼 수 있어요."],
       ]} />
       <p className="caption">질문과 대화 일부는 답변 생성을 위해 Google(미국, Gemini API)로 전송되며 이 사이트에는 저장되지 않습니다. 이름·연락처 같은 개인정보는 입력하지 마세요. <Link to="/privacy">개인정보 처리방침</Link></p>
@@ -167,14 +167,7 @@ export default function Ask() {
                 <span className="av">{t.role === "user" ? "👤" : "✦"}</span>
                 <div className="bubble">
                   <Markdown text={t.content} />
-                  {!!t.sources?.length && (
-                    <details className="expander">
-                      <summary>📖 근거 자료</summary>
-                      <ul className="body srcs">
-                        {t.sources.map((s, k) => <li key={k}><a href={s.url} target="_blank" rel="noopener">{s.title}</a> · {s.kind} · 유사도 {Number(s.sim).toFixed(2)}</li>)}
-                      </ul>
-                    </details>
-                  )}
+                  {!!t.sources?.length && <AskSources sources={t.sources} />}
                   {t.role === "assistant" && <AskToCalendar text={t.content} />}
                   {t.weak && i === history.length - 1 && usage.web_search !== false && !limitHit && (
                     <button className="btn sm" type="button" disabled={!!busy} onClick={() => webSearch(i)}>{busy === "web" ? "웹을 검색하는 중..." : "🌐 웹 검색으로 다시 답하기"}</button>

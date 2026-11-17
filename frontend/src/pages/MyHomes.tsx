@@ -4,6 +4,7 @@
 // 관심 목록은 방문자 상태 re_watch — 이 브라우저에만, 구독자와 이어져 있으면 맞춤 메일에도 쓰인다. 색인하지 않는다(og_meta.NOINDEX).
 import { applyBadge } from "../applyStatus";
 import { useState } from "react";
+import { AlertToggle } from "../components/CalSync";
 import { Link, useSearchParams } from "react-router-dom";
 import { get } from "../api";
 import { Alert, useLoad } from "../components/ui";
@@ -45,6 +46,8 @@ export default function MyHomes() {
         <div className="eyebrow">관심 단지</div>
         <h2 className="sec-h">내 <span className="grad">관심 단지</span></h2>
         <p className="sec-p">실거래가에서 ☆로 담은 단지의 최근 거래를 평형별로, 청약 공고에서 ☆로 담은 공고는 일정과 함께 모았습니다. 로그인하면 기기 사이에 이어지고, 맞춤 브리핑을 구독하면 주간 메일에도 실립니다.</p>
+        <AlertToggle k="alert_watch" label="관심 단지에 새 매매 실거래가 올라오면 메일로 받기"
+          hint="매일 아침 실거래 자료를 확인해 새로 올라온 거래만 한 통으로 모아 보내요. 처음 켤 때 이미 있던 거래는 보내지 않아요." />
       </div>
 
       <FavNotices />

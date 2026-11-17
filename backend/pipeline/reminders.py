@@ -199,13 +199,17 @@ def render(item: dict) -> tuple[str, str]:
 
 def run(today: date | None = None, dry_run: bool = False) -> dict:
     items = plan(today)
-    out = {"planned": len(items), "sent": 0, "skipped": 0, "failed": 0, "kinds": {}}
-    if dry_run or not items:
+    digests = plan_digests(today, dry_run=dry_run)
+    out = {"planned": len(items) + len(digests), "sent": 0, "skipped": 0, "failed": 0, "kinds": {}}
+    if dry_run or not (items or digests):
         out["items"] = [{k: v for k, v in i.items() if k not in ("token", "notice")} | {"email": i["email"][:3] + "…"} for i in items]
+        out["items"] += [{"kind": d["kind"], "count": len(d["rows"]), "email": d["email"][:3] + "…"} for d in digests]
         return out
     if not mailer.is_configured():
         out["error"] = "SMTP 설정이 없어 보내지 못했습니다"
         return out
+    for d in digests:
+        _send_digest(d, out)
     for it in items:
         if not _claim(it["email"], it["kind"], it["ref"], it["due"]):
             out["skipped"] += 1  # 이미 보냄
@@ -250,3 +254,225 @@ def summary() -> dict:
     return {"apply_subscribers": n_apply, "lease_subscribers": n_lease, "sent_30d": {r["kind"]: r["n"] for r in recent},
             "plan_today": len(plan())}
 
+
+
+# ───────────────────────── 내 일정·관심 단지 새 거래 (2026-11-17) ─────────────────────────
+# 로그인 계정만 — 일정·관심 단지는 계정의 visitor_state('c:'+raw)에 있다. 내 공간에서 직접 켠 사람만(profile.alert_my·alert_watch).
+# 한 사람에게 하루 한 통씩 묶어 보낸다(Gmail 하루 한도). 항목마다 reminder_log 에 먼저 잡아 같은 것은 다시 보내지 않는다.
+
+MY_DAYS = 1           # 내 일정·알림·할 일: 하루 전 아침(놓쳤으면 당일)
+MAX_MY_ROWS = 30
+WATCH_MONTHS = 3      # 관심 단지 새 거래: 계약월이 최근 3개월 안인 거래만 본다 (신고는 계약 뒤 30일 안)
+MAX_WATCH_ITEMS = 20  # 단지 수
+MAX_WATCH_ROWS = 30   # 한 통에 싣는 거래 수
+
+
+def _account_states() -> list[tuple[str, dict]]:
+    """(계정 이메일, 계정 저장값) — 내 일정 또는 관심 단지 메일을 켠 계정만."""
+    import json
+    c = db.connect()
+    try:
+        try:
+            rows = c.execute("SELECT a.email, v.data FROM accounts a JOIN visitor_state v ON v.visitor = 'c:' || a.raw").fetchall()
+        except sqlite3.Error as e:
+            log.warning("계정 저장값 조회 실패(내 일정·관심 단지 알림 건너뜀): %s", e)
+            return []
+    finally:
+        c.close()
+    out = []
+    for r in rows:
+        try:
+            st = json.loads(r[1]) or {}
+        except (ValueError, TypeError):
+            continue
+        prof = st.get("profile") if isinstance(st, dict) else None
+        if isinstance(prof, dict) and (prof.get("alert_my") or prof.get("alert_watch")):
+            out.append((r[0], st))
+    return out
+
+
+def my_rows(st: dict, today: date, days: int = MY_DAYS) -> list[dict]:
+    """오늘~days 일 뒤의 내 일정(my_events)·항목 알림(my_items)·할 일 마감(my_todos). ref 에 날짜를 넣어 날짜를 바꾸면 다시 알린다."""
+    out: list[dict] = []
+
+    def add(ref: str, title, when, note) -> None:
+        d = _d(when)
+        if not d:
+            return
+        left = (d - today).days
+        if 0 <= left <= days:
+            out.append({"ref": f"{ref}:{d.isoformat()}", "date": d.isoformat(), "left": left, "title": str(title)[:80], "note": str(note or "")[:120]})
+
+    for ev in st.get("my_events") or [] if isinstance(st.get("my_events"), list) else []:
+        if isinstance(ev, dict) and ev.get("date"):
+            add("ev:" + str(ev.get("id") or ""), ev.get("title") or "내 일정", ev["date"], "")
+    for key, v in (st.get("my_items") or {}).items() if isinstance(st.get("my_items"), dict) else []:
+        if isinstance(v, dict) and v.get("remind"):
+            add("it:" + str(key)[:60], v.get("title") or "내 알림", v["remind"], v.get("remind_note") or "")
+    for td in st.get("my_todos") or [] if isinstance(st.get("my_todos"), list) else []:
+        if isinstance(td, dict) and td.get("due") and not td.get("done"):
+            add("td:" + str(td.get("id") or ""), "할 일 · " + str(td.get("text") or ""), td["due"], "마감")
+    out.sort(key=lambda x: x["date"])
+    return out[:MAX_MY_ROWS]
+
+
+def _ym_back(today: date, n: int) -> str:
+    y, m = today.year, today.month - n
+    while m <= 0:
+        y, m = y - 1, m + 12
+    return f"{y}{m:02d}"
+
+
+def _h(s: str) -> str:
+    import hashlib
+    return hashlib.sha1(s.encode()).hexdigest()[:20]
+
+
+def watch_deals(watch: list, today: date) -> list[tuple[str, dict, list[dict]]]:
+    """관심 '단지'(apt 가 있는 항목)마다 (단지 키, 관심 항목, 최근 거래들). 거래 키는 계약일·층·면적·금액 —
+    표를 다시 받을 때 바뀌는 uid·fetched_at 대신 거래 자체로 같은지 본다."""
+    items = [w for w in watch if isinstance(w, dict) and w.get("apt") and w.get("lawd")][:MAX_WATCH_ITEMS]
+    if not items:
+        return []
+    out = []
+    c = db.connect()
+    try:
+        for w in items:
+            lawd, apt, dong = str(w["lawd"]), str(w["apt"]), str(w.get("dong") or "")
+            try:
+                rows = c.execute("SELECT deal_date, floor, area, amount, umd FROM rtms_apt_trade WHERE lawd_cd=? AND name=? AND (?='' OR umd=?) "
+                                 "AND deal_ymd>=? AND COALESCE(cancelled,0)=0 AND amount IS NOT NULL ORDER BY deal_date DESC LIMIT 200",
+                                 (lawd, apt, dong, dong, _ym_back(today, WATCH_MONTHS - 1))).fetchall()
+            except sqlite3.Error as e:
+                log.warning("관심 단지 거래 조회 실패: %s", e)
+                return out
+            wkey = f"{lawd}|{dong}|{apt}"
+            deals = [{"key": _h(f"{wkey}|{r['deal_date']}|{r['floor']}|{r['area']}|{r['amount']}"), "date": r["deal_date"] or "",
+                      "floor": r["floor"], "area": r["area"], "amount": r["amount"], "dong": r["umd"] or dong} for r in rows]
+            out.append((wkey, w, deals))
+    finally:
+        c.close()
+    return out
+
+
+def _seen(email: str, kind: str, refs: list[str]) -> set[str]:
+    if not refs:
+        return set()
+    c = _conn()
+    try:
+        got: set[str] = set()
+        for i in range(0, len(refs), 500):
+            part = refs[i:i + 500]
+            got |= {r[0] for r in c.execute(f"SELECT ref FROM reminder_log WHERE email=? AND kind=? AND ref IN ({','.join('?' * len(part))})",
+                                             (email, kind, *part))}
+        return got
+    finally:
+        c.close()
+
+
+def _mark(email: str, kind: str, refs: list[tuple[str, str]]) -> None:
+    """보내지 않고 '본 것'으로만 기록 (관심 단지를 처음 켰을 때 지난 거래를 한꺼번에 보내지 않게)."""
+    c = _conn()
+    try:
+        with c:
+            now = datetime.now().isoformat(timespec="seconds")
+            c.executemany("INSERT OR IGNORE INTO reminder_log (email, kind, ref, due, sent_at) VALUES (?,?,?,?,?)",
+                          [(email, kind, ref, due, now) for ref, due in refs])
+    finally:
+        c.close()
+
+
+def plan_digests(today: date | None = None, dry_run: bool = False) -> list[dict]:
+    """계정마다 하루 한 통 — kind 'my'(내 일정 하루 전), 'watch'(관심 단지 새 거래). 이미 보낸 항목은 뺀다.
+    처음 보는 관심 단지(기준선 표시가 없으면)는 지금 거래를 '본 것'으로만 남기고 보내지 않는다 (dry_run 이면 기록도 하지 않음)."""
+    today = today or date.today()
+    out: list[dict] = []
+    for email, st in _account_states():
+        prof = st.get("profile") or {}
+        if prof.get("alert_my"):
+            rows = my_rows(st, today)
+            done = _seen(email, "my", [r["ref"] for r in rows])
+            rows = [r for r in rows if r["ref"] not in done]
+            if rows:
+                out.append({"email": email, "kind": "my", "rows": rows})
+        if prof.get("alert_watch"):
+            fresh: list[dict] = []
+            for wkey, w, deals in watch_deals(st.get("re_watch") or [], today):
+                base = "base:" + _h(wkey)
+                if base not in _seen(email, "watch", [base]):
+                    if not dry_run:
+                        _mark(email, "watch", [(d["key"], d["date"]) for d in deals] + [(base, today.isoformat())])
+                    continue
+                done = _seen(email, "watch", [d["key"] for d in deals])
+                for d in deals:
+                    if d["key"] not in done:
+                        fresh.append({**d, "ref": d["key"], "apt": str(w["apt"]), "region": str(w.get("region") or "")})
+            if fresh:
+                fresh.sort(key=lambda x: x["date"], reverse=True)
+                out.append({"email": email, "kind": "watch", "rows": fresh[:MAX_WATCH_ROWS]})
+    return out
+
+
+def _man(v) -> str:
+    if v is None:
+        return "-"
+    eok, rest = divmod(int(v), 10000)
+    return f"{eok}억 {rest:,}만" if eok and rest else f"{eok}억" if eok else f"{rest:,}만"
+
+
+_TD = 'style="padding:6px 12px 6px 0;border-bottom:1px solid #2A2414;vertical-align:top"'
+_SUB = 'style="color:#B8AB8A"'
+
+
+def render_digest(d: dict) -> tuple[str, str]:
+    base = mailer.site_url()
+    esc = html.escape
+    if d["kind"] == "my":
+        rows = "".join(
+            f'<tr><td {_TD}><b>{"오늘" if r["left"] == 0 else "내일"}</b><br><span {_SUB}>{r["date"][5:].replace("-", ".")}</span></td>'
+            f'<td {_TD}>{esc(r["title"])}' + (f'<br><span {_SUB}>{esc(r["note"])}</span>' if r["note"] else "") + "</td></tr>"
+            for r in d["rows"])
+        body = (f'<p style="color:#E8DEC6;line-height:1.7;font-size:14px">내 공간 달력에 넣어 둔 일정 {len(d["rows"])}건이 다가왔어요.</p>'
+                f'<table style="font-size:14px;border-collapse:collapse;width:100%">{rows}</table>'
+                + _btn(f"{base}/my", "내 일정 달력 열기"))
+        first = d["rows"][0]
+        subj = f"[집보미] {'오늘' if first['left'] == 0 else '내일'} 일정 — {first['title'][:30]}" + (f" 외 {len(d['rows']) - 1}건" if len(d["rows"]) > 1 else "")
+        return subj, _wrap_acc("다가오는 내 일정", body, "내 공간 달력의 '하루 전 메일 알림'")
+    rows = "".join(
+        f'<tr><td {_TD}><b>{esc(r["apt"])}</b><br><span {_SUB}>{esc(r["region"])} {esc(r["dong"] or "")}</span></td>'
+        f'<td {_TD}>{esc(r["date"])}<br><span {_SUB}>{round(r["area"] or 0)}㎡ · {r["floor"] if r["floor"] is not None else "-"}층</span></td>'
+        f'<td {_TD} align="right"><b>{_man(r["amount"])}원</b></td></tr>' for r in d["rows"])
+    body = (f'<p style="color:#E8DEC6;line-height:1.7;font-size:14px">관심 단지에 새로 올라온 매매 실거래 {len(d["rows"])}건이 있어요. '
+            f'국토교통부 실거래가 공개 자료 기준이고, 계약 뒤 30일 안에 신고돼 계약일이 며칠 전일 수 있어요.</p>'
+            f'<table style="font-size:14px;border-collapse:collapse;width:100%">{rows}</table>'
+            + _btn(f"{base}/my-homes", "관심 단지 열기"))
+    names = list(dict.fromkeys(r["apt"] for r in d["rows"]))
+    subj = f"[집보미] 관심 단지 새 실거래 {len(d['rows'])}건 — {names[0][:24]}" + (f" 외 {len(names) - 1}곳" if len(names) > 1 else "")
+    return subj, _wrap_acc("관심 단지 새 실거래", body, "관심 단지 화면의 '새 거래 메일 알림'")
+
+
+def _wrap_acc(title: str, body: str, where: str) -> str:
+    """계정 알림용 — 구독 해지 링크 대신 끄는 곳을 적는다."""
+    base = mailer.site_url()
+    old = f'내 프로필에서 알림을 켜 두셔서 보내 드렸어요. 알림은 <a href="{base}/me" style="color:#B8AB8A">내 프로필</a>에서 끌 수 있어요.'
+    return _wrap(title, body, "").replace(old, f"직접 켠 알림이라 로그인한 계정 메일로 보내 드렸어요. {html.escape(where)}에서 끌 수 있어요.")
+
+
+def _send_digest(d: dict, out: dict) -> None:
+    claimed = [r for r in d["rows"] if _claim(d["email"], d["kind"], r["ref"], r.get("date") or "")]
+    if not claimed:
+        out["skipped"] += 1
+        return
+    subject, body = render_digest({**d, "rows": claimed})
+    try:
+        ok, _failed = mailer.send([(d["email"], "")], subject, lambda _t, b=body: b)
+    except Exception:  # noqa: BLE001 - 한 사람 실패가 나머지를 막지 않게
+        log.exception("내 일정·관심 단지 알림 메일 실패")
+        ok = 0
+    if ok:
+        out["sent"] += 1
+        out["kinds"][d["kind"]] = out["kinds"].get(d["kind"], 0) + 1
+    else:
+        for r in claimed:
+            _release(d["email"], d["kind"], r["ref"])
+        out["failed"] += 1

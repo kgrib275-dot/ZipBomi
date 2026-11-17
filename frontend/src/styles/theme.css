@@ -457,3 +457,20 @@ html.dlg-open,html.dlg-open body{overflow:hidden}
 .a2c-done a{font-size:.74rem;font-weight:800;white-space:nowrap}
 .a2c-row{display:flex;flex-wrap:wrap;gap:6px}
 .a2c .caption{margin:0}
+/* 근거 노트 ☆ 저장 (2026-11-17) */
+.ask-src .srcs li{display:flex;flex-wrap:wrap;gap:2px 6px;align-items:baseline}
+.src-bm{all:unset;cursor:pointer;color:var(--muted);font-size:1rem;line-height:1;padding:0 2px}
+.src-bm.on{color:var(--accent)}
+.src-bm:focus-visible{outline:2px solid var(--accent);border-radius:4px}
+.ask-src .src-foot{margin:6px 0 0}
+.ap-msg .ask-src{margin-top:6px;font-size:.84rem}
+/* 청약 공고 → 캘린더 (2026-11-17) */
+.cal-send{flex-basis:100%;display:flex;flex-wrap:wrap;gap:6px;align-items:center;padding:8px 0 2px}
+.cal-send .caption{flex-basis:100%;margin:0}
+/* 내 일정 메일·구독 주소 (2026-11-17) */
+.cal-sync{display:flex;flex-direction:column;gap:6px;border-top:1px solid var(--line);padding-top:8px}
+.alert-tg{display:flex;flex-wrap:wrap;gap:4px;align-items:center;font-size:.86rem;margin:6px 0 0}
+.cal-feed-url{display:flex;flex-direction:column;gap:6px}
+.cal-feed-url input{width:100%;box-sizing:border-box;font-family:var(--f-mono);font-size:.78rem}
+.bell-tag.s-new{background:var(--tint-a);color:var(--accent-2);border-color:var(--tint-line)}
+.cal-item:has(.cal-send){flex-wrap:wrap!important}

@@ -187,6 +187,9 @@ def my_alerts(c: Caller = CallerDep) -> dict:
     prof = (load_state(c.visitor).get("profile") or {}) if c.visitor else {}
     sub = db.subscriber_by_visitor(c.visitor)
     sent = {(r["kind"], r["ref"]): r["sent_at"] for r in reminders.status_for(sub["email"])} if sub else {}
+    acc = accounts.by_raw(c.raw) if c.visitor.startswith("c:") else None  # 로그인 계정 메일로 보낸 것도 '메일 보냄'으로 (2026-11-17)
+    if acc:
+        sent.update({(r["kind"], r["ref"]): r["sent_at"] for r in reminders.status_for(acc["email"])})
     today = date.today()
     items: list[dict] = []
     ids = [i for i in (prof.get("alert_apply") or []) if isinstance(i, str)][:reminders.MAX_APPLY_ALERTS]
@@ -209,6 +212,9 @@ def my_alerts(c: Caller = CallerDep) -> dict:
                       "sent_at": None, "url": "/me", "mail_on": (lease - timedelta(days=nxt)).isoformat() if nxt else None})
     # 내 공간에서 항목마다 정한 알림 날짜·직접 넣은 일정 (2026-11-02) — 사이트 🔔에만 뜬다 (메일 없음)
     st = load_state(c.visitor) if c.visitor else {}
+    my_mail = bool(acc and prof.get("alert_my"))
+    my_sent = {ref: at for (k, ref), at in sent.items() if k == "my"}
+
     def _add_custom(key: str, title: str, when: str, note: str, url: str) -> None:
         try:
             d = date.fromisoformat(when[:10])
@@ -217,8 +223,10 @@ def my_alerts(c: Caller = CallerDep) -> dict:
         left = (d - today).days
         if left < -7:
             return
+        sent_at = my_sent.get(f"{key if key.startswith(('ev:', 'td:')) else 'it:' + key[:60]}:{d.isoformat()}")
         items.append({"kind": "custom", "id": key, "title": title[:80], "region": "", "what": note[:60] or "내 알림", "due": d.isoformat(),
-                      "left": left, "state": "past" if left < 0 else "soon" if left <= 3 else "wait", "sent_at": None, "url": url, "mail_on": None})
+                      "left": left, "state": "sent" if sent_at else "past" if left < 0 else "soon" if left <= 3 else "wait", "sent_at": sent_at, "url": url,
+                      "mail_on": (d - timedelta(days=reminders.MY_DAYS)).isoformat() if my_mail and left > reminders.MY_DAYS else None})
     for key, v in (st.get("my_items") or {}).items() if isinstance(st.get("my_items"), dict) else []:
         if isinstance(v, dict) and v.get("remind"):
             _add_custom(str(key), str(v.get("title") or "내 알림"), str(v["remind"]), str(v.get("remind_note") or v.get("memo") or ""), "/my")
@@ -228,8 +236,19 @@ def my_alerts(c: Caller = CallerDep) -> dict:
     for ev in st.get("my_events") or [] if isinstance(st.get("my_events"), list) else []:
         if isinstance(ev, dict) and ev.get("date"):
             _add_custom("ev:" + str(ev.get("id") or ""), str(ev.get("title") or "내 일정"), str(ev["date"]), str(ev.get("memo") or ""), "/my")
+    # 관심 단지 최근 2주 계약 거래 (2026-11-17) — 메일을 켜지 않아도 🔔에 보인다 (계약일 기준, 신고는 최대 30일 늦을 수 있음)
+    try:
+        for _wkey, w, deals in reminders.watch_deals(st.get("re_watch") or [], today)[:10]:
+            recent = [d for d in deals if d["date"] and (today - date.fromisoformat(d["date"][:10])).days <= 14]
+            if recent:
+                top = recent[0]
+                items.append({"kind": "watch", "id": _wkey, "title": str(w.get("apt") or "")[:80], "region": str(w.get("region") or ""),
+                              "what": f"최근 2주 거래 {len(recent)}건 · 마지막 {reminders._man(top['amount'])}원", "due": top["date"][:10],
+                              "left": None, "state": "new", "sent_at": None, "url": "/my-homes", "mail_on": None})
+    except Exception:  # noqa: BLE001 - 거래 표가 없거나 잠겨도 🔔 나머지는 보여 준다
+        pass
     items.sort(key=lambda x: (x["left"] is None, x["left"] if x["left"] is not None and x["left"] >= 0 else 10_000))
-    return {"items": items, "subscribed": bool(sub), "urgent": sum(1 for x in items if x["state"] == "soon")}
+    return {"items": items, "subscribed": bool(sub), "account_mail": bool(acc), "urgent": sum(1 for x in items if x["state"] == "soon")}
 
 
 @router.put("/me/state")
