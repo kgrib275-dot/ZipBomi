@@ -81,3 +81,7 @@
 .lr-th{all:unset;cursor:pointer;white-space:nowrap}.lr-th.on{color:var(--accent-2)}
 .lr-v.up{color:var(--err-ink)}.lr-v.down{color:#3b82f6}
 .lr-bar{display:block;height:4px;background:var(--surface-2);border-radius:3px;margin-top:3px;overflow:hidden}.lr-bar i{display:block;height:100%;background:var(--accent)}
+/* 바깥 캘린더로 보내기 (2026-11-17): 일정마다 구글 캘린더 G+, 목록 전체 .ics */
+.mycal-list .my-g{font-size:.7rem;font-weight:800;color:var(--accent-2);text-decoration:none;border:1px solid var(--line);border-radius:6px;padding:0 5px;white-space:nowrap}
+.mycal-list .my-g:hover{border-color:var(--accent)}
+.mycal-out{display:flex;flex-wrap:wrap;gap:4px 8px;align-items:center}

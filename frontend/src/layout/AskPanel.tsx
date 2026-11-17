@@ -1,7 +1,7 @@
 // 보미AI 옆 패널 (2026-11-02) — 페이지를 옮기지 않고 보던 화면 옆에서 질문한다. ✦ 버튼·메뉴 '보미AI'로 연다.
 // 질문은 /api/ask (내 공간 자료 함께 — mine), 대화는 이 탭(sessionStorage)에만 남고 /ask 전체 화면과 이어진다.
 // 로그인 전이면 로그인 안내, 무료 1회를 다 쓰면 관리자 문의로 사용 신청.
-import { useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { ApiError, get, post } from "../api";
 import { useDialogs } from "../components/Dialogs";
@@ -10,6 +10,8 @@ import { useMe } from "../me";
 type Turn = { role: "user" | "assistant"; content: string };
 type Usage = { enabled: boolean; quota: number; used: number; limit_hit: boolean; linked: boolean; need_grant?: boolean; is_admin: boolean;
   email_masked?: string; member?: { expires?: string } | null };
+// 일정 담기는 버튼을 누를 일이 있을 때만 받아 온다 (패널은 모든 화면에 실리므로 처음 내려받는 양을 늘리지 않게)
+const AskToCalendar = lazy(() => import("../components/AskToCalendar"));
 const HKEY = "zipgenie-ask-history";
 const MKEY = "zipgenie-ask-mine";
 const SUGGEST = ["내 관심 단지 최근 거래 흐름 요약해 줘", "이번 주 꼭 알아야 할 부동산 소식 3가지", "내 가점으로 해볼 만한 청약은?", "스트레스 DSR이 내 대출 한도에 주는 영향은?"];
@@ -111,7 +113,11 @@ export default function AskPanel() {
             {SUGGEST.map((s) => <button key={s} type="button" className="ap-sug" disabled={!loggedIn || busy} onClick={() => send(s)}>{s}<span>›</span></button>)}
           </div>
         )}
-        {hist.map((t, i) => <div key={i} className={`ap-msg ${t.role}`}>{t.role === "assistant" ? <Text s={t.content} /> : t.content}</div>)}
+        {hist.map((t, i) => (
+          <div key={i} className={`ap-msg ${t.role}`}>
+            {t.role === "assistant" ? <><Text s={t.content} /><Suspense fallback={null}><AskToCalendar text={t.content} compact /></Suspense></> : t.content}
+          </div>
+        ))}
         {busy && <div className="ap-msg assistant typing">답을 찾는 중…</div>}
         {err && <div className="ap-err">{err}</div>}
         <div ref={end} />

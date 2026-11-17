@@ -4,12 +4,14 @@
 import { useMemo, useState } from "react";
 import { useMe } from "../me";
 import { useTodos } from "./MyTools";
+import { type CalEvent, downloadIcs, googleCalUrl } from "../calendarLink";
 
 export type MyItem = { title?: string; memo?: string; remind?: string; remind_note?: string };
 type Ev = { date: string; label: string; kind: "start" | "end" | "win" | "lease" | "remind" | "event"; title: string; key?: string };
 type NoticeLite = { notice_id: string; name: string; receipt_start: string | null; receipt_end: string | null; winner_date: string | null };
 
-const DOW = ["일", "월", "화", "수", "목", "금", "토"];
+const toCal = (e: Ev): CalEvent => ({ date: e.date, title: `[${e.label}] ${e.title.replace(/^🔔 /, "")}`, memo: e.kind === "event" ? "집보미 내 일정" : "집보미 내 공간 일정" });
+const DOW =["일", "월", "화", "수", "목", "금", "토"];
 const iso = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 
 export function useMyItems() {
@@ -23,8 +25,11 @@ export function useMyItems() {
   };
   const addEvent = (date: string, title: string, memo = "") =>
     setState({ my_events: [...events, { id: Math.random().toString(36).slice(2, 10), date, title: title.slice(0, 80), memo: memo.slice(0, 300) }].slice(-100) });
+  // 여러 개를 한 번에 — addEvent 를 반복 호출하면 같은 옛 목록 위에 덮어써 마지막 것만 남는다
+  const addEvents = (list: { date: string; title: string; memo?: string }[]) =>
+    setState({ my_events: [...events, ...list.map((e) => ({ id: Math.random().toString(36).slice(2, 10), date: e.date, title: e.title.slice(0, 80), memo: (e.memo || "").slice(0, 300) }))].slice(-100) });
   const delEvent = (id: string) => setState({ my_events: events.filter((e) => e.id !== id) });
-  return { items, events, setItem, addEvent, delEvent };
+  return { items, events, setItem, addEvent, addEvents, delEvent };
 }
 
 /** 항목 하나의 메모·알림 버튼과 펼침 편집기 */
@@ -122,6 +127,7 @@ export function MyCalendar({ apply, alerts, lease, side }: { apply: NoticeLite[]
               {upcoming.map((e, i) => (
                 <li key={i}><span className={`mtag k-${e.kind}`}>{e.label}</span><span className="d">{e.date.slice(5).replace("-", ".")}</span>
                   <span className="t">{e.title}</span>
+                  <a className="my-g" href={googleCalUrl(toCal(e))} target="_blank" rel="noopener noreferrer" title="구글 캘린더에 추가 (누르면 구글 화면이 열려요)" aria-label={`${e.title} 구글 캘린더에 추가`}>G+</a>
                   {e.kind === "event" && e.key && <button type="button" className="my-x" aria-label="일정 지우기" onClick={() => delEvent(e.key!)}>×</button>}</li>
               ))}
             </ul>
@@ -130,6 +136,16 @@ export function MyCalendar({ apply, alerts, lease, side }: { apply: NoticeLite[]
             <input type="text" maxLength={80} value={title} onChange={(e) => setTitle(e.target.value)} placeholder={`${(day || today).slice(5).replace("-", ".")} 일정 추가 (예: 임장, 은행 상담)`} />
             <button className="btn sm primary" disabled={!title.trim()}>추가</button>
           </form>
+          {(() => {
+            const out = (day ? evs.filter((e) => e.date === day) : evs.filter((e) => e.date >= today)).sort((a, b) => a.date.localeCompare(b.date)).slice(0, 200);
+            return out.length > 0 && (
+              <div className="mycal-out">
+                <button type="button" className="btn sm" onClick={() => downloadIcs(out.map(toCal), day ? `zipbomi-${day}.ics` : "zipbomi-calendar.ics")}>
+                  📥 {day ? "이날" : "앞으로"} 일정 {out.length}건 .ics 받기</button>
+                <span className="caption">아이폰·아웃룩·삼성 캘린더에서 열면 담겨요. 구글은 일정마다 G+</span>
+              </div>
+            );
+          })()}
           {side}
         </div>
       </div>
