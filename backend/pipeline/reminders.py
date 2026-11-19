@@ -12,7 +12,7 @@ from __future__ import annotations
 import html
 import logging
 import sqlite3
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 
 from pipeline import accounts, db, mailer, profile, webpush
 
@@ -286,7 +286,7 @@ def _account_states() -> list[tuple[str, dict]]:
         except (ValueError, TypeError):
             continue
         prof = st.get("profile") if isinstance(st, dict) else None
-        if isinstance(prof, dict) and (prof.get("alert_my") or prof.get("alert_watch")):
+        if isinstance(prof, dict) and (prof.get("alert_my") or prof.get("alert_watch") or prof.get("alert_week")):
             out.append((r[0], st))
     return out
 
@@ -392,6 +392,37 @@ def _mark(email: str, kind: str, refs: list[tuple[str, str]]) -> None:
         c.close()
 
 
+def week_rows(watch: list, today: date) -> list[dict]:
+    """관심 단지·지역의 지난 7일 vs 그 전 7일 매매 거래 건수와 3.3㎡당 중위가 (계약일 기준 — 신고가 늦어 최근 며칠은 덜 잡힐 수 있다). 거래가 한 건도 없으면 뺀다."""
+    items = [w for w in watch if isinstance(w, dict) and w.get("lawd")][:MAX_WATCH_ITEMS]
+    if not items:
+        return []
+    c = db.connect()
+    out: list[dict] = []
+    try:
+        lo = (today - timedelta(days=14)).isoformat()
+        mid = (today - timedelta(days=7)).isoformat()
+        for w in items:
+            lawd, apt, dong = str(w["lawd"]), str(w.get("apt") or ""), str(w.get("dong") or "")
+            try:
+                rows = c.execute("SELECT deal_date, area, amount FROM rtms_apt_trade WHERE lawd_cd=? AND (?='' OR name=?) AND (?='' OR ?='' OR umd=?) "
+                                 "AND deal_ymd>=? AND deal_date>? AND deal_date<=? AND COALESCE(cancelled,0)=0 AND amount>0 AND area>0",
+                                 (lawd, apt, apt, apt, dong, dong, _ym_back(today, 1), lo, today.isoformat())).fetchall()
+            except sqlite3.Error as e:
+                log.warning("주간 요약 조회 실패: %s", e)
+                return out
+            cur = [r for r in rows if r["deal_date"] > mid]
+            prev = [r for r in rows if r["deal_date"] <= mid]
+            if not rows:
+                continue
+            med = lambda v: round(sorted(x["amount"] / x["area"] * 3.3 for x in v)[len(v) // 2]) if v else None  # noqa: E731
+            out.append({"ref": f"wk:{today.isocalendar()[0]}-{today.isocalendar()[1]:02d}:{lawd}|{dong}|{apt}", "date": today.isoformat(), "apt": apt or str(w.get("region") or lawd),
+                        "region": str(w.get("region") or ""), "n": len(cur), "prev_n": len(prev), "pp": med(cur), "prev_pp": med(prev)})
+    finally:
+        c.close()
+    return out
+
+
 def plan_digests(today: date | None = None, dry_run: bool = False) -> list[dict]:
     """계정마다 하루 한 통 — kind 'my'(내 일정 하루 전), 'watch'(관심 단지 새 거래). 이미 보낸 항목은 뺀다.
     처음 보는 관심 단지(기준선 표시가 없으면)는 지금 거래를 '본 것'으로만 남기고 보내지 않는다 (dry_run 이면 기록도 하지 않음)."""
@@ -405,6 +436,12 @@ def plan_digests(today: date | None = None, dry_run: bool = False) -> list[dict]
             rows = [r for r in rows if r["ref"] not in done]
             if rows:
                 out.append({"email": email, "kind": "my", "rows": rows})
+        if prof.get("alert_week") and today.weekday() == 0:  # 월요일 아침 — 지난 한 주 요약
+            rows = week_rows(st.get("re_watch") or [], today)
+            done = _seen(email, "week", [r["ref"] for r in rows])
+            rows = [r for r in rows if r["ref"] not in done]
+            if rows:
+                out.append({"email": email, "kind": "week", "rows": rows})
         if prof.get("alert_watch"):
             fresh: list[dict] = []
             for wkey, w, deals in watch_deals(st.get("re_watch") or [], today):
@@ -448,6 +485,22 @@ def render_digest(d: dict) -> tuple[str, str]:
         first = d["rows"][0]
         subj = f"[집보미] {'오늘' if first['left'] == 0 else '내일'} 일정 — {first['title'][:30]}" + (f" 외 {len(d['rows']) - 1}건" if len(d["rows"]) > 1 else "")
         return subj, _wrap_acc("다가오는 내 일정", body, "내 공간 달력의 '하루 전 메일 알림'")
+    if d["kind"] == "week":
+        def _pp(r):
+            return f"{r['pp']:,}만원" if r["pp"] else "-"
+
+        def _chg(r):
+            if r["pp"] and r["prev_pp"]:
+                x = (r["pp"] - r["prev_pp"]) / r["prev_pp"] * 100
+                return f"{x:+.1f}%"
+            return "-"
+        rows = "".join(
+            f'<tr><td {_TD}><b>{esc(r["apt"])}</b><br><span {_SUB}>{esc(r["region"])}</span></td>'
+            f'<td {_TD}>거래 {r["n"]}건<br><span {_SUB}>지난주 {r["prev_n"]}건</span></td>'
+            f'<td {_TD} align="right">{_pp(r)}<br><span {_SUB}>3.3㎡당 · {_chg(r)}</span></td></tr>' for r in d["rows"])
+        body = (f'<p style="color:#E8DEC6;line-height:1.7;font-size:14px">관심 단지·지역의 지난 7일 매매 거래를 그 전 7일과 비교했어요. 계약일 기준이고 신고가 늦어 최근 며칠은 덜 잡힐 수 있어요.</p>'
+                f'<table style="font-size:14px;border-collapse:collapse;width:100%">{rows}</table>' + _btn(f"{base}/my-homes", "관심 단지 열기"))
+        return f"[집보미] 이번 주 관심 단지·지역 거래 요약 {len(d['rows'])}곳", _wrap_acc("주간 거래 요약", body, "관심 단지 화면의 '주간 요약'")
     rows = "".join(
         f'<tr><td {_TD}><b>{esc(r["apt"])}</b><br><span {_SUB}>{esc(r["region"])} {esc(r["dong"] or "")}</span></td>'
         f'<td {_TD}>{esc(r["date"])}<br><span {_SUB}>{round(r["area"] or 0)}㎡ · {r["floor"] if r["floor"] is not None else "-"}층</span></td>'
@@ -475,6 +528,8 @@ def push_text(d: dict) -> tuple[str, str, str]:
         first = rows[0]
         when = "오늘" if first["left"] == 0 else "내일"
         return f"{when} 일정 {len(rows)}건", first["title"][:60] + (f" 외 {len(rows) - 1}건" if len(rows) > 1 else ""), "/my"
+    if d["kind"] == "week":
+        return f"이번 주 거래 요약 {len(rows)}곳", " · ".join(f"{r['apt'][:14]} {r['n']}건" for r in rows[:3]), "/my-homes"
     names = list(dict.fromkeys(r["apt"] for r in rows))
     return f"관심 단지 새 실거래 {len(rows)}건", names[0][:40] + (f" 외 {len(names) - 1}곳" if len(names) > 1 else ""), "/my-homes"
 

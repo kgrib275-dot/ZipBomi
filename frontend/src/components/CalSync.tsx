@@ -9,7 +9,7 @@ import { useProfile } from "../profile";
 
 type Feed = { account: boolean; on: boolean; created_at?: string | null; last_fetch_at?: string | null };
 
-export function AlertToggle({ k, label, hint }: { k: "alert_my" | "alert_watch"; label: string; hint: string }) {
+export function AlertToggle({ k, label, hint }: { k: "alert_my" | "alert_watch" | "alert_week"; label: string; hint: string }) {
   const { me } = useMe();
   const { openLogin } = useDialogs();
   const { profile, save } = useProfile();

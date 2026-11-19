@@ -1,5 +1,6 @@
 // 노트 (/notes) — Streamlit 판 app_pages/notes.py + app/note_ui.py 이식.
 // ?id= 가 있으면 상세, 없으면 목록. 필터(q·semantic·cats·kinds·inds·sort)는 방문자 상태(useMe)에 저장돼 다음 방문에도 그대로다.
+import { recordRecent } from "../recent";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { get } from "../api";
@@ -60,6 +61,7 @@ function NoteDetail({ id }: { id: string }) {
   const [pendingJump, setPendingJump] = useState<string | null>(null);
   const { profile } = useProfile();
   useTitle(data?.note.title ? `${data.note.title} — 집보미` : undefined);
+  useEffect(() => { if (data?.note.title) recordRecent({ kind: "note", title: data.note.title, to: `/notes?id=${id}` }); }, [id, data?.note.title]);
 
   useEffect(() => { window.scrollTo(0, 0); setMore(false); }, [id]);
   useEffect(() => {

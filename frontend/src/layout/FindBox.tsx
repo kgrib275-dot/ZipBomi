@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { get } from "../api";
+import { getRecent, recentIcon } from "../recent";
 
 type Hit = { key: string; to: string; label: string; sub?: string; group: string };
 type Found = {
@@ -37,7 +38,8 @@ export default function FindBox({ onClose }: { onClose: () => void }) {
   const hits = useMemo<Hit[]>(() => {
     const t = q.trim();
     const pages = (t ? PAGES.filter(([, l]) => pageMatch(t, l)) : PAGES.slice(0, 8)).slice(0, 6).map(([to, label]): Hit => ({ key: "p" + to, to, label, group: "화면" }));
-    if (!found) return pages;
+    const recent = !t ? getRecent().slice(0, 5).map((r): Hit => ({ key: "c" + r.to, to: r.to, label: `${recentIcon(r.kind)} ${r.title}`, sub: r.sub, group: "최근 본 것" })) : [];
+    if (!found) return [...recent, ...pages];
     return [
       ...found.apts.map((a): Hit => ({ key: `a${a.lawd}${a.dong}${a.apt}`, to: `/my-homes?lawd=${a.lawd}&dong=${encodeURIComponent(a.dong)}&apt=${encodeURIComponent(a.apt)}`, label: a.apt, sub: `${a.region} ${a.dong}`.trim(), group: "단지" })),
       ...found.regions.map((r): Hit => ({ key: "r" + r.code, to: `/deals?lawd=${r.code}`, label: r.name, sub: "실거래가 보기", group: "지역" })),

@@ -43,3 +43,25 @@ export function ThemeToggle() {
     </button>
   );
 }
+
+// 글자 크기 (2026-11-19) — 기본 → 크게 → 아주 크게. 고른 값은 localStorage "ax_fs", <html data-fs> 로 건다(첫 그림 전 적용은 index.html).
+type Fs = "" | "lg" | "xl";
+const FS_KEY = "ax_fs";
+const FS_NEXT: Record<Fs, Fs> = { "": "lg", lg: "xl", xl: "" };
+const FS_LABEL: Record<Fs, string> = { "": "기본", lg: "크게", xl: "아주 크게" };
+function readFs(): Fs {
+  try { const v = localStorage.getItem(FS_KEY); return v === "lg" || v === "xl" ? v : ""; } catch { return ""; }
+}
+export function FontSizeToggle({ className = "theme-btn fs-btn", text }: { className?: string; text?: boolean }) {
+  const [fs, setFs] = useState<Fs>(readFs);
+  useEffect(() => {
+    const root = document.documentElement;
+    if (fs) root.setAttribute("data-fs", fs); else root.removeAttribute("data-fs");
+    try { if (fs) localStorage.setItem(FS_KEY, fs); else localStorage.removeItem(FS_KEY); } catch { /* 저장이 막혀도 이번 화면에는 적용 */ }
+  }, [fs]);
+  return (
+    <button type="button" className={className} onClick={() => setFs(FS_NEXT[fs])} title={`글자 크기: ${FS_LABEL[fs]} (누르면 ${FS_LABEL[FS_NEXT[fs]]})`} aria-label={`글자 크기 ${FS_LABEL[fs]}, 눌러서 ${FS_LABEL[FS_NEXT[fs]]}로 바꾸기`}>
+      {text ? `글자 크기: ${FS_LABEL[fs]}` : <span aria-hidden="true" style={{ fontSize: fs === "xl" ? "1.25em" : fs === "lg" ? "1.1em" : "0.95em", fontWeight: 700 }}>가</span>}
+    </button>
+  );
+}

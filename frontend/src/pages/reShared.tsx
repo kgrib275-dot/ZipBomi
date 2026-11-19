@@ -1,5 +1,6 @@
 // 관심 단지·지역 드릴다운 공용 조각 (Phase 2) — 관심 목록 저장(re_watch), 금액 표기, 월별 추이 차트(가격 선 + 거래량 막대 + 노트 표시).
 // 차트는 축을 하나만 쓴다: 위 칸 = 가격(선), 아래 칸 = 거래량(막대), 가로축(월)만 같이 쓴다.
+import { ReportData } from "../components/FeedbackBits";
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useMe } from "../me";
@@ -38,6 +39,7 @@ export function SourceLine({ source, asOf, fetchedAt }: { source?: string; asOf?
       출처: {source || SOURCE_FALLBACK}
       {asOf ? ` · ${asOf} 계약분까지` : ""}
       {fetchedAt ? ` · ${fetchedAt.slice(0, 10)} 기준` : ""}
+      {" · "}<ReportData what={`${source || ""} ${asOf || ""}`.trim()} />
     </p>
   );
 }

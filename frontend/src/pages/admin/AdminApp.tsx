@@ -29,6 +29,7 @@ const PAGES: { path: string; label: string; grp?: string; C: React.LazyExoticCom
   { path: "subscribers", label: "구독·발송", grp: "사람", C: L(() => import("./Subscribers")) },
   { path: "accounts", label: "회원 계정", C: L(() => import("./Accounts")) },
   { path: "contacts", label: "문의함", C: L(() => import("./Contacts")) },
+  { path: "feedback", label: "피드백", C: L(() => import("./Feedback")) },
   { path: "access", label: "관리자·접속", C: L(() => import("./Access")) },
   { path: "privacy", label: "개인정보 처리방침", C: L(() => import("./PrivacySettings")) },
 ];

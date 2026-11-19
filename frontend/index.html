@@ -14,6 +14,7 @@
         var t = "dark";
         try { t = localStorage.getItem("ax_theme") || "dark"; } catch (e) {}
         if (t !== "system") document.documentElement.setAttribute("data-theme", t === "light" ? "light" : "dark");
+        try { var f = localStorage.getItem("ax_fs"); if (f === "lg" || f === "xl") document.documentElement.setAttribute("data-fs", f); } catch (e) {}
       })();
     </script>
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />

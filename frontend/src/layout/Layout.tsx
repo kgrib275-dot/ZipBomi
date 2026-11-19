@@ -10,7 +10,7 @@ import AskPanel from "./AskPanel";
 const FindBox = lazy(() => import("./FindBox"));
 import Nudge from "./Nudge";
 import TrialGate, { SaveError } from "./TrialGate";
-import { ThemeToggle } from "./Theme";
+import { FontSizeToggle, ThemeToggle } from "./Theme";
 import { LangToggle } from "./Translate";
 
 const PLAY = [["/today", "오늘의 퀴즈"], ["/terms", "부동산 용어 퀴즈"], ["/type", "부동산 성향 16유형"], ["/career", "내 집 마련 전략 찾기"],
@@ -151,6 +151,7 @@ function Shell({ children }: { children: React.ReactNode }) {
               <span aria-hidden="true" className={`me-ico${me?.account ? " in" : ""}`}>👤</span> <span className="lbl">내 공간</span>
             </NavLink>
             <ThemeToggle />
+            <FontSizeToggle />
             <LangToggle />
             <button className="btn primary sm sub" onClick={() => openSubscribe("header")}>구독</button>
           </div>
@@ -182,7 +183,7 @@ function Footer() {
         <span>집보미 · 집에 관한 모든 것 — 시세·청약·대출·세금·정책을 한곳에서</span>
         <span className="foot-note">무료 정보 서비스 · 투자 권유가 아닌 참고 자료입니다 · 노트 초안과 보미AI 답변은 생성형 AI로 만듭니다</span>
         <span>
-          <Link to="/help">고객센터</Link> · <Link to="/letter">뉴스레터 미리보기</Link>
+          <Link to="/help">고객센터</Link> · <Link to="/letter">뉴스레터 미리보기</Link> · <FontSizeToggle className="linkish" text />
           {me?.privacy_active !== false && <> · <Link to="/privacy" style={{ color: "var(--ink-hi)", fontWeight: 800 }}>개인정보 처리방침</Link></>}
         </span>
       </div>

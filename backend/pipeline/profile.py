@@ -108,7 +108,7 @@ def clean(p) -> dict | None:
     if p.get("alert_lease") is True and "lease_end" in out:
         out["alert_lease"] = True
     # 로그인 계정 메일 알림 (2026-11-17, pipeline/reminders.plan_digests): 내 일정·알림·할 일 하루 전, 관심 단지 새 실거래
-    for k in ("alert_my", "alert_watch"):
+    for k in ("alert_my", "alert_watch", "alert_week"):
         if p.get(k) is True:
             out[k] = True
     ids = p.get("alert_apply")

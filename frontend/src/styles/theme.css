@@ -505,3 +505,25 @@ html.dlg-open,html.dlg-open body{overflow:hidden}
 .similar h4{margin:0 0 6px}
 .similar ul{margin:0;padding-left:18px;display:grid;gap:4px}
 .afford-table td,.afford-table th{white-space:nowrap}
+
+/* 음성 입력 버튼 (2026-11-19) */
+.voice-btn{padding:6px 10px}
+.voice-btn.on{background:var(--accent);color:#120F08}
+
+/* 답변 평가·오류 신고 (2026-11-19) */
+.ans-rate{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:6px}
+.ans-rate.compact .btn{padding:2px 8px}
+.ans-rate-ask{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.report-data .report-form{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:4px}
+.report-data input{min-width:220px;flex:1;padding:6px 8px;border:1px solid var(--line);border-radius:8px;background:var(--surface-2);color:var(--ink);font:inherit}
+
+/* 글자 크기 (2026-11-19) — 대부분 rem 이라 루트만 키운다 */
+html[data-fs="lg"],html[data-fs="lg"] body{font-size:19.5px}
+html[data-fs="xl"],html[data-fs="xl"] body{font-size:22px}
+@media (max-width:520px){.fs-btn{display:none}}
+
+/* 최근 본 것 (2026-11-19) */
+.recent-strip{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:0 0 14px}
+/* 글자를 키워도 상단 메뉴는 원래 크기 그대로 — 휴대폰 폭에서 버튼이 화면 밖으로 밀리지 않게 (zoom 으로 되돌림) */
+html[data-fs="lg"] .hdr{zoom:calc(17 / 19.5)}
+html[data-fs="xl"] .hdr{zoom:calc(17 / 22)}

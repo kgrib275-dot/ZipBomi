@@ -8,6 +8,8 @@ import { ApiError, get, post } from "../api";
 import { SubscribeCTA, useDialogs } from "../components/Dialogs";
 import { Alert, Guide, useLoad } from "../components/ui";
 import AskToCalendar from "../components/AskToCalendar";
+import { AnswerRating } from "../components/FeedbackBits";
+import VoiceButton from "../components/VoiceButton";
 import AskActions from "../components/AskActions";
 import { suggestFor } from "../askActions";
 import { useProfile, useRegions } from "../profile";
@@ -176,6 +178,7 @@ export default function Ask() {
                   <Markdown text={t.content} />
                   {!!t.sources?.length && <AskSources sources={t.sources} />}
                   {t.role === "assistant" && <AskActions text={t.content} />}
+                  {t.role === "assistant" && !t.weak && i > 0 && <AnswerRating q={history[i - 1]?.content || ""} a={t.content} />}
                   {t.role === "assistant" && <AskToCalendar text={t.content} />}
                   {t.weak && i === history.length - 1 && usage.web_search !== false && !limitHit && (
                     <button className="btn sm" type="button" disabled={!!busy} onClick={() => webSearch(i)}>{busy === "web" ? "웹을 검색하는 중..." : "🌐 웹 검색으로 다시 답하기"}</button>
@@ -205,6 +208,7 @@ export default function Ask() {
               onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); send(q); } }} />
             <div className="chat-in-r">
               <span className="caption">{q.length}/500</span>
+              <VoiceButton value={q} onChange={setQ} disabled={limitHit || !!busy} />
               <button className="btn primary" disabled={limitHit || !!busy || !q.trim()}>보내기</button>
             </div>
           </form>

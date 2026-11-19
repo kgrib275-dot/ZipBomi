@@ -4,7 +4,8 @@
 // 관심 목록은 방문자 상태 re_watch — 이 브라우저에만, 구독자와 이어져 있으면 맞춤 메일에도 쓰인다. 색인하지 않는다(og_meta.NOINDEX).
 import SimilarApts from "../components/SimilarApts";
 import { applyBadge } from "../applyStatus";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { recordRecent } from "../recent";
 import { AlertToggle } from "../components/CalSync";
 import { Link, useSearchParams } from "react-router-dom";
 import { get } from "../api";
@@ -49,6 +50,7 @@ export default function MyHomes() {
         <p className="sec-p">실거래가에서 ☆로 담은 단지의 최근 거래를 평형별로, 청약 공고에서 ☆로 담은 공고는 일정과 함께 모았습니다. 로그인하면 기기 사이에 이어지고, 맞춤 브리핑을 구독하면 주간 메일에도 실립니다.</p>
         <AlertToggle k="alert_watch" label="관심 단지에 새 매매 실거래가 올라오면 메일로 받기"
           hint="매일 아침 실거래 자료를 확인해 새로 올라온 거래만 한 통으로 모아 보내요. 처음 켤 때 이미 있던 거래는 보내지 않아요." />
+        <AlertToggle k="alert_week" label="월요일 아침에 관심 단지·지역의 지난주 거래 요약 받기" hint="관심 단지·지역의 지난 7일 거래 건수와 3.3㎡당 중위가를 그 전 주와 비교해 월요일 아침에 보내요" />
       </div>
 
       <FavNotices />
@@ -168,6 +170,7 @@ function NoteField({ value, onSave }: { value: string; onSave: (v: string) => vo
 
 function Detail({ sel, watched, onClose }: { sel: { lawd: string; dong: string; apt: string }; watched: boolean; onClose: () => void }) {
   const { toggle } = useWatch();
+  useEffect(() => { recordRecent({ kind: "apt", title: sel.apt, sub: sel.dong, to: `/my-homes?lawd=${sel.lawd}&dong=${encodeURIComponent(sel.dong)}&apt=${encodeURIComponent(sel.apt)}` }); }, [sel.lawd, sel.dong, sel.apt]);
   // 평형 구간을 나눠 그린다 (59형·84형 가격이 한 선에 섞이면 오르내림이 평형 차이로 보인다) — 기본은 최근 거래가 가장 많은 평형
   const sm = useLoad(() => get<Summary>(sumUrl(sel)), [sel.lawd, sel.dong, sel.apt]);
   const [pick, setPick] = useState<string | null>(null);

@@ -1,5 +1,6 @@
 // /deals 의 추가 화면 조각 — 데이터셋 선택, 배치가 저장한 실거래 데이터 보기(/api/re/data), 청약 공고 탭(/api/re/apply), 금리·지수(/api/re/indicators).
 // 공공 API 를 직접 부르지 않고 배치 '부동산 데이터 수집'이 저장한 DB 만 읽는다. 자료가 없으면 숫자를 지어내지 않고 이유를 보여 준다.
+import { RecordRecent } from "../components/RecentStrip";
 import ScoreBadge from "../components/ScoreBadge";
 import { Fragment, useEffect, useMemo, useState } from "react";
 import { get } from "../api";
@@ -462,7 +463,7 @@ export function ApplyTab() {
               </div>
             </div>
             {(() => { const n = rows.find((x) => x.notice_id === open); return n ? (
-              <Dialog title={n.name} onClose={() => setOpen(null)} xl><ApplySide n={n} hideTitle /></Dialog>) : null; })()}
+              <Dialog title={n.name} onClose={() => setOpen(null)} xl><RecordRecent r={{ kind: "notice", title: n.name, sub: n.region || "", to: `/deals?tab=apply&q=${encodeURIComponent(n.name.slice(0, 30))}` }} /><ApplySide n={n} hideTitle /></Dialog>) : null; })()}
             <Pager page={page} pages={pages} setPage={setPage} />
             <p className="calc-note" style={{ marginTop: 10 }}>출처: 한국부동산원 청약홈(공공데이터포털)·LH 청약플러스 공고 목록. 일정은 반드시 공고문에서 다시 확인하세요.</p>
           </div>

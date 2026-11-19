@@ -6,6 +6,8 @@ import { Link, useLocation } from "react-router-dom";
 import { ApiError, get, post } from "../api";
 import { useDialogs } from "../components/Dialogs";
 import { useMe } from "../me";
+import { AnswerRating } from "../components/FeedbackBits";
+import VoiceButton from "../components/VoiceButton";
 import { suggestFor } from "../askActions";
 import { useProfile, useRegions } from "../profile";
 import type { Source } from "../components/AskSources";
@@ -124,7 +126,7 @@ export default function AskPanel() {
         )}
         {hist.map((t, i) => (
           <div key={i} className={`ap-msg ${t.role}`}>
-            {t.role === "assistant" ? <><Text s={t.content} /><Suspense fallback={null}>{!!t.sources?.length && <AskSources sources={t.sources} compact />}<AskActions text={t.content} compact /><AskToCalendar text={t.content} compact /></Suspense></> : t.content}
+            {t.role === "assistant" ? <><Text s={t.content} /><Suspense fallback={null}>{!!t.sources?.length && <AskSources sources={t.sources} compact />}<AskActions text={t.content} compact /><AskToCalendar text={t.content} compact /></Suspense>{i > 0 && <AnswerRating q={hist[i - 1]?.content || ""} a={t.content} compact />}</> : t.content}
           </div>
         ))}
         {busy && <div className="ap-msg assistant typing">답을 찾는 중…</div>}
@@ -146,6 +148,7 @@ export default function AskPanel() {
         <form className="ap-in" onSubmit={(e) => { e.preventDefault(); send(q); }}>
           <textarea rows={2} maxLength={500} value={q} placeholder="예: 광진구 84㎡ 요즘 시세 어때?" onChange={(e) => setQ(e.target.value)}
             onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(q); } }} disabled={busy} />
+          <VoiceButton value={q} onChange={setQ} disabled={busy} />
           <button className="btn primary" disabled={busy || !q.trim()} aria-label="보내기">↑</button>
         </form>
         </>
