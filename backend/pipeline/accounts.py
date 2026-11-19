@@ -192,6 +192,10 @@ def rotate(acc: dict) -> str:
         c.execute("UPDATE accounts SET raw=?, revoke_hash=NULL WHERE id=?", (new, acc["id"]))
         c.execute("DELETE FROM account_sessions WHERE account_id=?", (acc["id"],))  # 기기별 로그인도 모두 끊는다
         c.execute("DELETE FROM cal_feed WHERE account_id=?", (acc["id"],))  # 캘린더 구독 주소도 멈춘다 (새로 만들어야 함)
+        try:  # 웹 푸시로 등록한 기기도 풀린다 (2026-11-19)
+            c.execute("DELETE FROM push_sub WHERE account_id=?", (acc["id"],))
+        except Exception:  # noqa: BLE001 - 표가 아직 없으면 건너뜀
+            pass
         for table in ("visitor_state", "engagements", "subscribers", "profiles"):
             try:
                 c.execute(f"UPDATE {table} SET visitor=? WHERE visitor=?", ("c:" + new, old))
@@ -327,6 +331,10 @@ def delete_by_raw(raw: str) -> int:
     try:
         c.execute("DELETE FROM account_sessions WHERE account_id IN (SELECT id FROM accounts WHERE raw=?)", (raw,))
         c.execute("DELETE FROM cal_feed WHERE account_id IN (SELECT id FROM accounts WHERE raw=?)", (raw,))
+        try:
+            c.execute("DELETE FROM push_sub WHERE account_id IN (SELECT id FROM accounts WHERE raw=?)", (raw,))
+        except Exception:  # noqa: BLE001
+            pass
         for (email,) in c.execute("SELECT email FROM accounts WHERE raw=?", (raw,)).fetchall():
             try:  # 계정 전용 알림 기록(내 일정·관심 단지)도 함께 (2026-11-17) — 구독자 알림 기록은 구독 해지 때 따로 지운다
                 c.execute("DELETE FROM reminder_log WHERE email=? AND kind IN ('my', 'watch')", (email,))

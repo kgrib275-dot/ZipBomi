@@ -14,7 +14,7 @@ import logging
 import sqlite3
 from datetime import date, datetime
 
-from pipeline import db, mailer, profile
+from pipeline import accounts, db, mailer, profile, webpush
 
 log = logging.getLogger("zipgenie.reminders")
 
@@ -205,12 +205,12 @@ def run(today: date | None = None, dry_run: bool = False) -> dict:
         out["items"] = [{k: v for k, v in i.items() if k not in ("token", "notice")} | {"email": i["email"][:3] + "…"} for i in items]
         out["items"] += [{"kind": d["kind"], "count": len(d["rows"]), "email": d["email"][:3] + "…"} for d in digests]
         return out
-    if not mailer.is_configured():
-        out["error"] = "SMTP 설정이 없어 보내지 못했습니다"
-        return out
+    mail_ok = mailer.is_configured()
+    if not mail_ok:
+        out["error"] = "SMTP 설정이 없어 메일은 보내지 못했습니다 (웹 푸시만 보냄)"
     for d in digests:
-        _send_digest(d, out)
-    for it in items:
+        _send_digest(d, out, mail_ok)
+    for it in items if mail_ok else []:
         if not _claim(it["email"], it["kind"], it["ref"], it["due"]):
             out["skipped"] += 1  # 이미 보냄
             continue
@@ -458,17 +458,45 @@ def _wrap_acc(title: str, body: str, where: str) -> str:
     return _wrap(title, body, "").replace(old, f"직접 켠 알림이라 로그인한 계정 메일로 보내 드렸어요. {html.escape(where)}에서 끌 수 있어요.")
 
 
-def _send_digest(d: dict, out: dict) -> None:
+def push_text(d: dict) -> tuple[str, str, str]:
+    """웹 푸시용 제목·한 줄·열 주소."""
+    rows = d["rows"]
+    if d["kind"] == "my":
+        first = rows[0]
+        when = "오늘" if first["left"] == 0 else "내일"
+        return f"{when} 일정 {len(rows)}건", first["title"][:60] + (f" 외 {len(rows) - 1}건" if len(rows) > 1 else ""), "/my"
+    names = list(dict.fromkeys(r["apt"] for r in rows))
+    return f"관심 단지 새 실거래 {len(rows)}건", names[0][:40] + (f" 외 {len(names) - 1}곳" if len(names) > 1 else ""), "/my-homes"
+
+
+def _push_digest(d: dict) -> int:
+    """계정에 등록된 기기(웹 푸시)로도 보낸다 — 기기를 등록한 것이 동의. 실패해도 메일에는 영향 없음."""
+    try:
+        acc = accounts.by_email(d["email"])
+        if not acc:
+            return 0
+        title, body, url = push_text(d)
+        return webpush.send_account(acc["id"], title, body, url, "zipbomi-" + d["kind"])
+    except Exception:  # noqa: BLE001
+        log.exception("웹 푸시 실패")
+        return 0
+
+
+def _send_digest(d: dict, out: dict, mail_ok: bool = True) -> None:
     claimed = [r for r in d["rows"] if _claim(d["email"], d["kind"], r["ref"], r.get("date") or "")]
     if not claimed:
         out["skipped"] += 1
         return
     subject, body = render_digest({**d, "rows": claimed})
-    try:
-        ok, _failed = mailer.send([(d["email"], "")], subject, lambda _t, b=body: b)
-    except Exception:  # noqa: BLE001 - 한 사람 실패가 나머지를 막지 않게
-        log.exception("내 일정·관심 단지 알림 메일 실패")
-        ok = 0
+    pushed = _push_digest({**d, "rows": claimed})
+    ok = 0
+    if mail_ok:
+        try:
+            ok, _failed = mailer.send([(d["email"], "")], subject, lambda _t, b=body: b)
+        except Exception:  # noqa: BLE001 - 한 사람 실패가 나머지를 막지 않게
+            log.exception("내 일정·관심 단지 알림 메일 실패")
+            ok = 0
+    ok = ok or pushed
     if ok:
         out["sent"] += 1
         out["kinds"][d["kind"]] = out["kinds"].get(d["kind"], 0) + 1

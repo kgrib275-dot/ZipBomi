@@ -25,6 +25,65 @@ export function AlertToggle({ k, label, hint }: { k: "alert_my" | "alert_watch";
   );
 }
 
+const b64d = (s: string) => Uint8Array.from(atob(s.replace(/-/g, "+").replace(/_/g, "/") + "=".repeat((4 - (s.length % 4)) % 4)), (c) => c.charCodeAt(0));
+
+/** 이 기기로 알림 받기 (웹 푸시) — 알림 메일을 켜 두면 같은 알림이 등록한 기기에도 와요. */
+export function PushDevice() {
+  const { me } = useMe();
+  const [here, setHere] = useState(false);
+  const [count, setCount] = useState(0);
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState("");
+  const ok = typeof window !== "undefined" && "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
+  const reg = () => navigator.serviceWorker.getRegistration().then((r) => r || undefined);
+  useEffect(() => {
+    if (!ok || !me?.account) return;
+    (async () => {
+      const r = await reg(); const sub = r ? await r.pushManager.getSubscription() : null;
+      const st = await get<{ count?: number; here?: boolean }>(`me/push?endpoint=${encodeURIComponent(sub?.endpoint || "")}`).catch(() => null);
+      setHere(!!sub && !!st?.here); setCount(st?.count || 0);
+    })().catch(() => undefined);
+  }, [ok, me?.account]);
+  if (!me?.account) return null;
+  if (!ok) return <p className="caption alert-tg">🔔 이 기기 알림 — 아이폰은 사파리에서 '홈 화면에 추가'한 앱으로 열면 켤 수 있어요.</p>;
+  const on = async () => {
+    setBusy(true); setMsg("");
+    try {
+      const r = await reg();
+      if (!r) throw new Error("앱 알림은 보안 연결(https) 화면에서만 켤 수 있어요.");
+      if ((await Notification.requestPermission()) !== "granted") throw new Error("브라우저에서 알림을 막아 두었어요. 주소창 옆 설정에서 허용해 주세요.");
+      const k = await get<{ key: string }>("me/push");
+      const sub = (await r.pushManager.getSubscription()) || (await r.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64d(k.key) }));
+      const j = sub.toJSON();
+      const res = await post<{ count: number }>("me/push", { endpoint: j.endpoint, keys: j.keys });
+      setHere(true); setCount(res.count);
+    } catch (e) { setMsg(e instanceof ApiError ? e.message : e instanceof Error ? e.message : "켜지 못했어요."); } finally { setBusy(false); }
+  };
+  const off = async () => {
+    setBusy(true); setMsg("");
+    try {
+      const r = await reg(); const sub = r ? await r.pushManager.getSubscription() : null;
+      if (sub) { await post("me/push/off", { endpoint: sub.endpoint }).catch(() => undefined); await sub.unsubscribe(); }
+      setHere(false); setCount((c) => Math.max(0, c - 1));
+    } catch { setMsg("끄지 못했어요."); } finally { setBusy(false); }
+  };
+  const test = async () => {
+    setBusy(true); setMsg("");
+    try { const r = await post<{ sent: number }>("me/push/test"); setMsg(r.sent ? "시험 알림을 보냈어요." : "보내지 못했어요. 껐다가 다시 켜 보세요."); }
+    catch (e) { setMsg(e instanceof ApiError ? e.message : "보내지 못했어요."); } finally { setBusy(false); }
+  };
+  return (
+    <div className="alert-tg push-dev">
+      <div className="btn-row">
+        <button type="button" className="btn sm" disabled={busy} onClick={here ? off : on}>{here ? "🔔 이 기기 알림 끄기" : "🔔 이 기기로 알림 받기"}</button>
+        {here && <button type="button" className="btn sm ghost" disabled={busy} onClick={test}>시험 알림</button>}
+      </div>
+      <span className="caption">알림 메일(위)을 켜 두면 같은 알림이 등록한 기기 {count}대에도 와요. 알림에는 일정 제목만 담겨요.</span>
+      {msg && <span className="caption" role="status"> {msg}</span>}
+    </div>
+  );
+}
+
 export default function CalSync() {
   const { me } = useMe();
   const { openLogin } = useDialogs();
@@ -57,6 +116,7 @@ export default function CalSync() {
   return (
     <div className="cal-sync">
       <AlertToggle k="alert_my" label="내 일정·알림·할 일을 하루 전 아침에 메일로 받기" hint="내 공간 달력의 일정·항목 알림·할 일 마감을 하루 전 아침 8시쯤 한 통으로 모아 보내요" />
+      <PushDevice />
       <details className="expander" open={open} onToggle={(e) => setOpen((e.target as HTMLDetailsElement).open)}>
         <summary>🔗 휴대폰·PC 캘린더에 구독으로 잇기 (자동으로 따라옴)</summary>
         <div className="body">
