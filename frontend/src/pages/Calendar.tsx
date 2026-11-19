@@ -6,6 +6,7 @@ import { Link, useSearchParams } from "react-router-dom";
 import { get } from "../api";
 import { Alert, Tabs, useLoad } from "../components/ui";
 import { useMe } from "../me";
+import ScoreBadge from "../components/ScoreBadge";
 import { useProfile } from "../profile";
 import ApplyStats from "./ApplyStats";
 import { type CalEvent, downloadIcs, googleCalUrl } from "../calendarLink";
@@ -176,6 +177,7 @@ function CalendarTab() {
                 <div key={e.type + e.notice_id} className="cal-item">
                   <div className="cal-main">
                     <div className="cal-title"><span className={`cal-ev t-${e.type}`}>{e.label}</span><b title={n.name}>{n.name}</b></div>
+                    {n.kind !== "rent" && <ScoreBadge region={n.region} />}
                     <div className="cal-chips">
                       <span>{n.region}</span><span>{n.kind === "rent" ? "임대" : "분양"}</span>
                       {n.category && <span>{n.category}</span>}{n.households ? <span>{n.households.toLocaleString()}세대</span> : null}

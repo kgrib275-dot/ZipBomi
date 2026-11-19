@@ -102,3 +102,7 @@
 .cp-list li.dim{opacity:.55}
 .cp-list label{display:flex;gap:8px;align-items:baseline;font-size:14px;color:var(--ink)}
 .cp-list .caption{padding-left:26px}
+
+/* 청약 접수일 겹침 경고 (2026-11-19) */
+.apply-overlap{border:1px solid var(--line);border-left:3px solid var(--accent);border-radius:8px;padding:8px 10px;margin:0 0 10px;font-size:13px;background:var(--surface-2)}
+.apply-overlap ul{margin:4px 0;padding-left:18px}

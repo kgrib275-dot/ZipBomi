@@ -6,6 +6,7 @@ import { useMe } from "../me";
 import { useTodos } from "./MyTools";
 import { type CalEvent, downloadIcs, googleCalUrl } from "../calendarLink";
 import CalSync from "../components/CalSync";
+import { findOverlaps } from "../applyOverlap";
 import ContractPlanner from "../components/ContractPlanner";
 
 export type MyItem = { title?: string; memo?: string; remind?: string; remind_note?: string };
@@ -89,6 +90,8 @@ export function MyCalendar({ apply, alerts, lease, side }: { apply: NoticeLite[]
     for (const t of todos) if (t.due && !t.done) out.push({ date: t.due, label: "할 일", kind: "remind", title: t.text });
     return out;
   }, [apply, alerts, lease, items, events, todos]);
+  // 알림·관심으로 담은 공고끼리 접수 기간이 겹치는지 — 오늘 이후에 끝나는 것만
+  const overlaps = useMemo(() => findOverlaps(apply.filter((n) => (n.receipt_end || n.receipt_start || "") >= iso(new Date()))).filter((o) => o.to >= iso(new Date())), [apply]);
   const [y, m] = ym.split("-").map(Number);
   const first = new Date(y, m - 1, 1).getDay(), days = new Date(y, m, 0).getDate();
   const cells: (string | null)[] = [...Array(first).fill(null), ...Array.from({ length: days }, (_, i) => `${ym}-${String(i + 1).padStart(2, "0")}`)];
@@ -123,6 +126,13 @@ export function MyCalendar({ apply, alerts, lease, side }: { apply: NoticeLite[]
           <div className="mcal-lg"><i className="k-start" />접수 <i className="k-end" />마감 <i className="k-win" />발표 <i className="k-remind" />알림 <i className="k-event" />일정</div>
         </div>
         <div className="mycal-list">
+          {overlaps.length > 0 && (
+            <div className="apply-overlap" role="note">
+              <b>⚠ 접수 기간이 겹치는 공고</b>
+              <ul>{overlaps.map((o) => <li key={o.a.notice_id + o.b.notice_id}>{o.a.name} ↔ {o.b.name} <span className="caption">({o.from.slice(5).replace("-", ".")}{o.to !== o.from ? `~${o.to.slice(5).replace("-", ".")}` : ""})</span></li>)}</ul>
+              <span className="caption">같은 때 접수하는 단지에 함께 신청할 수 있는지는 공고문 '신청 자격'에서 확인하세요.</span>
+            </div>
+          )}
           <b>{day ? `${Number(day.slice(5, 7))}월 ${Number(day.slice(8))}일` : "다가오는 일정"}</b>
           {!upcoming.length ? <p className="caption">{day ? "이날 일정이 없어요." : "다가오는 일정이 없어요. 공고에 🔔·☆를 누르거나 아래에서 일정을 넣어 보세요."}</p> : (
             <ul>

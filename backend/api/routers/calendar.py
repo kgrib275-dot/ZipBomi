@@ -153,3 +153,22 @@ def _apply_stats() -> dict:
 def apply_stats_api() -> dict:
     from api.common import cached
     return cached("re:apply_stats", _apply_stats, 3600)
+
+
+@router.get("/re/score-summary")
+def score_summary(months: int = Query(12, ge=1, le=36)) -> dict:
+    """지역(시도)별 지난 당첨 가점의 분포 — 공고 화면의 '내 가점 vs 지난 당첨선' 배지용 (2026-11-19). 건수가 3 미만인 지역은 내려주지 않는다."""
+    since = (date.today() - timedelta(days=months * 31)).isoformat()
+    rows = _rows("SELECT n.region, s.low FROM re_apply_score s JOIN re_apply_notice n ON n.notice_id = s.notice_id "
+                 "WHERE COALESCE(n.winner_date, n.notice_date, '') >= ? AND s.low IS NOT NULL AND s.low > 0 AND COALESCE(s.top, 0) > 0", (since,))
+    by: dict[str, list[float]] = {}
+    for r in rows:
+        if r.get("region"):
+            by.setdefault(r["region"], []).append(float(r["low"]))
+    out = {}
+    for k, v in by.items():
+        if len(v) >= 3:
+            v.sort()
+            mid = v[len(v) // 2] if len(v) % 2 else (v[len(v) // 2 - 1] + v[len(v) // 2]) / 2
+            out[k] = {"n": len(v), "median": round(mid, 1), "min": v[0], "max": v[-1]}
+    return {"regions": out, "months": months, "source": "한국부동산원 청약홈 (APT 당첨가점)"}

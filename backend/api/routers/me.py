@@ -12,7 +12,7 @@ import hashlib
 import json
 import os
 import uuid
-from datetime import datetime
+from datetime import date, datetime
 
 from fastapi import APIRouter, Body, HTTPException, Request, Response
 
@@ -178,6 +178,51 @@ def my_space_summary(c: Caller = CallerDep) -> dict:
     return {**my_space.summary(load_state(c.visitor)), "account": _acct(c)}
 
 
+def _pay(principal: float, rate_pct: float, years: float, method: str) -> float:
+    """월 상환액(원금균등은 첫 달) — 만원 단위 입력 그대로. 계산기와 같은 식."""
+    n = max(1, int(years * 12)); r = rate_pct / 100 / 12
+    if method == "pr":
+        return principal / n + principal * r
+    return principal / n if r == 0 else principal * r / (1 - (1 + r) ** -n)
+
+
+def rate_alert(st: dict, today: date) -> dict | None:
+    """기준금리가 최근 45일 안에 바뀌었고 계산기에 대출 입력이 있으면 월 상환액 차이를 알린다 (2026-11-19, 가정치 — 실제 대출금리와 다름)."""
+    loan = (st.get("calc_inputs") or {}).get("loan") if isinstance(st.get("calc_inputs"), dict) else None
+    if not isinstance(loan, dict):
+        return None
+    try:
+        price, ltv, want, rate, years = (float(loan.get(k) or 0) for k in ("price", "ltv", "want", "rate", "years"))
+    except (TypeError, ValueError):
+        return None
+    principal = want if want > 0 else price * ltv / 100
+    if principal <= 0 or rate <= 0 or years <= 0:
+        return None
+    try:
+        con = db.connect()
+        try:
+            rows = con.execute("SELECT changed_on, rate FROM re_base_rate ORDER BY changed_on DESC LIMIT 2").fetchall()
+        finally:
+            con.close()
+    except Exception:  # noqa: BLE001 - 표가 없으면 알림 없음
+        return None
+    if len(rows) < 2:
+        return None
+    try:
+        changed = date.fromisoformat(str(rows[0][0])[:10])
+    except ValueError:
+        return None
+    diff = round(float(rows[0][1]) - float(rows[1][1]), 2)
+    if diff == 0 or not 0 <= (today - changed).days <= 45:
+        return None
+    method = "pr" if loan.get("method") == "pr" else "eq"
+    delta = _pay(principal, rate + diff, years, method) - _pay(principal, rate, years, method)
+    eok = principal / 10000
+    return {"kind": "rate", "id": changed.isoformat(), "title": f"기준금리 {'인상' if diff > 0 else '인하'} {abs(diff):g}%p ({float(rows[0][1]):g}%)", "region": "",
+            "what": f"계산기 입력(대출 {eok:.1f}억·{years:g}년·{rate:g}%) 기준 월 상환액 약 {abs(round(delta)):,}만원 {'늘어요' if delta > 0 else '줄어요'} (가정)",
+            "due": changed.isoformat(), "left": None, "state": "new", "sent_at": None, "url": "/calc?tab=loan", "mail_on": None}
+
+
 @router.get("/me/alerts")
 def my_alerts(c: Caller = CallerDep) -> dict:
     """상단 🔔 — 내가 켠 청약·전세 만기 알림과 상태(메일 예정·보냄·지남). 2026-11-02.
@@ -246,6 +291,12 @@ def my_alerts(c: Caller = CallerDep) -> dict:
                               "what": f"최근 2주 거래 {len(recent)}건 · 마지막 {reminders._man(top['amount'])}원", "due": top["date"][:10],
                               "left": None, "state": "new", "sent_at": None, "url": "/my-homes", "mail_on": None})
     except Exception:  # noqa: BLE001 - 거래 표가 없거나 잠겨도 🔔 나머지는 보여 준다
+        pass
+    try:
+        ra = rate_alert(st, today)
+        if ra:
+            items.append(ra)
+    except Exception:  # noqa: BLE001 - 금리 표가 없어도 🔔 나머지는 보여 준다
         pass
     items.sort(key=lambda x: (x["left"] is None, x["left"] if x["left"] is not None and x["left"] >= 0 else 10_000))
     return {"items": items, "subscribed": bool(sub), "account_mail": bool(acc), "urgent": sum(1 for x in items if x["state"] == "soon")}

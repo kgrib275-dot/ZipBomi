@@ -496,3 +496,12 @@ html.dlg-open,html.dlg-open body{overflow:hidden}
 .ask-act{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 2px}
 .ask-act .aa-grp{display:inline-flex;gap:4px}
 .ask-act.compact .btn{font-size:12px;padding:4px 8px}
+
+/* 내 가점 vs 지난 당첨선 배지 (2026-11-19) */
+.score-badge{font-size:13px;color:var(--ink-2);margin:4px 0}
+
+/* 비슷한 단지·예산 단지 (2026-11-19) */
+.similar{margin-top:14px}
+.similar h4{margin:0 0 6px}
+.similar ul{margin:0;padding-left:18px;display:grid;gap:4px}
+.afford-table td,.afford-table th{white-space:nowrap}

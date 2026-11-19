@@ -6,7 +6,7 @@ import { get } from "../api";
 import { useDialogs } from "../components/Dialogs";
 import { useMe } from "../me";
 
-type Item = { kind: "apply" | "lease" | "custom" | "watch"; id: string; title: string; region: string; what: string; due: string | null; left: number | null;
+type Item = { kind: "apply" | "lease" | "custom" | "watch" | "rate"; id: string; title: string; region: string; what: string; due: string | null; left: number | null;
   state: "wait" | "soon" | "sent" | "past" | "new"; sent_at: string | null; url: string; mail_on: string | null };
 type Res = { items: Item[]; subscribed: boolean; account_mail?: boolean; urgent: number };
 
@@ -20,9 +20,9 @@ export default function AlertBell() {
   const box = useRef<HTMLDivElement>(null);
   const prof = state.profile as { alert_apply?: string[]; alert_lease?: boolean; lease_end?: string } | undefined;
   // 내 공간 항목 알림·내 일정(my_items·my_events)이 바뀌어도 다시 받는다
-  const key = `${(prof?.alert_apply || []).join(",")}|${prof?.alert_lease ? prof?.lease_end : ""}|${JSON.stringify(state.my_items || {}).length}|${JSON.stringify(state.my_events || []).length}|${JSON.stringify(state.re_watch || []).length}|${JSON.stringify(state.my_todos || []).length}`;
+  const key = `${(prof?.alert_apply || []).join(",")}|${prof?.alert_lease ? prof?.lease_end : ""}|${JSON.stringify(state.my_items || {}).length}|${JSON.stringify(state.my_events || []).length}|${JSON.stringify(state.re_watch || []).length}|${JSON.stringify(state.my_todos || []).length}|${JSON.stringify(state.calc_inputs || {}).length}`;
   useEffect(() => {
-    if (key === "||2|2|2|2") { setData({ items: [], subscribed: false, urgent: 0 }); return; }
+    if (key === "||2|2|2|2|2") { setData({ items: [], subscribed: false, urgent: 0 }); return; }
     const t = window.setTimeout(() => get<Res>("me/alerts").then(setData).catch(() => undefined), 600); // 저장(0.4초 모음) 뒤에
     return () => window.clearTimeout(t);
   }, [key]);
@@ -50,12 +50,12 @@ export default function AlertBell() {
           ) : (
             <ul className="bell-list">
               {items.map((x) => {
-                const tag = x.state === "new" ? "새 거래" : x.state === "sent" ? "메일 보냄" : x.state === "past" ? "지남" : x.left === 0 ? "오늘" : x.left !== null ? `D-${x.left}` : "-";
+                const tag = x.state === "new" ? (x.kind === "rate" ? "금리" : "새 거래") : x.state === "sent" ? "메일 보냄" : x.state === "past" ? "지남" : x.left === 0 ? "오늘" : x.left !== null ? `D-${x.left}` : "-";
                 const body = (
                   <>
                     <span className={`bell-tag s-${x.state}`}>{tag}</span>
                     <span className="bell-t">{x.title}</span>
-                    <span className="bell-m">{x.kind === "watch" ? `${x.region ? x.region + " · " : ""}${x.what} · 계약 ${md(x.due)}` : x.kind === "custom" ? `${x.what} · ${md(x.due)}` : x.kind === "lease" ? `만기 ${md(x.due)}` : `${x.region ? x.region + " · " : ""}${x.what} ${md(x.due)}`}
+                    <span className="bell-m">{x.kind === "rate" ? x.what : x.kind === "watch" ? `${x.region ? x.region + " · " : ""}${x.what} · 계약 ${md(x.due)}` : x.kind === "custom" ? `${x.what} · ${md(x.due)}` : x.kind === "lease" ? `만기 ${md(x.due)}` : `${x.region ? x.region + " · " : ""}${x.what} ${md(x.due)}`}
                       {x.state === "wait" && x.mail_on && (data?.subscribed || data?.account_mail) ? ` · ${md(x.mail_on)} 메일 예정` : ""}</span>
                   </>
                 );

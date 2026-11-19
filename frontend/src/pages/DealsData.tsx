@@ -1,5 +1,6 @@
 // /deals 의 추가 화면 조각 — 데이터셋 선택, 배치가 저장한 실거래 데이터 보기(/api/re/data), 청약 공고 탭(/api/re/apply), 금리·지수(/api/re/indicators).
 // 공공 API 를 직접 부르지 않고 배치 '부동산 데이터 수집'이 저장한 DB 만 읽는다. 자료가 없으면 숫자를 지어내지 않고 이유를 보여 준다.
+import ScoreBadge from "../components/ScoreBadge";
 import { Fragment, useEffect, useMemo, useState } from "react";
 import { get } from "../api";
 import { Link } from "react-router-dom";
@@ -288,6 +289,7 @@ function ApplySide({ n, hideTitle }: { n: Notice; hideTitle?: boolean }) {
   return (
     <div className="ap-side-in">
       {!hideTitle && <h4>{n.name}</h4>}
+      <ScoreBadge region={n.region || ""} />
       <dl className="ap-dl">
         <dt>지역</dt><dd>{n.address || n.region || "-"}</dd>
         <dt>유형</dt><dd>{n.house_type === "LH" ? (n.category || "LH") : n.house_type}{n.households != null ? ` · ${n.households.toLocaleString()}세대` : ""}</dd>

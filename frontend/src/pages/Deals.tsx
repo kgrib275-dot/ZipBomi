@@ -4,6 +4,7 @@
 // 관심 목록(★)은 방문자 상태 re_watch 에 저장 — 이 브라우저(쿠키)에게만 보이는 개인 메모다.
 // 키(DATA_GO_KR_KEY)가 없으면 숫자를 지어내지 않고 안내만 보여 준다 — 단, 저장된 자료(배치·파일 업로드)가 있는 시군구는 DB 로 보여 준다.
 // 2026-11-02 Phase 2: ☆ 관심 단지(re_watch: lawd·dong·apt·jibun) → /my-homes, '지역 흐름' 드릴다운(시군구 → 동 → 단지, 거래량 ±30% 달에 노트 표시).
+import { flagDeals } from "../dealFlags";
 import { useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { get } from "../api";
@@ -160,6 +161,7 @@ export default function Deals() {
     };
     return [...rs].sort(cmp[sort] || cmp.new);
   }, [deals.data, q, area, sort, favOnly, W, lawd]);
+  const flags = useMemo(() => flagDeals(deals.data?.rows || []), [deals.data]);
   const pages = Math.max(1, Math.ceil(rows.length / size));
   const shown = rows.slice(page * size, page * size + size);
 
@@ -332,6 +334,7 @@ export default function Deals() {
                             <td>
                               {r.cancelled && <span className="re-tag warn">해제{r.cancel_day ? ` ${r.cancel_day}` : ""}</span>}
                               {r.deal_type === "직거래" && <span className="re-tag">직거래</span>}
+                              {flags.get(r) && <span className="re-tag" title={`같은 달 같은 단지·평형 중위가 ${man(flags.get(r)!.median)} 대비예요. 층·향·동 차이일 수 있어 이상 거래라는 뜻은 아니에요.`}>참고: 평소보다 {flags.get(r)!.dir === "high" ? "높음" : "낮음"} {flags.get(r)!.pct > 0 ? "+" : ""}{flags.get(r)!.pct}%</span>}
                               {!r.cancelled && <Link className="re-calc-link" to={`/calc?price=${r.amount}&label=${encodeURIComponent(`${r.apt} ${r.area.toFixed(0)}㎡`)}`} title="이 가격으로 대출 한도·취득세 계산">계산 →</Link>}
                             </td>
                           </tr>

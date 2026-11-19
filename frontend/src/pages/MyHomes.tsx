@@ -2,6 +2,7 @@
 // 카드: 최근 3개월 평형별 최고·최저·최근가, 직전 3개월 대비 중위가 변동률, 전세가율(같은 단지 전세 중위 ÷ 매매 중위), 관련 노트 3편.
 // 단지 상세(?lawd=&dong=&apt=): 월별 중위가·거래량 차트 + 그 시군구·전국 정책 노트 표시. 자료는 저장된 실거래 표만 (/api/re/apt/summary · /re/region/trend).
 // 관심 목록은 방문자 상태 re_watch — 이 브라우저에만, 구독자와 이어져 있으면 맞춤 메일에도 쓰인다. 색인하지 않는다(og_meta.NOINDEX).
+import SimilarApts from "../components/SimilarApts";
 import { applyBadge } from "../applyStatus";
 import { useState } from "react";
 import { AlertToggle } from "../components/CalSync";
@@ -204,6 +205,7 @@ function Detail({ sel, watched, onClose }: { sel: { lawd: string; dong: string; 
           </>
         )
       )}
+      <SimilarApts lawd={sel.lawd} dong={sel.dong} apt={sel.apt} />
     </section>
   );
 }
