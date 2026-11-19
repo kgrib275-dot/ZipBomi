@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useMe } from "../me";
 
-export type Watch = { lawd: string; region: string; dong?: string; apt: string; jibun?: string; area_band?: string; note: string; added: string };
+export type Watch = { lawd: string; region: string; dong?: string; apt: string; jibun?: string; area_band?: string; note: string; added: string; cond_area?: number; cond_max?: number };
 export type NoteBrief = { id: number; title: string; summary: string; category: string; kind: string; published: string; scope: "region" | "national" };
 export type Marker = { ymd: string; kind: "volume" | "policy"; change_pct?: number; note: NoteBrief | null };
 export type TrendPoint = { ymd: string; count: number; avg_pyeong: number | null; median: number | null; partial?: boolean; missing?: boolean };

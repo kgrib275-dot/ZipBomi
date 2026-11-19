@@ -239,7 +239,7 @@ def my_alerts(c: Caller = CallerDep) -> dict:
     # 관심 단지 최근 2주 계약 거래 (2026-11-17) — 메일을 켜지 않아도 🔔에 보인다 (계약일 기준, 신고는 최대 30일 늦을 수 있음)
     try:
         for _wkey, w, deals in reminders.watch_deals(st.get("re_watch") or [], today)[:10]:
-            recent = [d for d in deals if d["date"] and (today - date.fromisoformat(d["date"][:10])).days <= 14]
+            recent = [d for d in deals if d["date"] and (today - date.fromisoformat(d["date"][:10])).days <= 14 and reminders.cond_ok(w, d)]
             if recent:
                 top = recent[0]
                 items.append({"kind": "watch", "id": _wkey, "title": str(w.get("apt") or "")[:80], "region": str(w.get("region") or ""),

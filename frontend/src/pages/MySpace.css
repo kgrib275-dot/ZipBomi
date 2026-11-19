@@ -85,3 +85,20 @@
 .mycal-list .my-g{font-size:.7rem;font-weight:800;color:var(--accent-2);text-decoration:none;border:1px solid var(--line);border-radius:6px;padding:0 5px;white-space:nowrap}
 .mycal-list .my-g:hover{border-color:var(--accent)}
 .mycal-out{display:flex;flex-wrap:wrap;gap:4px 8px;align-items:center}
+
+/* 관심 단지 가격 조건 알림 (2026-11-19) */
+.mh-cond{margin:6px 0}
+.mh-cond-edit{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:6px}
+.mh-cond-edit label{display:flex;gap:6px;align-items:center;font-size:13px;color:var(--ink-2)}
+.mh-cond-edit input{width:84px;padding:6px 8px;border:1px solid var(--line);border-radius:8px;background:var(--surface-2);color:var(--ink);font:inherit}
+.mh-cond-edit .caption{flex-basis:100%}
+
+/* 계약 날짜 일정 만들기 (2026-11-19) */
+.cp-in{display:flex;flex-wrap:wrap;gap:10px;margin:10px 0}
+.cp-in label{display:flex;flex-direction:column;gap:3px;font-size:12px;color:var(--muted)}
+.cp-in input{padding:6px 8px;border:1px solid var(--line);border-radius:8px;background:var(--surface-2);color:var(--ink);font:inherit}
+.cp-list{list-style:none;margin:6px 0;padding:0;display:grid;gap:8px}
+.cp-list li{display:flex;flex-direction:column;gap:2px}
+.cp-list li.dim{opacity:.55}
+.cp-list label{display:flex;gap:8px;align-items:baseline;font-size:14px;color:var(--ink)}
+.cp-list .caption{padding-left:26px}

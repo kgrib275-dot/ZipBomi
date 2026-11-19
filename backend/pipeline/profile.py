@@ -204,6 +204,14 @@ def sync_visitor(visitor: str, profile: dict | None = None, *, load: bool = Fals
 MAX_WATCH = 50
 
 
+def _num(v):
+    try:
+        f = float(v)
+    except (TypeError, ValueError):
+        return None
+    return f if f == f and abs(f) != float("inf") else None
+
+
 def clean_watch(items) -> list[dict]:
     """관심 목록 항목 {lawd, region, dong, apt, jibun?, area_band?, note, added} — 허용 키·길이만. 지역만 담은 항목은 apt="" ."""
     out: list[dict] = []
@@ -221,6 +229,12 @@ def clean_watch(items) -> list[dict]:
             x["jibun"] = jb
         if it.get("area_band") in ("s", "m", "l"):
             x["area_band"] = it["area_band"]
+        # 가격 조건 알림 (2026-11-19) — 평형(㎡, ±3)·상한가(만원). 둘 다 비우면 모든 새 거래를 알린다
+        ca, cm = _num(it.get("cond_area")), _num(it.get("cond_max"))
+        if ca is not None and 10 <= ca <= 400:
+            x["cond_area"] = round(ca, 1)
+        if cm is not None and 1000 <= cm <= 10_000_000:
+            x["cond_max"] = int(cm)
         added = _s(it.get("added"), 10)
         x["added"] = added if re.fullmatch(r"\d{4}-\d{2}-\d{2}", added) else ""
         key = (x["lawd"], x["dong"], x["apt"])

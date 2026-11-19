@@ -328,6 +328,16 @@ def _h(s: str) -> str:
     return hashlib.sha1(s.encode()).hexdigest()[:20]
 
 
+def cond_ok(w: dict, d: dict) -> bool:
+    """관심 단지에 평형(㎡±3)·상한가(만원) 조건이 있으면 맞는 거래만 (2026-11-19). 조건이 없으면 모두."""
+    area, mx = w.get("cond_area"), w.get("cond_max")
+    if isinstance(mx, (int, float)) and mx and (d.get("amount") is None or d["amount"] > mx):
+        return False
+    if isinstance(area, (int, float)) and area and (d.get("area") is None or abs(float(d["area"]) - float(area)) > 3):
+        return False
+    return True
+
+
 def watch_deals(watch: list, today: date) -> list[tuple[str, dict, list[dict]]]:
     """관심 '단지'(apt 가 있는 항목)마다 (단지 키, 관심 항목, 최근 거래들). 거래 키는 계약일·층·면적·금액 —
     표를 다시 받을 때 바뀌는 uid·fetched_at 대신 거래 자체로 같은지 본다."""
@@ -405,7 +415,7 @@ def plan_digests(today: date | None = None, dry_run: bool = False) -> list[dict]
                     continue
                 done = _seen(email, "watch", [d["key"] for d in deals])
                 for d in deals:
-                    if d["key"] not in done:
+                    if d["key"] not in done and cond_ok(w, d):
                         fresh.append({**d, "ref": d["key"], "apt": str(w["apt"]), "region": str(w.get("region") or "")})
             if fresh:
                 fresh.sort(key=lambda x: x["date"], reverse=True)

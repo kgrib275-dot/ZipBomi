@@ -6,6 +6,7 @@ import { useMe } from "../me";
 import { useTodos } from "./MyTools";
 import { type CalEvent, downloadIcs, googleCalUrl } from "../calendarLink";
 import CalSync from "../components/CalSync";
+import ContractPlanner from "../components/ContractPlanner";
 
 export type MyItem = { title?: string; memo?: string; remind?: string; remind_note?: string };
 type Ev = { date: string; label: string; kind: "start" | "end" | "win" | "lease" | "remind" | "event"; title: string; key?: string };
@@ -147,6 +148,7 @@ export function MyCalendar({ apply, alerts, lease, side }: { apply: NoticeLite[]
               </div>
             );
           })()}
+          <ContractPlanner />
           <CalSync />
           {side}
         </div>

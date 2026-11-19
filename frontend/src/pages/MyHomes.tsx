@@ -65,7 +65,7 @@ export default function MyHomes() {
         </div>
       ) : (
         <div className="mh-grid">
-          {apts.map(([w, i]) => <Card key={`${w.lawd}-${w.dong}-${w.apt}`} w={w} onOpen={() => open(w)} onNote={(v) => update(i, { note: v })} onRemove={() => remove(i)} />)}
+          {apts.map(([w, i]) => <Card key={`${w.lawd}-${w.dong}-${w.apt}`} w={w} onOpen={() => open(w)} onNote={(v) => update(i, { note: v })} onRemove={() => remove(i)} onCond={(p) => update(i, p)} />)}
         </div>
       )}
 
@@ -81,7 +81,35 @@ export default function MyHomes() {
   );
 }
 
-function Card({ w, onOpen, onNote, onRemove }: { w: Watch; onOpen: () => void; onNote: (v: string) => void; onRemove: () => void }) {
+/** 가격 조건 알림 — 평형(㎡±3)·상한가. 비워 두면 이 단지의 새 거래를 모두 알려요. 조건은 새 거래 메일과 🔔에만 적용돼요. */
+function CondField({ w, onSave }: { w: Watch; onSave: (p: Partial<Watch>) => void }) {
+  const [open, setOpen] = useState(false);
+  const [area, setArea] = useState(w.cond_area ? String(w.cond_area) : "");
+  const [max, setMax] = useState(w.cond_max ? String(Math.round((w.cond_max / 10000) * 100) / 100) : "");
+  const on = !!(w.cond_area || w.cond_max);
+  const label = on ? `🎯 ${w.cond_area ? `${w.cond_area}㎡ 안팎` : "모든 평형"} · ${w.cond_max ? `${man(w.cond_max)} 이하` : "금액 제한 없음"}만 알림` : "🎯 조건 알림 달기 (예: 84㎡, 20억 이하)";
+  const save = () => {
+    const a = Number(area), m = Math.round(Number(max) * 10000);
+    onSave({ cond_area: a >= 10 && a <= 400 ? a : undefined, cond_max: m >= 1000 ? m : undefined });
+    setOpen(false);
+  };
+  return (
+    <div className="mh-cond">
+      <button type="button" className={`in-btn${on ? " on" : ""}`} onClick={() => setOpen(!open)}>{label}</button>
+      {open && (
+        <div className="mh-cond-edit">
+          <label>평형 ㎡ <input type="number" inputMode="decimal" min={10} max={400} step="0.1" value={area} onChange={(e) => setArea(e.target.value)} placeholder="84" /></label>
+          <label>상한가 억 <input type="number" inputMode="decimal" min={0.1} step="0.1" value={max} onChange={(e) => setMax(e.target.value)} placeholder="20" /></label>
+          <button type="button" className="btn sm primary" onClick={save}>저장</button>
+          {on && <button type="button" className="btn sm ghost" onClick={() => { setArea(""); setMax(""); onSave({ cond_area: undefined, cond_max: undefined }); setOpen(false); }}>조건 지우기</button>}
+          <span className="caption">면적은 ±3㎡까지 같은 평형으로 봐요. 비워 두면 그 조건은 보지 않아요.</span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function Card({ w, onOpen, onNote, onRemove, onCond }: { w: Watch; onOpen: () => void; onNote: (v: string) => void; onRemove: () => void; onCond: (p: Partial<Watch>) => void }) {
   const r = useLoad(() => get<Summary>(sumUrl(w)), [w.lawd, w.dong, w.apt, w.jibun]);
   const s = r.data;
   return (
@@ -119,6 +147,7 @@ function Card({ w, onOpen, onNote, onRemove }: { w: Watch; onOpen: () => void; o
           <SourceLine source={s.source} asOf={s.as_of} fetchedAt={s.fetched_at} />
         </>
       )}
+      <CondField key={`${w.cond_area}-${w.cond_max}`} w={w} onSave={onCond} />
       <NoteField value={w.note} onSave={onNote} />
       <div className="mh-actions">
         <button type="button" className="btn sm primary" onClick={onOpen}>추이 보기</button>
