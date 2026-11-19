@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ApiError, post } from "../api";
 import { announceAuth, useMe } from "../me";
+import { loginWithPasskey, passkeyMessage, passkeySupported } from "../passkey";
 import { Alert, Dialog } from "./ui";
 
 // 로그인 메일을 보낸 뒤의 '코드 입력 단계'를 기억한다 (2026-11-05) — 메일 앱·다른 브라우저로 갔다 오는 사이 휴대폰이 이 탭을 정리해 화면이 새로 불러와져도
@@ -67,6 +68,16 @@ export default function LoginDialog({ onClose }: { onClose: () => void }) {
     if (loginPage) nav(safe ? (next as string) : "/my");
     else if ((window as unknown as { __zgGateBlocked?: boolean }).__zgGateBlocked) window.location.reload();
   };
+  // 패스키로 로그인 (2026-11-19) — 메일 없이 지문·얼굴·화면 잠금으로. 이 기기에 등록해 둔 패스키가 있어야 한다.
+  const viaPasskey = async () => {
+    setBusy(true); setErr("");
+    try {
+      await loginWithPasskey();
+      announceAuth();
+      await reload();
+      afterLogin();
+    } catch (e) { setErr(passkeyMessage(e)); } finally { setBusy(false); }
+  };
   const verify = async () => {
     setBusy(true); setErr("");
     try {
@@ -97,6 +108,13 @@ export default function LoginDialog({ onClose }: { onClose: () => void }) {
         </form>
       ) : (
         <form onSubmit={(e) => { e.preventDefault(); if (!agree) { setErr("만 14세 이상인지와 개인정보 수집·이용 안내를 확인해 주세요."); return; } if (email.trim()) send(); }}>
+          {passkeySupported() && (
+            <div className="pk-login">
+              <button type="button" className="btn block" disabled={busy} onClick={viaPasskey}>🔑 패스키로 로그인 (지문·얼굴·화면 잠금)</button>
+              <p className="caption">이 기기에 패스키를 등록해 둔 경우에만 돼요. 처음이면 아래 메일로 로그인한 뒤 내 공간에서 등록하세요.</p>
+              <p className="caption pk-or">또는 메일로 로그인</p>
+            </div>
+          )}
           <p className="caption" style={{ marginTop: 0 }}>비밀번호 없이 메일로 받은 6자리 코드(또는 링크)로 로그인해요. 관심 단지·알림·저장한 노트·계산 기록이 어느 기기에서든 그대로 이어집니다.</p>
           <div className="field"><label htmlFor="lg-email">이메일</label>
             <input id="lg-email" type="email" required autoFocus value={email} onChange={(e) => setEmail(e.target.value)} placeholder="name@example.com" maxLength={254} /></div>

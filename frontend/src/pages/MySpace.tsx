@@ -9,6 +9,7 @@ import { announceAuth, useMe } from "../me";
 import { applyBadge } from "../applyStatus";
 import { man } from "../policy";
 import { useRegions } from "../profile";
+import { passkeyMessage, passkeySupported, registerPasskey } from "../passkey";
 import { ItemNote, MyCalendar } from "./MyCalendar";
 import { CompareTable, DataBackup, TodoBox } from "./MyTools";
 import "./MySpace.css";
@@ -39,6 +40,7 @@ export default function MySpace() {
     await post("auth/logout-all"); window.alert("다른 모든 기기에서 로그아웃했습니다.");
   };
   const [devices, setDevices] = useState(false);
+  const [passkeys, setPasskeys] = useState(false);
   return (
     <div className="my">
       <div className="eyebrow">내 공간</div>
@@ -46,12 +48,14 @@ export default function MySpace() {
       <div className="my-acc">
         {acc ? <><span>✓ {acc.email} 로 로그인 · {acc.since}부터</span><button type="button" className="linkish" onClick={logout}>로그아웃</button>
           <button type="button" className="linkish" onClick={() => setDevices((v) => !v)}>로그인한 기기</button>
+          {passkeySupported() && <button type="button" className="linkish" onClick={() => setPasskeys((v) => !v)}>패스키</button>}
           <button type="button" className="linkish" onClick={logoutAll} title="다른 기기에서 로그인된 것을 모두 끊습니다">모든 기기에서 로그아웃</button></>
           : <><span>지금은 이 브라우저에만 저장돼요. 로그인하면 휴대폰·PC 어디서든 그대로 보여요.</span><button type="button" className="btn sm primary" onClick={openLogin}>메일로 로그인</button></>}
         <Link to="/me" className="linkish">내 프로필 고치기</Link>
       </div>
 
       {acc && devices && <MyDevices />}
+      {acc && passkeys && <PasskeyPanel />}
 
       <AskMine />
 
@@ -228,6 +232,44 @@ function device(ua: string): string {
     : /Chrome\//.test(ua) ? "Chrome" : /Safari\//.test(ua) ? "Safari" : /Firefox\//.test(ua) ? "Firefox" : "브라우저";
   return `${os} · ${br}`;
 }
+// 패스키 (2026-11-19) — 지문·얼굴·화면 잠금으로 로그인. GET /api/auth/passkey/list, 등록은 src/passkey.ts
+function PasskeyPanel() {
+  const { data, error, reload } = useLoad(() => get<{ passkeys: { id: string; label: string; created_at: string; last_used_at: string | null }[] }>("auth/passkey/list"), []);
+  const [err, setErr] = useState("");
+  const [msg, setMsg] = useState("");
+  const [busy, setBusy] = useState(false);
+  const add = async () => {
+    setBusy(true); setErr(""); setMsg("");
+    try { await registerPasskey(device(navigator.userAgent)); setMsg("이 기기에 패스키를 만들었어요. 다음부터 로그인 창에서 '패스키로 로그인'을 누르세요."); reload(); }
+    catch (e) { setErr(passkeyMessage(e)); } finally { setBusy(false); }
+  };
+  const del = async (id: string) => {
+    if (!window.confirm("이 패스키를 지울까요? 이 기기에서는 다시 등록하기 전까지 패스키로 로그인할 수 없어요.")) return;
+    setErr("");
+    try { await post("auth/passkey/remove", { id }); reload(); } catch (e) { setErr(e instanceof Error ? e.message : "지우지 못했어요."); }
+  };
+  return (
+    <section className="my-sec">
+      <div className="my-h"><h3>패스키 <small>{data?.passkeys.length ?? ""}</small></h3></div>
+      <p className="caption" style={{ marginTop: 0 }}>메일 코드 없이 지문·얼굴·화면 잠금으로 로그인해요. 생체 정보는 기기 밖으로 나가지 않고, 서버에는 공개키만 저장돼요.</p>
+      {(error || err) && <Alert kind="err">{error || err}</Alert>}
+      {msg && <p className="caption" role="status">{msg}</p>}
+      {data && (data.passkeys.length ? (
+        <ul className="my-list">
+          {data.passkeys.map((x) => (
+            <li key={x.id}>
+              <span>🔑 {x.label}</span>
+              <span className="caption">만든 날 {x.created_at.slice(0, 10)}{x.last_used_at ? ` · 마지막 사용 ${x.last_used_at.slice(0, 10)}` : " · 아직 안 씀"}</span>
+              <button type="button" className="linkish" onClick={() => del(x.id)}>지우기</button>
+            </li>
+          ))}
+        </ul>
+      ) : <p className="caption">등록한 패스키가 없어요.</p>)}
+      <div className="btn-row"><button type="button" className="btn sm primary" disabled={busy} onClick={add}>{busy ? "기기 확인 중…" : "이 기기에 패스키 만들기"}</button></div>
+    </section>
+  );
+}
+
 function MyDevices() {
   const { data, error, reload } = useLoad(() => get<{ sessions: Sess[]; legacy: boolean }>("auth/sessions"), []);
   const [err, setErr] = useState("");
