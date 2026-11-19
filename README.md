@@ -8,7 +8,7 @@
 
 - 저장소: https://github.com/kgrib275-dot/ZipBomi
 - 설계 기준 `docs/ZIPBOMI_SPEC.md` · 단계별 계획 `docs/ROADMAP_PHASES.md` · API 메모 `docs/API.md`, `docs/API-notes-backend-public.md`
-- 최종 갱신 2026-11-17. (2026-11-03 에 바뀐 것: 로그인·운영 안정성(11-5절), ISMS-P 기준 보안(11-6절·`docs/ISMS-P.md`), 품질 검수 반영(11-7절),
+- 최종 갱신 2026-11-19. (11-17~19 에 더한 것: 일정 잇기 2차·웹 푸시·전체 검색·패스키·편의 기능 — 11-10절) (2026-11-03 에 바뀐 것: 로그인·운영 안정성(11-5절), ISMS-P 기준 보안(11-6절·`docs/ISMS-P.md`), 품질 검수 반영(11-7절),
   속도 개선·메뉴 정리(11-5절 '속도', 11-3절 '메뉴'), 개인정보 수집 문구 '확인했습니다'·처리방침 구제 기관 정리,
   지도의 네이버·카카오·구글 단추를 키 없이도 사용(지금 위치를 새 창으로 — 19절 6번), 관리자 OTP 재사용 차단(11-6절))
 - 2026-11-17 — 보미AI 답변의 날짜를 내 달력에 담기, 내 달력을 구글 캘린더·.ics 로 내보내기(11-1절 '일정 잇기'), 실서버 반영(17절)
@@ -538,6 +538,24 @@ ZipBomi/
   메일 앱·다른 브라우저에 다녀오는 사이 휴대폰이 탭을 정리해 화면이 새로 불러와져도 창이 코드 입력 단계로 되살아난다(메일을 또 보내지 않아 하루 10번 한도를 아낀다).
   ×로 닫으면 저절로 다시 열지 않고(다시 열면 코드 단계부터), '주소를 다시 넣기'·로그인 완료·30분 경과 시 기억을 지운다. 처리방침 '브라우저 저장소' 문구에도 반영(새 버전 공지 필요).
 
+## 11-10. 일정 잇기 2차 · 알림 · 편의 기능 (2026-11-17~19)
+전부 규칙·계산이고 LLM 호출·토큰은 쓰지 않는다. 새 패키지도 없다(푸시·패스키는 `cryptography` 로 직접).
+
+| 묶음 | 기능 | 코드 |
+|---|---|---|
+| 일정 잇기 2차 | 청약 공고 → 구글 캘린더(G+)/.ics, 근거 노트 ☆ 저장, 내 일정·할 일 하루 전 메일, 관심 단지 새 실거래 메일, 캘린더 구독 주소(`/cal/<토큰>.ics`, DB 에는 해시만) | `frontend/src/calendarLink.ts`, `components/CalSync.tsx`, `pipeline/reminders.py`(plan_digests), `api/routers/cal_feed.py` |
+| 웹 푸시 | 로그인 계정이 '이 기기로 알림 받기'를 켜면 같은 알림이 앱 알림으로. VAPID 키는 `data/vapid.json`(git 제외, 처음 쓸 때 생성) | `pipeline/webpush.py`, `api/routers/push.py`, `public/sw.js` |
+| 전체 검색 | Ctrl+K·`/` — 단지·시군구·공고·노트·화면, 초성·오타 허용, 빈 칸이면 최근 본 것 | `layout/FindBox.tsx`, `api/routers/find.py`, `pipeline/hangul.py` |
+| 알림 묶음 | 관심 단지 가격 조건 알림(`cond_area`·`cond_max`), 계약일 → 챙길 일정(매매·입주·전세 만기 역산), 금리 변동 알림, 주간 거래 요약(월요일) | `contractPlan.ts`, `components/ContractPlanner.tsx`, `reminders.cond_ok·week_rows`, `me.rate_alert` |
+| 패스키 | 지문·얼굴·화면 잠금 로그인(ES256·RS256, 사용자 확인 필수, 복제 의심 차단). 서버에는 공개키만 | `pipeline/passkeys.py`, `api/routers/passkey.py`, `src/passkey.ts` |
+| 보미AI 보조 | 답변의 금액 → 계산기, 지역 → 실거래가, 화면·프로필 맞춤 추천 질문, 음성 입력(브라우저 기능), 답변 👍👎 | `askActions.ts`, `components/AskActions.tsx`, `VoiceButton.tsx`, `FeedbackBits.tsx` |
+| 청약·시세 보조 | 내 가점 vs 지난 당첨선 배지, 접수일 겹침 경고, 특이 거래 '참고' 표시, 예산 단지 찾기, 비슷한 단지 3곳 | `components/ScoreBadge.tsx`, `applyOverlap.ts`, `dealFlags.ts`, `api/routers/afford.py`, `calendar.py`(score-summary) |
+| 운영·편의 | 피드백(👎·'이상해요' — 관리 > 피드백, 180일 보관), 글자 크기 3단계, 최근 본 것(이 브라우저에만) | `pipeline/feedback.py`, `api/routers/feedback.py`·`admin_feedback.py`, `layout/Theme.tsx`, `recent.ts` |
+
+- 새 표: `cal_feed`, `push_sub`, `passkey`·`passkey_chal`, `user_feedback`. 모두 처음 쓸 때 만들어지며, 모든 기기 로그아웃·탈퇴 때 계정에 묶인 것(구독 주소·푸시 기기·패스키)은 함께 지운다.
+- 한계: 법정 기한(14·30·60일, 갱신 요구 6~2개월 전)은 코드 상수(2026-11 기준, 화면에 '간이 안내' 표시) — 법이 바뀌면 `contractPlan.ts` 를 고친다. 금리·예산 계산은 가정치. 푸시는 https 에서만 켜진다.
+- 개인정보 처리방침의 '로그인 계정·내 공간'·'의견·오류 신고' 항목과 안전조치 문구가 바뀌었으므로 **새 버전 공지**가 필요하다(관리 > 개인정보 처리방침).
+
 ## 12. Databricks 적재
 - `pipeline/warehouse.py` — 운영 DB 는 로컬 SQLite 로 두고, 바뀐 행만 `<catalog>.<schema>`(기본 `workspace.zipgenie`) Delta 테이블로 MERGE.
 - 행 내용 해시를 로컬 `warehouse_sync` 에 기억해 변경분만 보내고, 로컬에서 지운 행은 Databricks 에서도 지웁니다.
@@ -563,8 +581,8 @@ DB 백업도 스케줄러가 돌 때만 실행됩니다 → 운영은 반드시 
 - 방문자·구독: `visitor_state`, `profiles`, `engagements`, `daily_polls`, `daily_quizzes`, `subscribers`, `subscriber_profile`, `members`, `contacts`, `newsletter_sends`, `reminder_log`
 - 부동산: `rtms_*`(실거래 12종), `re_apply_notice/model/cmpet/score`, `re_econ_series`, `re_base_rate`, `re_listing`, `re_dataset_conf/state`, `re_api_calls`, `re_fetch_log`, `rt_csv_*`, `re_upload_log`
 - 정책·개인정보: `policy_params`, `policy_param_history`, `privacy_versions`
-- 계정·보안: `accounts`, `account_sessions`(기기별 로그인), `login_tokens`, `admin_sessions`, `admin_audit`(관리자 접속기록·해시 연결), `trial_ip`
-- 운영: `access_logs`, `run_logs`, `schedule_claims`, `app_meta`
+- 계정·보안: `accounts`, `account_sessions`(기기별 로그인), `cal_feed`(캘린더 구독 주소 해시), `push_sub`(웹 푸시 기기), `passkey`·`passkey_chal`(패스키·도전값), `login_tokens`, `admin_sessions`, `admin_audit`(관리자 접속기록·해시 연결), `trial_ip`
+- 운영: `access_logs`, `run_logs`, `schedule_claims`, `app_meta`, `user_feedback`(👎·오류 신고)
 
 스키마는 `pipeline/db.py`·`re_store.py`·`policy.py` 등이 시작 시 자동으로 만들고 열을 추가합니다(마이그레이션 도구 없음).
 
@@ -657,6 +675,12 @@ DB 백업도 스케줄러가 돌 때만 실행됩니다 → 운영은 반드시 
     로그인 창 보호(여백 무시·새로 불러와도 코드 단계 되살림·기억 삭제·30분 경과 무시) 16개, 기본 다크·전환 순서.
   - 읽기 API 54개 중 42개가 로그인 전 401(소개·처리방침·내 상태 등 필요한 것만 열림), 같은 IP 새 방문자 8명 → 5명만 1분.
 - **2026-11-06 실서버 점검** (읽기만): 서버 08:05 시작·공개 주소 200·백업 매일 00:00·디스크 여유 217GB·오류(ERROR) 0건. **Gemini 무료 한도 소진** — 08:05 이후 채점·요약 호출 29번 뒤 429, 오후 2시 수집은 채점 0건(미채점 639건). 보미AI 도 같은 키라 영향을 받을 수 있다(19절 15번).
+- **2026-11-19 일정 잇기 2차·푸시·검색·패스키·편의 기능** (임시 DB·시험 포트 5052, 실제 메일·푸시 없음):
+  서버 로직 시험(알림·푸시 암호화 왕복·VAPID 서명·초성 검색·패스키 공격 흉내·가격 조건·금리·가점·예산·비슷한 단지·주간 요약·피드백) 전부 통과,
+  기존 자동 시험 12개 통과, 계산 로직(계약 일정·금액 추출·특이 거래·접수일 겹침) 통과,
+  브라우저(Edge, 데스크톱·390px): 푸시 등록·검색 창·패스키(가상 인증기로 등록→로그인→삭제)·계약 일정·가격 조건·바로가기 버튼·음성(가짜 인식)·👎/신고·글자 크기·최근 본 것 통과, 가로 넘침·페이지 오류 없음.
+  시험 중 잡은 것: 보미AI 패널 훅 호출 순서 오류(휴대폰 폭에서 패널이 안 열림), '아주 크게'에서 상단 메뉴 넘침(zoom 으로 해결).
+  확인 못 한 것: 실제 휴대폰 푸시·실제 생체 인증·실제 마이크·실제 메일 발송.
 - **2026-11-17 일정 잇기** (시험 포트 5052, 모든 `/api` 요청을 브라우저 안에서 가짜 응답으로 막아 실서버 요청 0건):
   날짜 후보 4개(`1/3` 제외)·3건 저장·메모 근거 링크·구글 캘린더 주소·`.ics` 3건·내 공간 달력 표시·G+·휴대폰 폭(390px) 패널 가로 넘침 없음·페이지 오류 없음 — 13개 통과. 타입 검사·배포 빌드 통과.
   실서버 반영(15:50 재시작) 뒤 `/help`·`/sw.js`·`/ask`·`/my`·`/about` 200, GPTBot 403, 공개 주소 200, 새 서버 로그 ERROR·Traceback 0건.
@@ -700,3 +724,4 @@ DB 백업도 스케줄러가 돌 때만 실행됩니다 → 운영은 반드시 
 17. **개인정보 처리방침 새 버전 공지**: 쿠키·브라우저 저장 항목(`zg-login-wait` 추가)이 바뀌었다. 광고를 붙일 땐 '광고 사업자' 칸 + 중요 변경(30일 공지, 11-8절).
 18. 수집 소스 점검: 네이버 검색 API·Reddit 이 429, 일부 유튜브 채널이 404 로 계속 실패한다(관리 > 수집 설정에서 정리하거나 Reddit 은 인증 키).
 19. 관리 > 문의함 확인: 미처리 2건(보미AI 사용 신청 포함). 새 문의는 종류·건수만 알림 메일로 간다.
+20. (2026-11-19) 푸시·패스키·피드백·알림 메일 추가로 처리방침이 크게 바뀌었다 — 위 17번과 합쳐 새 버전 공지 한 번으로 처리. 실제 휴대폰에서 푸시 도착·패스키 등록을 한 번 확인한다.
