@@ -8,6 +8,9 @@ import { ApiError, get, post } from "../api";
 import { SubscribeCTA, useDialogs } from "../components/Dialogs";
 import { Alert, Guide, useLoad } from "../components/ui";
 import AskToCalendar from "../components/AskToCalendar";
+import AskActions from "../components/AskActions";
+import { suggestFor } from "../askActions";
+import { useProfile, useRegions } from "../profile";
 import AskSources, { type Source } from "../components/AskSources";
 import { useMe } from "../me";
 import "./Ask.css";
@@ -24,6 +27,10 @@ function loadHistory(): Turn[] {
 
 export default function Ask() {
   const { me, reload: reloadMe } = useMe();
+  const { profile } = useProfile();
+  const { byCode } = useRegions();
+  // 내 프로필(유형·관심 지역)에 맞춘 추천 질문을 앞에, 기본 예시를 뒤에 — 규칙으로만 고른다 (2026-11-19)
+  const examples = [...suggestFor("/ask", profile, (c) => byCode[c]?.name.split(" ").slice(-1)[0] || "", 2), ...EXAMPLES].filter((x, i, a) => a.indexOf(x) === i).slice(0, 5);
   const { openMembership, openLogin, openContact } = useDialogs();
   const { data: usage, error, loading, reload, setData } = useLoad<Usage>(() => get<Usage>("ask/usage"), []);
   const [history, setHistory] = useState<Turn[]>(() => loadHistory());
@@ -156,7 +163,7 @@ export default function Ask() {
             <>
               <p className="caption">예시 질문</p>
               <div className="btn-row" style={{ marginBottom: 14 }}>
-                {EXAMPLES.map((ex) => <button key={ex} className="btn sm" type="button" disabled={!!busy} onClick={() => send(ex)}>💬 {ex}</button>)}
+                {examples.map((ex) => <button key={ex} className="btn sm" type="button" disabled={!!busy} onClick={() => send(ex)}>💬 {ex}</button>)}
               </div>
             </>
           )}
@@ -168,6 +175,7 @@ export default function Ask() {
                 <div className="bubble">
                   <Markdown text={t.content} />
                   {!!t.sources?.length && <AskSources sources={t.sources} />}
+                  {t.role === "assistant" && <AskActions text={t.content} />}
                   {t.role === "assistant" && <AskToCalendar text={t.content} />}
                   {t.weak && i === history.length - 1 && usage.web_search !== false && !limitHit && (
                     <button className="btn sm" type="button" disabled={!!busy} onClick={() => webSearch(i)}>{busy === "web" ? "웹을 검색하는 중..." : "🌐 웹 검색으로 다시 답하기"}</button>

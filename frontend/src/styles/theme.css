@@ -491,3 +491,8 @@ html.dlg-open,html.dlg-open body{overflow:hidden}
 /* 패스키 로그인 버튼 (2026-11-19) */
 .pk-login{margin-bottom:10px}
 .pk-or{text-align:center;margin:8px 0 0;color:var(--muted)}
+
+/* 보미AI 답변 → 바로 해 볼 일 (2026-11-19) */
+.ask-act{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 2px}
+.ask-act .aa-grp{display:inline-flex;gap:4px}
+.ask-act.compact .btn{font-size:12px;padding:4px 8px}

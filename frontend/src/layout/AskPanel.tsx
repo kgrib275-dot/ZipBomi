@@ -2,10 +2,12 @@
 // 질문은 /api/ask (내 공간 자료 함께 — mine), 대화는 이 탭(sessionStorage)에만 남고 /ask 전체 화면과 이어진다.
 // 로그인 전이면 로그인 안내, 무료 1회를 다 쓰면 관리자 문의로 사용 신청.
 import { lazy, Suspense, useEffect, useRef, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { ApiError, get, post } from "../api";
 import { useDialogs } from "../components/Dialogs";
 import { useMe } from "../me";
+import { suggestFor } from "../askActions";
+import { useProfile, useRegions } from "../profile";
 import type { Source } from "../components/AskSources";
 
 type Turn = { role: "user" | "assistant"; content: string; sources?: Source[] };
@@ -14,9 +16,9 @@ type Usage = { enabled: boolean; quota: number; used: number; limit_hit: boolean
 // 일정 담기는 버튼을 누를 일이 있을 때만 받아 온다 (패널은 모든 화면에 실리므로 처음 내려받는 양을 늘리지 않게)
 const AskToCalendar = lazy(() => import("../components/AskToCalendar"));
 const AskSources = lazy(() => import("../components/AskSources"));
+const AskActions = lazy(() => import("../components/AskActions"));
 const HKEY = "zipgenie-ask-history";
 const MKEY = "zipgenie-ask-mine";
-const SUGGEST = ["내 관심 단지 최근 거래 흐름 요약해 줘", "이번 주 꼭 알아야 할 부동산 소식 3가지", "내 가점으로 해볼 만한 청약은?", "스트레스 DSR이 내 대출 한도에 주는 영향은?"];
 
 const load = (): Turn[] => { try { const v = JSON.parse(sessionStorage.getItem(HKEY) || "[]"); return Array.isArray(v) ? v : []; } catch { return []; } };
 
@@ -90,6 +92,11 @@ export default function AskPanel() {
       get<Usage>("ask/usage").then(setUsage).catch(() => undefined);
     }
   };
+  // 보던 화면·내 프로필에 맞춘 추천 질문 (2026-11-19, 규칙 기반)
+  const loc = useLocation();
+  const { profile } = useProfile();
+  const { byCode } = useRegions();
+  const suggestions = suggestFor(loc.pathname, profile, (c) => byCode[c]?.name.split(" ").slice(-1)[0] || "");
   if (!open) return null;
   const loggedIn = !!me?.account || !!me?.is_admin;
   const left = usage ? Math.max(0, usage.quota - usage.used) : 0;
@@ -112,12 +119,12 @@ export default function AskPanel() {
             <b>무엇이든 물어보세요</b>
             <p>시세·청약·대출·세금·정책을 노트와 공개 자료로 답합니다. 아래에서 켜면 내 공간의 관심 단지·공고도 참고해요.</p>
             <p className="ap-ai">보미AI 답변은 생성형 AI가 만든 결과물이라 틀릴 수 있어요. 중요한 결정 전에는 원문·공고로 확인하세요. 주민번호·계좌번호 같은 민감한 정보는 적지 마세요.</p>
-            {SUGGEST.map((s) => <button key={s} type="button" className="ap-sug" disabled={!loggedIn || busy} onClick={() => send(s)}>{s}<span>›</span></button>)}
+            {suggestions.map((s) => <button key={s} type="button" className="ap-sug" disabled={!loggedIn || busy} onClick={() => send(s)}>{s}<span>›</span></button>)}
           </div>
         )}
         {hist.map((t, i) => (
           <div key={i} className={`ap-msg ${t.role}`}>
-            {t.role === "assistant" ? <><Text s={t.content} /><Suspense fallback={null}>{!!t.sources?.length && <AskSources sources={t.sources} compact />}<AskToCalendar text={t.content} compact /></Suspense></> : t.content}
+            {t.role === "assistant" ? <><Text s={t.content} /><Suspense fallback={null}>{!!t.sources?.length && <AskSources sources={t.sources} compact />}<AskActions text={t.content} compact /><AskToCalendar text={t.content} compact /></Suspense></> : t.content}
           </div>
         ))}
         {busy && <div className="ap-msg assistant typing">답을 찾는 중…</div>}
