@@ -337,9 +337,10 @@ function NoticeDetail({ id }: { id: string }) {
 
 /** 청약 공고 — 접수 예정·진행 중 먼저, 지역·유형·검색. */
 export function ApplyTab() {
-  const [scope, setScope] = useState<"upcoming" | "all">("upcoming");
+  const urlQ = typeof window !== "undefined" ? (new URLSearchParams(window.location.search).get("q") || "").slice(0, 40) : ""; // 전체 검색(⌘K)에서 온 공고 이름
+  const [scope, setScope] = useState<"upcoming" | "all">(urlQ ? "all" : "upcoming");
   const [region, setRegion] = useState("");
-  const [q, setQ] = useState("");
+  const [q, setQ] = useState(urlQ);
   const [open, setOpen] = useState<string | null>(null);
   const [page, setPage] = useState(0);
   const [size, setSize] = usePageSize("apply");

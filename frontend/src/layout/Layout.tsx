@@ -1,5 +1,5 @@
 // 전 페이지 공통 틀 — 헤더(내비·구독·테마·KO/EN), 푸터, 플로팅 버튼, 구독 띠, 대화상자, 추천 링크(?ref=)·공유 유입(?s=1) 기록.
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Link, NavLink, useLocation, useNavigationType, useSearchParams } from "react-router-dom";
 import { track } from "../api";
 import { DialogProvider, useDialogs } from "../components/Dialogs";
@@ -7,6 +7,7 @@ import { useMe } from "../me";
 import { useProfile, useProfileSync } from "../profile";
 import AlertBell from "./AlertBell";
 import AskPanel from "./AskPanel";
+const FindBox = lazy(() => import("./FindBox"));
 import Nudge from "./Nudge";
 import TrialGate, { SaveError } from "./TrialGate";
 import { ThemeToggle } from "./Theme";
@@ -56,6 +57,18 @@ function Shell({ children }: { children: React.ReactNode }) {
   const { me, state, setState } = useMe();
   const { openSubscribe } = useDialogs();
   const [open, setOpen] = useState(false);
+  const [finding, setFinding] = useState(false);
+  // Ctrl/⌘+K 또는 입력칸 밖에서 "/" 로 전체 검색 (2026-11-19). 닫기(Esc)는 검색 창 안에서.
+  useEffect(() => {
+    const k = (e: KeyboardEvent) => {
+      const t = e.target as HTMLElement | null;
+      const typing = !!t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.tagName === "SELECT" || t.isContentEditable);
+      if ((e.key.toLowerCase() === "k" && (e.ctrlKey || e.metaKey)) || (e.key === "/" && !typing && !e.ctrlKey && !e.metaKey && !e.altKey)) { e.preventDefault(); setFinding((v) => !v); }
+      else if (e.key === "Escape") setFinding(false);
+    };
+    window.addEventListener("keydown", k);
+    return () => window.removeEventListener("keydown", k);
+  }, []);
   const loc = useLocation();
   const [params] = useSearchParams();
   useProfileSync(); // 내 프로필: 서버 값 ↔ 이 브라우저 사본
@@ -132,6 +145,7 @@ function Shell({ children }: { children: React.ReactNode }) {
           </nav>
           <div className="hdr-right">
             <button type="button" className="btn sm bomi-btn" onClick={() => window.dispatchEvent(new Event("zg-open-ask"))} title="보미AI — 보던 화면 옆에서 질문">✦ <span className="lbl">보미AI</span></button>
+            <button type="button" className="btn sm ghost find-btn" onClick={() => setFinding(true)} title="전체 검색 (Ctrl+K · /)" aria-label="전체 검색">🔍<span className="lbl"> 검색</span></button>
             <AlertBell />
             <NavLink to="/my" className={({ isActive }) => `btn sm ghost me-link${isActive ? " on" : ""}`} title={me?.account ? `내 공간 — ${me.account.email}` : "내 공간 — 관심 단지·알림·저장한 노트·계산"}>
               <span aria-hidden="true" className={`me-ico${me?.account ? " in" : ""}`}>👤</span> <span className="lbl">내 공간</span>
@@ -142,6 +156,7 @@ function Shell({ children }: { children: React.ReactNode }) {
           </div>
         </div>
       </header>
+      {finding && <Suspense fallback={null}><FindBox onClose={() => setFinding(false)} /></Suspense>}
       {open && <div className="nav-backdrop" aria-hidden="true" onClick={() => setOpen(false)} />}
       {!isAdminArea && <TrialGate />}
       <SaveError />
