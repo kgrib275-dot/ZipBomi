@@ -15,9 +15,9 @@ const AGES: [keyof Omit<Age, "ym">, string][] = [["a30", "30대 이하"], ["a40"
 
 export default function ApplyStats() {
   const { data, error } = useLoad(() => get<Stats>("re/apply-stats"), []);
-  if (error) return null;
-  const { profile } = useProfile();
+  const { profile } = useProfile();  // 훅은 조기 반환보다 위에 — 통계 API 가 실패(401·서버 오류)할 때 훅 수가 달라져 화면 전체가 빈 화면이 되던 문제 (2026-11-19)
   const mine = subScore(profile);
+  if (error) return null;
   if (!data) return <div className="lm-skel sm" aria-hidden="true" />;
   if (!Object.keys(data.score).length) return null;
   return (
