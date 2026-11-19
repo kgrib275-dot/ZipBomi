@@ -27,6 +27,14 @@ def _d(v) -> date | None:
         return None
 
 
+def _supply(n: dict) -> str:
+    """공급 방식 — 'resale'(불법행위 재공급 등 '재공급' 공고) · 'lottery'(무순위·잔여세대·임의공급) · ''(일반 공급). 재공급은 무순위·잔여에도 들어간다 (2026-11-19)."""
+    t = f"{n.get('category') or ''} {n.get('house_type') or ''} {n.get('name') or ''}"
+    if "재공급" in t:
+        return "resale"
+    return "lottery" if any(k in t for k in ("무순위", "잔여세대", "임의공급")) else ""
+
+
 def _kind(n: dict) -> str:
     t = f"{n.get('category') or ''} {n.get('house_type') or ''} {n.get('name') or ''}"
     return "rent" if "임대" in t else "sale"
@@ -42,7 +50,7 @@ def _rows(sql: str, params: tuple = ()) -> list[dict]:
 
 
 @router.get("/re/calendar")
-def calendar(ym: str = Query(""), region: str = Query(""), kind: str = Query("")) -> dict:
+def calendar(ym: str = Query(""), region: str = Query(""), kind: str = Query(""), supply: str = Query("")) -> dict:
     """ym 달(YYYY-MM, 기본 이번 달)의 청약 사건. region = 시도 짧은 이름 쉼표 목록 ('서울,경기'), kind = sale·rent."""
     today = date.today()
     if ym and not re.fullmatch(r"\d{4}-\d{2}", ym):
@@ -54,6 +62,8 @@ def calendar(ym: str = Query(""), region: str = Query(""), kind: str = Query("")
     last = (date(y + (m == 12), m % 12 + 1, 1) - timedelta(days=1))
     if kind not in ("", "sale", "rent"):
         raise HTTPException(400, "kind 는 sale 또는 rent 입니다.")
+    if supply not in ("", "resale", "lottery"):
+        raise HTTPException(400, "supply 는 resale 또는 lottery 입니다.")
     regions = [r.strip() for r in region.split(",") if r.strip()][:10]
     cols = ", ".join(c for c, _, _ in EVENTS)
     rows = _rows(f"SELECT notice_id, name, house_type, category, region, households, url, status, source, {cols} "
@@ -62,6 +72,11 @@ def calendar(ym: str = Query(""), region: str = Query(""), kind: str = Query("")
     events, notices = [], {}
     for n in rows:
         if kind and _kind(n) != kind:
+            continue
+        sp = _supply(n)
+        if supply == "resale" and sp != "resale":
+            continue
+        if supply == "lottery" and not sp:
             continue
         if regions and not any(r in (n.get("region") or "") or (n.get("region") or "") in r for r in regions):
             continue
@@ -83,7 +98,7 @@ def calendar(ym: str = Query(""), region: str = Query(""), kind: str = Query("")
                 "url": n.get("url") if str(n.get("url") or "").startswith("http") else "", "status": n.get("status") or "",
                 "source": "LH 청약플러스" if n.get("source") == "lh" else "청약홈",
                 "dates": {key: (n.get(col) or "")[:10] for col, key, _ in EVENTS if n.get(col)},
-                "long_open": long_open,
+                "long_open": long_open, "supply": sp,
             }
     events.sort(key=lambda e: (e["date"], e["type"]))
     st = re_store.states()

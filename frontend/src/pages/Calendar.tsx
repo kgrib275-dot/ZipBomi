@@ -15,7 +15,7 @@ import "./LabMarket.css";
 
 type Ev = { date: string; type: string; label: string; notice_id: string };
 type Notice = { id: string; name: string; region: string; kind: "sale" | "rent"; category: string; households: number | null; url: string;
-  status: string; source: string; dates: Record<string, string>; long_open: boolean };
+  status: string; source: string; dates: Record<string, string>; long_open: boolean; supply?: "resale" | "lottery" | "" };
 type CalRes = { ym: string; events: Ev[]; notices: Record<string, Notice>; today: string; applyhome: boolean; fetched_at: string };
 type ScoreRow = { notice_id: string; model_no: string; house_ty: string; reside: string; low: number; top: number | null; avg: number | null;
   name: string; region: string; winner_date: string | null; notice_date: string | null; url: string };
@@ -74,6 +74,10 @@ function useMySidos(): string[] {
 function CalendarTab() {
   const [ym, setYm] = useState(() => ymOf(new Date()));
   const [kind, setKind] = useState<"" | "sale" | "rent">("");
+  // 공급 방식 (2026-11-19) — 재공급(불법행위 재공급 등)만, 또는 무순위·잔여 전체. 주소(?supply=resale)로 바로 열 수 있다
+  const [sup, setSupRaw] = useState<"" | "resale" | "lottery">(() => { const v = new URLSearchParams(window.location.search).get("supply"); return v === "resale" || v === "lottery" ? v : ""; });
+  const [spq, setSpq] = useSearchParams();
+  const setSup = (v: "" | "resale" | "lottery") => { setSupRaw(v); const n = new URLSearchParams(spq); if (v) n.set("supply", v); else n.delete("supply"); setSpq(n, { replace: true }); };
   const [mineOnly, setMineOnly] = useState(false);
   // 시·도 고르기 (2026-11-02) — 이 브라우저에 기억. '내 관심 지역만'을 켜면 그쪽이 우선
   const [sido, setSidoRaw] = useState(() => { try { return localStorage.getItem("zg-cal-sido") || ""; } catch { return ""; } });
@@ -85,7 +89,7 @@ function CalendarTab() {
   const { profile, save } = useProfile();
   const alerts = profile?.alert_apply || [];
   const region = mineOnly ? sidos.join(",") : sido;
-  const r = useLoad(() => get<CalRes>(`re/calendar?ym=${ym}&kind=${kind}&region=${encodeURIComponent(region)}`), [ym, kind, region]);
+  const r = useLoad(() => get<CalRes>(`re/calendar?ym=${ym}&kind=${kind}&supply=${sup}&region=${encodeURIComponent(region)}`), [ym, kind, sup, region]);
   const d = r.data;
   const byDate = useMemo(() => {
     const m: Record<string, Ev[]> = {};
@@ -122,6 +126,10 @@ function CalendarTab() {
         {([["", "전체"], ["sale", "분양"], ["rent", "임대"]] as const).map(([k, l]) => (
           <button key={k} type="button" className={`pill ${kind === k ? "on" : ""}`} onClick={() => setKind(k)}>{l}</button>
         ))}
+        {([["resale", "🔁 재공급만"], ["lottery", "무순위·잔여"]] as const).map(([k, l]) => (
+          <button key={k} type="button" className={`pill ${sup === k ? "on" : ""}`} aria-pressed={sup === k} onClick={() => setSup(sup === k ? "" : k)}
+            title={k === "resale" ? "공급질서 교란 등 불법행위로 계약이 취소돼 다시 공급하는 물량" : "무순위·잔여세대·임의공급 (재공급 포함)"}>{l}</button>
+        ))}
         <select className="cal-sido" value={mineOnly ? "" : sido} onChange={(e) => setSido(e.target.value)} aria-label="지역">
           <option value="">전국</option>
           {SIDOS.map((x) => <option key={x} value={x}>{x}</option>)}
@@ -130,6 +138,7 @@ function CalendarTab() {
           <button type="button" className={`pill ${mineOnly ? "on" : ""}`} onClick={() => setMineOnly(!mineOnly)} title={sidos.join(", ")}>내 관심 지역만</button>
         )}
       </div>
+      {sup === "resale" && <p className="caption" style={{ margin: 0 }}>🔁 재공급은 주택공급질서 교란 등 불법행위가 적발돼 계약이 취소된 주택을 다시 공급하는 공고예요. 보통 무순위(사후 접수)로 나오니 자격·접수 방법은 공고문에서 꼭 확인하세요.</p>}
       {alerts.length > 0 && (
         <p className="caption" style={{ margin: 0 }}>
           🔔 알림 받는 공고 {alerts.length}개.{" "}
@@ -180,6 +189,7 @@ function CalendarTab() {
                     {n.kind !== "rent" && <ScoreBadge region={n.region} />}
                     <div className="cal-chips">
                       <span>{n.region}</span><span>{n.kind === "rent" ? "임대" : "분양"}</span>
+                      {n.supply === "resale" ? <span className="re-tag warn" title="불법행위 등으로 계약이 취소돼 다시 공급하는 물량">🔁 재공급</span> : n.supply === "lottery" ? <span className="re-tag">무순위·잔여</span> : null}
                       {n.category && <span>{n.category}</span>}{n.households ? <span>{n.households.toLocaleString()}세대</span> : null}
                       <span className="d">{n.dates.start ? `접수 ${n.dates.start.slice(5)}` : n.dates.notice ? `공고 ${n.dates.notice.slice(5)}` : ""}{n.dates.end ? ` ~ ${n.dates.end.slice(5)}${n.long_open ? " 상시" : ""}` : ""}{n.dates.winner ? ` · 발표 ${n.dates.winner.slice(5)}` : ""}</span>
                     </div>
