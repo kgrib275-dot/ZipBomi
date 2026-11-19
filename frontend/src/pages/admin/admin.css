@@ -166,3 +166,19 @@ pre.code{background:var(--code-bg);border:1px solid var(--line);border-radius:10
 /* 휴대폰 관리 화면 (2026-11-03) — 넓은 표·그래프는 본문 안에서만 옆으로 밀리게 */
 .adm-main{min-width:0;overflow-x:auto}
 @media (max-width:860px){.adm-main .table td .btn{white-space:nowrap}}
+
+/* 수집 건강 (2026-11-20) */
+.hl-top{display:flex;flex-wrap:wrap;gap:12px;align-items:center;padding:12px 14px;border:1px solid var(--line);border-left:4px solid var(--line);border-radius:10px;margin:10px 0}
+.hl-top b{font-size:1.1rem}
+.hl-top.lv-ok{border-left-color:#3aa76d}.hl-top.lv-warn{border-left-color:#e0a800}.hl-top.lv-bad{border-left-color:#d8423a}
+.hl-reasons{margin:8px 0 16px;padding-left:18px;display:grid;gap:6px}
+.hl-dots{display:inline-flex;gap:2px;vertical-align:middle}
+.hl-dots i{width:9px;height:14px;border-radius:2px;background:var(--line)}
+.hl-dots i.ok{background:#3aa76d}.hl-dots i.fail{background:#d8423a}.hl-dots i.none{background:transparent;border:1px dashed var(--line)}
+.hl-bars{display:flex;gap:4px;align-items:flex-end;height:80px;margin:6px 0 14px}
+.hl-bar{display:flex;flex-direction:column;align-items:center;gap:2px;font-size:10px;color:var(--muted)}
+.hl-bar i{display:block;width:14px;background:var(--accent);border-radius:2px 2px 0 0}
+.hl-bar.we i{opacity:.45}
+.hl-dried{columns:2;margin:4px 0 12px;padding-left:18px}
+tr.dim{opacity:.55}
+@media (max-width:640px){.hl-dried{columns:1}}

@@ -92,6 +92,10 @@ def missed_weekly(cfg: dict, now: datetime) -> list[str]:
 
 DAILY = (("collect", "collection"), ("draft", "drafting"), ("vectorize", "vectorize"), ("re_data", "re_data"), ("reminders", "reminders"))
 CATCHUP_HOURS = 3  # 정해진 시각을 이만큼 안에서 놓쳤으면 한 번 따라잡는다 (그보다 오래되면 다음 예정 시각을 기다린다)
+# 부동산 데이터 수집·알림 메일은 비용이 없고 같은 날 늦게 돌려도 안전해서(알림은 보낸 기록으로 중복을 막는다) 그날 안에는 언제 켜도 따라잡는다 (2026-11-20).
+# 예전엔 06:30 배치를 오후 1:40 에 켜면 3시간이 지났다고 건너뛰어, 그날 수집·알림이 통째로 빠졌다.
+LONG_CATCHUP = {"re_data", "reminders"}
+GAP_MIN_MINUTES = 15  # 예약 확인(tick)이 이만큼 끊겼다가 다시 시작되면 '서버가 꺼져 있던 때'로 기록한다
 
 
 def _claimed(slot: str) -> bool:
@@ -119,15 +123,109 @@ def missed_daily(cfg: dict, now: datetime) -> list[tuple[str, str]]:
             except ValueError:
                 continue
             at = now.replace(hour=hh, minute=mm, second=0, microsecond=0)
-            if timedelta(minutes=2) <= now - at <= timedelta(hours=CATCHUP_HOURS) and (latest is None or at > latest):
+            limit = timedelta(hours=24) if kind in LONG_CATCHUP else timedelta(hours=CATCHUP_HOURS)
+            if timedelta(minutes=2) <= now - at <= limit and (latest is None or at > latest):
                 latest = at
         if latest is None:
             continue
         minute_key = latest.strftime("%Y-%m-%d %H:%M")
         if _last_fired.get(kind) == minute_key or _claimed(f"{kind}@{minute_key}"):
             continue
+        if db.ran_ok_since(kind, latest - timedelta(minutes=1)):
+            continue  # 관리 화면에서 직접 돌렸거나 다른 경로로 이미 성공했으면 또 돌리지 않는다
         out.append((kind, minute_key))
     return out
+
+
+# ───────── 서버가 꺼져 있던 때 (2026-11-20) ─────────
+_GAP_SQL = ("CREATE TABLE IF NOT EXISTS service_gaps (start_at TEXT PRIMARY KEY, end_at TEXT NOT NULL, minutes INTEGER NOT NULL, "
+            "missed TEXT NOT NULL DEFAULT '{}', created_at TEXT NOT NULL)")
+WEEKLY = ("weekly", "newsletter", "teams")
+
+
+def slots_between(cfg: dict, start: datetime, end: datetime) -> dict[str, int]:
+    """start 이후 end 까지(end 포함) 정해진 시각이 돌아왔던 횟수 — 작업별. 서버가 꺼져 있는 동안 못 돈 작업을 세는 데 쓴다."""
+    out: dict[str, int] = {}
+    day = start.date()
+    for _ in range(62):  # 두 달 넘게 꺼져 있었어도 계산이 길어지지 않게
+        if day > end.date():
+            break
+        for kind, key in DAILY:
+            c = cfg.get(key, {})
+            if not c.get("enabled"):
+                continue
+            for hhmm in c.get("times") or []:
+                try:
+                    hh, mm = map(int, str(hhmm).split(":"))
+                except ValueError:
+                    continue
+                at = datetime.combine(day, datetime.min.time()).replace(hour=hh, minute=mm)
+                if start < at <= end:
+                    out[kind] = out.get(kind, 0) + 1
+        for kind in WEEKLY:
+            c = cfg.get(kind) or {}
+            try:
+                if c.get("enabled") and day.weekday() == int(c["weekday"]):
+                    hh, mm = map(int, str(c["time"]).split(":"))
+                    at = datetime.combine(day, datetime.min.time()).replace(hour=hh, minute=mm)
+                    if start < at <= end:
+                        out[kind] = out.get(kind, 0) + 1
+            except (KeyError, ValueError):
+                continue
+        day += timedelta(days=1)
+    return out
+
+
+def detect_gap(prev_tick: str | None, now: datetime, cfg: dict) -> dict | None:
+    """직전 tick 시각과 지금 사이가 GAP_MIN_MINUTES 보다 길면 {start, end, minutes, missed}. 처음 켠 것(기록 없음)이면 None."""
+    try:
+        start = datetime.fromisoformat(prev_tick) if prev_tick else None
+    except ValueError:
+        start = None
+    if start is None or now - start < timedelta(minutes=GAP_MIN_MINUTES):
+        return None
+    return {"start": start.isoformat(timespec="seconds"), "end": now.isoformat(timespec="seconds"),
+            "minutes": int((now - start).total_seconds() // 60), "missed": slots_between(cfg, start, now)}
+
+
+def record_gap(gap: dict) -> None:
+    conn = db.connect()
+    try:
+        with conn:
+            conn.execute(_GAP_SQL)
+            conn.execute("INSERT OR REPLACE INTO service_gaps (start_at, end_at, minutes, missed, created_at) VALUES (?,?,?,?,?)",
+                         (gap["start"], gap["end"], gap["minutes"], json.dumps(gap["missed"], ensure_ascii=False), datetime.now().isoformat(timespec="seconds")))
+            conn.execute("DELETE FROM service_gaps WHERE start_at < ?", ((datetime.now() - timedelta(days=400)).isoformat(),))
+    finally:
+        conn.close()
+
+
+def _fmt_span(minutes: int) -> str:
+    h, m = divmod(minutes, 60)
+    d, h = divmod(h, 24)
+    return (f"{d}일 " if d else "") + (f"{h}시간 " if h else "") + (f"{m}분" if m and not d else "") or "잠깐"
+
+
+def _startup_gap_check() -> None:
+    """스케줄러가 시작될 때(첫 tick 전) 직전 tick 과 지금의 간격을 보고, 꺼져 있었다면 기록하고 관리자에게 알린다.
+    감시 스레드는 같은 PC 에서 돌기 때문에 PC 전체가 꺼졌을 땐 아무도 알릴 수 없었다 — 켜진 직후에야 알 수 있다."""
+    now = datetime.now()
+    try:
+        cfg = settings_store.load()
+        gap = detect_gap(db.get_meta("scheduler_tick"), now, cfg)
+    except Exception:
+        logger.exception("꺼져 있던 시간 확인 오류")
+        return
+    if not gap:
+        return
+    record_gap(gap)
+    names = {k: v for k, v in alerts.LABELS.items()}
+    missed = " · ".join(f"{names.get(k, k)} {n}회" for k, n in gap["missed"].items()) or "예정된 배치 없음"
+    logger.warning("서버가 꺼져 있었음: %s ~ %s (%s) · 못 돈 작업: %s", gap["start"], gap["end"], _fmt_span(gap["minutes"]), missed)
+    alerts.notify(f"서버가 꺼져 있었어요 ({_fmt_span(gap['minutes'])})",
+                  f"{gap['start'].replace('T', ' ')} ~ {gap['end'].replace('T', ' ')} 동안 집보미가 꺼져 있었어요. 그동안 못 돈 작업: {missed}. "
+                  "켜진 뒤 부동산 데이터 수집·알림 메일은 오늘 안에 자동으로 따라잡습니다. 지나간 날의 알림은 되돌릴 수 없어요.",
+                  key=f"gap:{gap['start']}", path="/admin/health", label="수집 건강 보기")
 
 
 def _tick() -> None:
@@ -203,6 +301,7 @@ _purged_on = None
 
 
 def _loop() -> None:
+    _startup_gap_check()
     while True:
         try:
             _tick()

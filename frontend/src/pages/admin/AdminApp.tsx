@@ -12,6 +12,7 @@ import { LogDock } from "./LogDock";
 const L = (p: () => Promise<{ default: React.ComponentType }>) => lazy(p);
 const PAGES: { path: string; label: string; grp?: string; C: React.LazyExoticComponent<React.ComponentType> }[] = [
   { path: "dashboard", label: "대시보드", grp: "운영", C: L(() => import("./Dashboard")) },
+  { path: "health", label: "수집 건강", C: L(() => import("./Health")) },
   { path: "review", label: "노트 검토", grp: "콘텐츠", C: L(() => import("./Review")) },
   { path: "briefing", label: "데일리 브리핑", C: L(() => import("./Briefing")) },
   { path: "articles", label: "수집 기사", C: L(() => import("./Articles")) },
