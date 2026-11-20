@@ -32,14 +32,14 @@ function applyPref(p: Pref) {
   if (bg) document.querySelectorAll('meta[name="theme-color"]').forEach((m) => m.setAttribute("content", bg));
 }
 
-export function ThemeToggle() {
+export function ThemeToggle({ className = "theme-btn", text }: { className?: string; text?: boolean } = {}) {
   const [pref, setPref] = useState<Pref>(readPref);
   useEffect(() => applyPref(pref), [pref]);
   const next = NEXT[pref];
   return (
-    <button type="button" className="theme-btn" onClick={() => setPref(next)}
+    <button type="button" className={className} onClick={() => setPref(next)}
       title={`화면 테마: ${LABEL[pref]} (눌러서 ${LABEL[next]})`} aria-label={`화면 테마: ${LABEL[pref]}. 눌러서 ${LABEL[next]}로 바꾸기`}>
-      <span aria-hidden="true">{ICON[pref]}</span>
+      {text ? `화면 모드: ${LABEL[pref]}` : <span aria-hidden="true">{ICON[pref]}</span>}
     </button>
   );
 }

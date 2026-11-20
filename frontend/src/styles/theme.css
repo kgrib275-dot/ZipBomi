@@ -527,3 +527,45 @@ html[data-fs="xl"],html[data-fs="xl"] body{font-size:22px}
 /* 글자를 키워도 상단 메뉴는 원래 크기 그대로 — 휴대폰 폭에서 버튼이 화면 밖으로 밀리지 않게 (zoom 으로 되돌림) */
 html[data-fs="lg"] .hdr{zoom:calc(17 / 19.5)}
 html[data-fs="xl"] .hdr{zoom:calc(17 / 22)}
+
+/* 공유 영역 (2026-11-20) */
+.cal-share,.mh-share,.score-share{display:flex;flex-direction:column;gap:6px;margin:10px 0}
+.score-share label select{margin-left:6px;padding:4px 8px;border:1px solid var(--line);border-radius:8px;background:var(--surface-2);color:var(--ink);font:inherit}
+
+/* 첫 사용 안내·새 공고 알림 (2026-11-20) */
+.onb-types{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin:12px 0}
+.onb-type{display:flex;flex-direction:column;gap:2px;text-align:left;padding:12px 14px;border:1px solid var(--line);border-radius:12px;background:var(--surface-2);color:var(--ink);cursor:pointer;font:inherit}
+.onb-type small{color:var(--muted)}
+.onb-type.on{border-color:var(--accent);background:rgba(245,184,0,.14)}
+.newapply-tg{display:flex;flex-direction:column;gap:4px;margin:8px 0}
+@media (max-width:480px){.onb-types{grid-template-columns:1fr}}
+
+/* 오늘의 내 브리핑 (2026-11-20) */
+.brief{margin:0 0 16px;display:flex;flex-direction:column;gap:8px}
+.brief-empty{flex-direction:row;flex-wrap:wrap;align-items:center;gap:10px;padding:12px 14px;border:1px solid var(--line);border-radius:12px;background:var(--surface)}
+.brief-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:10px}
+.brief-card{display:flex;gap:10px;align-items:center;padding:12px 14px;border:1px solid var(--line);border-radius:12px;background:var(--surface);color:var(--ink);text-decoration:none}
+.brief-card:hover{border-color:var(--accent)}
+.brief-card.urgent{border-left:3px solid #ff8a65}
+.brief-card .ic{font-size:22px}
+.brief-card .tx{display:flex;flex-direction:column;min-width:0;flex:1}
+.brief-card .tx b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:.95rem}
+.brief-card .tx small{color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* 함께 보기 링크 (2026-11-20) */
+.board-share{margin:10px 0}
+.board-url{display:flex;flex-direction:column;gap:8px;margin:10px 0}
+.board-url input{width:100%;box-sizing:border-box;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--surface-2);color:var(--ink);font:inherit;font-size:13px}
+
+/* 아주 좁은 화면(320~380px)에서 상단 버튼 줄이 밀려 나가지 않게 (2026-11-20) — ✦ 보미AI 는 오른쪽 아래 둥근 버튼으로 열리고, 화면 모드는 맨 아래 링크로도 바꾼다 */
+.ft-theme{display:none}
+@media (max-width:380px){
+  .hdr-right .bomi-btn{display:none}
+  .hdr-right .btn.sm,.hdr-right .bell-btn{padding-left:6px;padding-right:6px}
+  .hdr-right{gap:3px}
+}
+@media (max-width:340px){
+  .hdr-right .theme-btn:not(.fs-btn){display:none}
+  .ft-theme{display:inline}
+  .hdr .logo{font-size:.85em}
+}

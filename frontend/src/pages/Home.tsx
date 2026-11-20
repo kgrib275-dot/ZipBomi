@@ -1,6 +1,7 @@
 // 홈 (/) — Streamlit 판 app_pages/home.py 이식.
 // 히어로(숫자 카운트업) → 급상승 키워드 띠 → For you → 처음이라면 3가지 → 이번 주 흐름 → 이번 주 꼭 알아야 할 3가지
 // → 쌓이는 노트(카테고리 내비 + 최신 9편, 60초마다 새로 받아 새 카드는 빛남) → 소스 → 뉴스레터 CTA.
+import MyBriefing from "../components/MyBriefing";
 import RecentStrip from "../components/RecentStrip";
 import { kwLabel } from "../policy";
 import { useEffect, useRef, useState } from "react";
@@ -326,6 +327,7 @@ export default function HomePage() {
 
   return (
     <div className="home">
+      <MyBriefing />
       <RecentStrip />
       {/* ---------- 히어로 ---------- */}
       {hero({ notes: counts.notes, articles_week: counts.articles_week, sources: nSources })}

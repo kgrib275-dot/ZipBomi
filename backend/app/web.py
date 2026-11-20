@@ -171,6 +171,12 @@ def sitemap(request: Request) -> Response:
             (f"{site}/habit", None), (f"{site}/career", None), (f"{site}/deals", None), (f"{site}/calc", None),
             (f"{site}/privacy", None), (f"{site}/help", None), (f"{site}/map", None), (f"{site}/now", None), (f"{site}/calendar", None)]  # 2026-11-03 지도·현행 수치·분양 일정 추가
     urls += [(f"{site}/n/{n['id']}", n["published"]) for n in db.notes("published")]
+    try:  # 청약 공고·단지 페이지 (2026-11-20) — 최근 공고와 거래 많은 단지만
+        from pipeline import pubdata
+        urls += [(f"{site}/c/{nid}", d or None) for nid, d in pubdata.sitemap_notices()]
+        urls += [(f"{site}/a/{lawd}/{quote(name)}" + (f"?d={quote(dong)}" if dong else ""), None) for lawd, name, dong in pubdata.sitemap_apts()]
+    except Exception:  # noqa: BLE001 - 표가 비어 있어도 사이트맵 자체는 나가야 한다
+        pass
     xml = "".join(f"<url><loc>{escape(u)}</loc>" + (f"<lastmod>{escape(d)}</lastmod>" if d else "") + "</url>" for u, d in urls)
     return Response(f'<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">{xml}</urlset>',
                     media_type="application/xml")
@@ -185,7 +191,7 @@ ROBOTS_ONLY_TOKENS = ("Google-Extended", "Applebot-Extended")  # User-Agent 로�
 
 def robots(request: Request) -> Response:
     ai = "".join(f"User-agent: {b}\n" for b in AI_BOTS + ROBOTS_ONLY_TOKENS) + "Disallow: /\n\n"
-    return PlainTextResponse(ai + "User-agent: *\nAllow: /\nDisallow: /admin\nDisallow: /r/\nDisallow: /refer\nDisallow: /unsubscribe\nDisallow: /confirm\nDisallow: /me\nDisallow: /my-homes\nDisallow: /cal/\n"
+    return PlainTextResponse(ai + "User-agent: *\nAllow: /\nDisallow: /admin\nDisallow: /r/\nDisallow: /refer\nDisallow: /unsubscribe\nDisallow: /confirm\nDisallow: /me\nDisallow: /my-homes\nDisallow: /cal/\nDisallow: /g/\n"
                              f"Sitemap: {_site(request)}/sitemap.xml\n")
 
 
@@ -294,3 +300,5 @@ ROUTES = [
     Route("/s/h", share_habit), Route("/s/c/{code}", share_career),
     Route("/r/{name}", report_pdf),
 ]
+from app import pub_pages  # noqa: E402  (공고·단지·가점 카드·함께 보기 — 이 모듈이 web 을 늦게 가져오므로 맨 아래에서)
+ROUTES = ROUTES + pub_pages.routes()

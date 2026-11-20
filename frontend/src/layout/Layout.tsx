@@ -8,6 +8,7 @@ import { useProfile, useProfileSync } from "../profile";
 import AlertBell from "./AlertBell";
 import AskPanel from "./AskPanel";
 const FindBox = lazy(() => import("./FindBox"));
+const Onboarding = lazy(() => import("./Onboarding"));
 import Nudge from "./Nudge";
 import TrialGate, { SaveError } from "./TrialGate";
 import { FontSizeToggle, ThemeToggle } from "./Theme";
@@ -168,6 +169,7 @@ function Shell({ children }: { children: React.ReactNode }) {
       {/* 관리 화면에서는 공개용 둥근 단추·보미AI 패널을 숨긴다 (2026-11-03 — 휴대폰 관리 화면을 가렸다) */}
       {!isAdminArea && <button type="button" className="fab fab-ask notranslate" translate="no" title="보미AI" onClick={() => window.dispatchEvent(new Event("zg-open-ask"))}>✦</button>}
       {!isAdminArea && <AskPanel />}
+      {!isAdminArea && <Suspense fallback={null}><Onboarding /></Suspense>}
       {showTop && <button className="fab fab-top notranslate" translate="no" title="맨 위로" aria-label="맨 위로" onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}>↑</button>}
       {!isAdminArea && !state.subscribed && (!me?.is_admin || params.get("nudge") === "1") && <Nudge onSubscribe={() => openSubscribe("sticky_bar")} />}
     </>
@@ -183,7 +185,7 @@ function Footer() {
         <span>집보미 · 집에 관한 모든 것 — 시세·청약·대출·세금·정책을 한곳에서</span>
         <span className="foot-note">무료 정보 서비스 · 투자 권유가 아닌 참고 자료입니다 · 노트 초안과 보미AI 답변은 생성형 AI로 만듭니다</span>
         <span>
-          <Link to="/help">고객센터</Link> · <Link to="/letter">뉴스레터 미리보기</Link> · <FontSizeToggle className="linkish" text />
+          <Link to="/help">고객센터</Link> · <Link to="/letter">뉴스레터 미리보기</Link> · <FontSizeToggle className="linkish" text /><span className="ft-theme"> · <ThemeToggle className="linkish" text /></span>
           {me?.privacy_active !== false && <> · <Link to="/privacy" style={{ color: "var(--ink-hi)", fontWeight: 800 }}>개인정보 처리방침</Link></>}
         </span>
       </div>

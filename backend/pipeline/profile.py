@@ -111,6 +111,12 @@ def clean(p) -> dict | None:
     for k in ("alert_my", "alert_watch", "alert_week"):
         if p.get(k) is True:
             out[k] = True
+    # 내 지역 새 청약 공고 알림 (2026-11-20) — 'sale'(일반 분양·임대) · 'lottery'(무순위·잔여·임의공급, 재공급 포함) · 'resale'(재공급만). 관심 지역(regions)이 있어야 의미가 있다
+    kinds = p.get("alert_newapply")
+    if isinstance(kinds, list):
+        keep_k = [k for k in dict.fromkeys(kinds) if k in ("sale", "lottery", "resale")]
+        if keep_k:
+            out["alert_newapply"] = keep_k
     ids = p.get("alert_apply")
     if isinstance(ids, list):
         keep = [i for i in dict.fromkeys(ids) if isinstance(i, str) and re.fullmatch(r"[A-Za-z0-9_-]{1,48}", i)][:20]

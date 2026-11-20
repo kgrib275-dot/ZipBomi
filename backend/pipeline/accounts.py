@@ -197,7 +197,7 @@ def rotate(acc: dict) -> str:
                 c.execute(f"DELETE FROM {tbl} WHERE account_id=?", (acc["id"],))
             except Exception:  # noqa: BLE001 - 표가 아직 없으면 건너뜀
                 pass
-        for table in ("visitor_state", "engagements", "subscribers", "profiles"):
+        for table in ("visitor_state", "engagements", "subscribers", "profiles", "share_board"):
             try:
                 c.execute(f"UPDATE {table} SET visitor=? WHERE visitor=?", ("c:" + new, old))
             except Exception:  # noqa: BLE001 - 표·열이 없으면 건너뜀
@@ -332,6 +332,10 @@ def delete_by_raw(raw: str) -> int:
     try:
         c.execute("DELETE FROM account_sessions WHERE account_id IN (SELECT id FROM accounts WHERE raw=?)", (raw,))
         c.execute("DELETE FROM cal_feed WHERE account_id IN (SELECT id FROM accounts WHERE raw=?)", (raw,))
+        try:
+            c.execute("DELETE FROM share_board WHERE visitor=?", ("c:" + raw,))  # 함께 보기 링크도 (2026-11-20)
+        except Exception:  # noqa: BLE001 - 표가 아직 없으면 건너뜀
+            pass
         for tbl in ("push_sub", "passkey"):
             try:
                 c.execute(f"DELETE FROM {tbl} WHERE account_id IN (SELECT id FROM accounts WHERE raw=?)", (raw,))

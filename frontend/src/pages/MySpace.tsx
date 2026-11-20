@@ -187,6 +187,7 @@ function AllSettings() {
     ["프로필", "전세 만기", p.lease_end ? String(p.lease_end) : "", "/me"],
     ["알림", "전세 만기 알림", p.alert_lease ? "켬 (90일·30일 전)" : "끔", "/me"],
     ["알림", "내 일정 메일", p.alert_my ? "켬 (하루 전 아침)" : "끔", "/my"],
+    ["알림", "내 지역 새 청약 공고", ((p as { alert_newapply?: string[] }).alert_newapply || []).length ? `켬 (${((p as { alert_newapply?: string[] }).alert_newapply || []).map((k) => (k === "sale" ? "분양·임대" : "무순위·재공급")).join(", ")})` : "끔", "/calendar"],
     ["알림", "관심 단지 새 실거래 메일", p.alert_watch ? "켬" : "끔", "/my-homes"],
     ["알림", "청약 공고 알림", list(p.alert_apply).length ? `${list(p.alert_apply).length}개 (접수 3일 전)` : "없음", "/calendar"],
     ["알림", "뉴스레터 구독", me?.subscribed ? "구독 중" : "구독 안 함", "/letter"],

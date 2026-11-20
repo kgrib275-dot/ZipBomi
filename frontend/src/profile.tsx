@@ -26,7 +26,7 @@ export type Profile = {
   budget_min?: number; budget_max?: number; income?: number; debt?: number;
   sub_home?: number; sub_fam?: number; sub_acct?: number; lease_end?: string;
   alert_lease?: boolean; alert_apply?: string[];  // 알림 메일 (Phase 4, backend/pipeline/reminders.py)
-  alert_my?: boolean; alert_week?: boolean; alert_watch?: boolean;  // 로그인 계정 메일: 내 일정 하루 전 · 관심 단지 새 실거래 (2026-11-17)
+  alert_my?: boolean; alert_week?: boolean; alert_watch?: boolean; alert_newapply?: ("sale" | "lottery" | "resale")[];  // 로그인 계정 메일: 내 일정 하루 전 · 관심 단지 새 실거래 (2026-11-17)
   tests?: { type16?: TestRec; diagnosis?: TestRec; career?: TestRec; habit?: TestRec };
   updated_at?: string;
 };

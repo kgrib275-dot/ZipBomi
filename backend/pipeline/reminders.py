@@ -14,7 +14,7 @@ import logging
 import sqlite3
 from datetime import date, datetime, timedelta
 
-from pipeline import accounts, db, mailer, profile, webpush
+from pipeline import accounts, db, mailer, profile, pubdata, webpush
 
 log = logging.getLogger("zipgenie.reminders")
 
@@ -286,7 +286,7 @@ def _account_states() -> list[tuple[str, dict]]:
         except (ValueError, TypeError):
             continue
         prof = st.get("profile") if isinstance(st, dict) else None
-        if isinstance(prof, dict) and (prof.get("alert_my") or prof.get("alert_watch") or prof.get("alert_week")):
+        if isinstance(prof, dict) and (prof.get("alert_my") or prof.get("alert_watch") or prof.get("alert_week") or prof.get("alert_newapply")):
             out.append((r[0], st))
     return out
 
@@ -392,6 +392,41 @@ def _mark(email: str, kind: str, refs: list[tuple[str, str]]) -> None:
         c.close()
 
 
+NEWAPPLY_MAX_ROWS = 10
+NEWAPPLY_FIRST_ROWS = 8
+
+
+def newapply_candidates(prof: dict, today: date) -> list[dict]:
+    """내 관심 지역(시도)의 최근 2주 공고 중 알림 종류(분양·무순위·재공급)에 맞는 것 — 최신 공고순 (2026-11-20).
+    open = 아직 접수가 안 끝났거나 곧 시작하는 공고. 처음 켠 날은 open 인 것만 한 번 보내고 나머지는 '본 것'으로만 남긴다."""
+    kinds = set(prof.get("alert_newapply") or [])
+    sidos = {profile._SIDO_OF.get(str(c)) for c in (prof.get("regions") or [])} - {None}
+    if not kinds or not sidos:
+        return []
+    since = (today - timedelta(days=14)).isoformat()
+    c = db.connect()
+    try:
+        rows = c.execute(f"SELECT notice_id, name, region, house_type, category, receipt_start, receipt_end, notice_date FROM re_apply_notice "
+                         f"WHERE region IN ({','.join('?' * len(sidos))}) AND COALESCE(notice_date, receipt_start, '') >= ? ORDER BY notice_date DESC LIMIT 200",
+                         (*sorted(sidos), since)).fetchall()
+    except sqlite3.Error as e:
+        log.warning("새 공고 조회 실패: %s", e)
+        return []
+    finally:
+        c.close()
+    out = []
+    for r in rows:
+        n = dict(r)
+        sup = pubdata.supply_kind(n)
+        if not ((sup == "" and "sale" in kinds) or (sup == "lottery" and "lottery" in kinds) or (sup == "resale" and ({"resale", "lottery"} & kinds))):
+            continue
+        end = _d(n.get("receipt_end")) or _d(n.get("receipt_start"))
+        out.append({"ref": n["notice_id"], "nid": n["notice_id"], "name": n["name"] or "청약 공고", "region": n.get("region") or "", "supply": sup,
+                    "start": (n.get("receipt_start") or "")[:10], "end": (n.get("receipt_end") or "")[:10], "date": (n.get("notice_date") or "")[:10] or today.isoformat(),
+                    "open": bool(end and end >= today)})
+    return out
+
+
 def week_rows(watch: list, today: date) -> list[dict]:
     """관심 단지·지역의 지난 7일 vs 그 전 7일 매매 거래 건수와 3.3㎡당 중위가 (계약일 기준 — 신고가 늦어 최근 며칠은 덜 잡힐 수 있다). 거래가 한 건도 없으면 뺀다."""
     items = [w for w in watch if isinstance(w, dict) and w.get("lawd")][:MAX_WATCH_ITEMS]
@@ -436,6 +471,17 @@ def plan_digests(today: date | None = None, dry_run: bool = False) -> list[dict]
             rows = [r for r in rows if r["ref"] not in done]
             if rows:
                 out.append({"email": email, "kind": "my", "rows": rows})
+        if prof.get("alert_newapply") and prof.get("regions"):
+            cands = newapply_candidates(prof, today)
+            base = "base:newapply"
+            if cands and base not in _seen(email, "newapply", [base]):
+                if not dry_run:
+                    _mark(email, "newapply", [(c["ref"], c["date"]) for c in cands if not c["open"]] + [(base, today.isoformat())])
+                cands = [c for c in cands if c["open"]][:NEWAPPLY_FIRST_ROWS]
+            done = _seen(email, "newapply", [c["ref"] for c in cands])
+            rows = [c for c in cands if c["ref"] not in done][:NEWAPPLY_MAX_ROWS]
+            if rows:
+                out.append({"email": email, "kind": "newapply", "rows": rows})
         if prof.get("alert_week") and today.weekday() == 0:  # 월요일 아침 — 지난 한 주 요약
             rows = week_rows(st.get("re_watch") or [], today)
             done = _seen(email, "week", [r["ref"] for r in rows])
@@ -485,6 +531,17 @@ def render_digest(d: dict) -> tuple[str, str]:
         first = d["rows"][0]
         subj = f"[집보미] {'오늘' if first['left'] == 0 else '내일'} 일정 — {first['title'][:30]}" + (f" 외 {len(d['rows']) - 1}건" if len(d["rows"]) > 1 else "")
         return subj, _wrap_acc("다가오는 내 일정", body, "내 공간 달력의 '하루 전 메일 알림'")
+    if d["kind"] == "newapply":
+        tagof = {"resale": "🔁 재공급", "lottery": "무순위·잔여"}
+        rows = "".join(
+            f'<tr><td {_TD}><a href="{base}/c/{esc(r["nid"])}" style="color:#FFD54A"><b>{esc(r["name"])}</b></a><br><span {_SUB}>{esc(r["region"])}'
+            + (f' · {tagof[r["supply"]]}' if r["supply"] else "") + f'</span></td><td {_TD}>접수<br><span {_SUB}>{esc(r["start"][5:] or "-")}'
+            + (f' ~ {esc(r["end"][5:])}' if r["end"] and r["end"] != r["start"] else "") + "</span></td></tr>" for r in d["rows"])
+        body = (f'<p style="color:#E8DEC6;line-height:1.7;font-size:14px">내 관심 지역에 새로 올라온 청약 공고 {len(d["rows"])}건이에요. 청약홈·LH 공개 자료 기준이니 자격과 일정은 공고문에서 꼭 확인하세요.</p>'
+                f'<table style="font-size:14px;border-collapse:collapse;width:100%">{rows}</table>' + _btn(f"{base}/calendar", "청약 일정 달력 열기"))
+        first = d["rows"][0]
+        subj = f"[집보미] 내 지역 새 청약 공고 {len(d['rows'])}건 — {first['name'][:28]}" + (f" 외 {len(d['rows']) - 1}건" if len(d["rows"]) > 1 else "")
+        return subj, _wrap_acc("내 지역 새 청약 공고", body, "청약 달력의 '내 지역 새 공고 알림'")
     if d["kind"] == "week":
         def _pp(r):
             return f"{r['pp']:,}만원" if r["pp"] else "-"
@@ -528,6 +585,8 @@ def push_text(d: dict) -> tuple[str, str, str]:
         first = rows[0]
         when = "오늘" if first["left"] == 0 else "내일"
         return f"{when} 일정 {len(rows)}건", first["title"][:60] + (f" 외 {len(rows) - 1}건" if len(rows) > 1 else ""), "/my"
+    if d["kind"] == "newapply":
+        return f"내 지역 새 청약 공고 {len(rows)}건", rows[0]["name"][:40] + (f" 외 {len(rows) - 1}건" if len(rows) > 1 else ""), f"/c/{rows[0]['nid']}"
     if d["kind"] == "week":
         return f"이번 주 거래 요약 {len(rows)}곳", " · ".join(f"{r['apt'][:14]} {r['n']}건" for r in rows[:3]), "/my-homes"
     names = list(dict.fromkeys(r["apt"] for r in rows))

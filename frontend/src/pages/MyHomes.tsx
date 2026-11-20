@@ -2,6 +2,8 @@
 // 카드: 최근 3개월 평형별 최고·최저·최근가, 직전 3개월 대비 중위가 변동률, 전세가율(같은 단지 전세 중위 ÷ 매매 중위), 관련 노트 3편.
 // 단지 상세(?lawd=&dong=&apt=): 월별 중위가·거래량 차트 + 그 시군구·전국 정책 노트 표시. 자료는 저장된 실거래 표만 (/api/re/apt/summary · /re/region/trend).
 // 관심 목록은 방문자 상태 re_watch — 이 브라우저에만, 구독자와 이어져 있으면 맞춤 메일에도 쓰인다. 색인하지 않는다(og_meta.NOINDEX).
+import ShareBar from "../components/ShareBar";
+import BoardShare from "../components/BoardShare";
 import SimilarApts from "../components/SimilarApts";
 import { applyBadge } from "../applyStatus";
 import { useEffect, useState } from "react";
@@ -50,6 +52,7 @@ export default function MyHomes() {
         <p className="sec-p">실거래가에서 ☆로 담은 단지의 최근 거래를 평형별로, 청약 공고에서 ☆로 담은 공고는 일정과 함께 모았습니다. 로그인하면 기기 사이에 이어지고, 맞춤 브리핑을 구독하면 주간 메일에도 실립니다.</p>
         <AlertToggle k="alert_watch" label="관심 단지에 새 매매 실거래가 올라오면 메일로 받기"
           hint="매일 아침 실거래 자료를 확인해 새로 올라온 거래만 한 통으로 모아 보내요. 처음 켤 때 이미 있던 거래는 보내지 않아요." />
+        <BoardShare />
         <AlertToggle k="alert_week" label="월요일 아침에 관심 단지·지역의 지난주 거래 요약 받기" hint="관심 단지·지역의 지난 7일 거래 건수와 3.3㎡당 중위가를 그 전 주와 비교해 월요일 아침에 보내요" />
       </div>
 
@@ -209,6 +212,7 @@ function Detail({ sel, watched, onClose }: { sel: { lawd: string; dong: string; 
         )
       )}
       <SimilarApts lawd={sel.lawd} dong={sel.dong} apt={sel.apt} />
+      <div className="mh-share"><span className="caption">이 단지 링크 공유 (받는 사람은 가입 없이 최근 거래를 봐요)</span><ShareBar content="apt" url={`/a/${sel.lawd}/${encodeURIComponent(sel.apt)}${sel.dong ? `?d=${encodeURIComponent(sel.dong)}` : ""}`} title={`${sel.apt} 실거래가`} /></div>
     </section>
   );
 }

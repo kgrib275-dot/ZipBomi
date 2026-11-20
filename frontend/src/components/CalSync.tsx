@@ -25,6 +25,28 @@ export function AlertToggle({ k, label, hint }: { k: "alert_my" | "alert_watch" 
   );
 }
 
+/** 내 지역 새 청약 공고 알림 (2026-11-20) — 관심 지역(프로필)의 새 공고를 분양·무순위/재공급으로 나눠 켠다. 서버: pipeline/reminders.newapply_candidates */
+export function NewApplyToggle() {
+  const { me } = useMe();
+  const { openLogin } = useDialogs();
+  const { profile, save } = useProfile();
+  const kinds = profile?.alert_newapply || [];
+  if (!me?.account) return <p className="caption alert-tg">📧 내 지역 새 청약 공고 알림 — <button type="button" className="linkish" onClick={openLogin}>메일로 로그인</button>하면 켤 수 있어요.</p>;
+  if (!profile?.regions?.length) return <p className="caption alert-tg">📧 내 지역 새 청약 공고 알림 — 먼저 <a href="/me">내 프로필에서 관심 지역</a>을 골라 주세요.</p>;
+  const has = (k: string) => kinds.includes(k as "sale");
+  const set = (k: "sale" | "lottery", on: boolean) => {
+    const next = [...kinds.filter((x) => x !== k), ...(on ? [k] : [])];
+    save({ alert_newapply: next.length ? next : undefined });
+  };
+  return (
+    <div className="alert-tg newapply-tg">
+      <span>📧 내 관심 지역에 <b>새 청약 공고</b>가 올라오면 알려 주세요 <span className="caption">· {me.account.email}</span></span>
+      <label className="check"><input type="checkbox" checked={has("sale")} onChange={(e) => set("sale", e.target.checked)} /> 분양·임대 공고</label>
+      <label className="check"><input type="checkbox" checked={has("lottery")} onChange={(e) => set("lottery", e.target.checked)} /> 무순위·잔여·재공급 공고 (놓치기 쉬워요)</label>
+    </div>
+  );
+}
+
 const b64d = (s: string) => Uint8Array.from(atob(s.replace(/-/g, "+").replace(/_/g, "/") + "=".repeat((4 - (s.length % 4)) % 4)), (c) => c.charCodeAt(0));
 
 /** 이 기기로 알림 받기 (웹 푸시) — 알림 메일을 켜 두면 같은 알림이 등록한 기기에도 와요. */

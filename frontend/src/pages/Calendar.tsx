@@ -7,6 +7,8 @@ import { get } from "../api";
 import { Alert, Tabs, useLoad } from "../components/ui";
 import { useMe } from "../me";
 import ScoreBadge from "../components/ScoreBadge";
+import ShareBar from "../components/ShareBar";
+import { NewApplyToggle } from "../components/CalSync";
 import { useProfile } from "../profile";
 import ApplyStats from "./ApplyStats";
 import { type CalEvent, downloadIcs, googleCalUrl } from "../calendarLink";
@@ -60,10 +62,10 @@ export default function CalendarPage() {
   );
 }
 
-const SIDOS = ["서울", "경기", "인천", "부산", "대구", "광주", "대전", "울산", "세종", "강원", "충북", "충남", "전북", "전남", "경북", "경남", "제주"];
+export const SIDOS = ["서울", "경기", "인천", "부산", "대구", "광주", "대전", "울산", "세종", "강원", "충북", "충남", "전북", "전남", "경북", "경남", "제주"];
 
 // 시군구 코드 앞 두 자리 → 공고의 시·도 이름 (예전엔 화면 이름의 첫 단어를 써서 '광진구'처럼 시·도가 아닌 값이 들어가 걸러지는 공고가 0건이었다)
-const SIDO_OF: Record<string, string> = { "11": "서울", "26": "부산", "27": "대구", "28": "인천", "29": "광주", "30": "대전", "31": "울산", "36": "세종",
+export const SIDO_OF: Record<string, string> = { "11": "서울", "26": "부산", "27": "대구", "28": "인천", "29": "광주", "30": "대전", "31": "울산", "36": "세종",
   "41": "경기", "42": "강원", "51": "강원", "43": "충북", "44": "충남", "45": "전북", "52": "전북", "46": "전남", "47": "경북", "48": "경남", "50": "제주" };
 
 function useMySidos(): string[] {
@@ -138,6 +140,7 @@ function CalendarTab() {
           <button type="button" className={`pill ${mineOnly ? "on" : ""}`} onClick={() => setMineOnly(!mineOnly)} title={sidos.join(", ")}>내 관심 지역만</button>
         )}
       </div>
+      <NewApplyToggle />
       {sup === "resale" && <p className="caption" style={{ margin: 0 }}>🔁 재공급은 주택공급질서 교란 등 불법행위가 적발돼 계약이 취소된 주택을 다시 공급하는 공고예요. 보통 무순위(사후 접수)로 나오니 자격·접수 방법은 공고문에서 꼭 확인하세요.</p>}
       {alerts.length > 0 && (
         <p className="caption" style={{ margin: 0 }}>
@@ -232,7 +235,9 @@ function noticeEvents(n: Notice): CalEvent[] {
 
 function NoticeCal({ n }: { n: Notice }) {
   const evs = noticeEvents(n);
-  if (!evs.length) return <div className="cal-send caption">이 공고에는 캘린더에 넣을 날짜가 없어요. 공고 원문을 확인하세요.</div>;
+  // 공고 링크 공유 (2026-11-20) — /c/<공고ID> 는 서버가 그린 공개 페이지라 받는 사람은 가입 없이 일정·가점 비교를 본다
+  const share = <div className="cal-share"><span className="caption">공고 링크 공유 (받는 사람은 가입 없이 일정과 가점 비교를 봐요)</span><ShareBar content="notice" url={`/c/${n.id}`} title={`${n.name} 청약 일정`} /></div>;
+  if (!evs.length) return <div className="cal-send"><span className="caption">이 공고에는 캘린더에 넣을 날짜가 없어요. 공고 원문을 확인하세요.</span>{share}</div>;
   return (
     <div className="cal-send">
       {evs.map((e) => (
@@ -241,6 +246,7 @@ function NoticeCal({ n }: { n: Notice }) {
       ))}
       <button type="button" className="btn sm" onClick={() => downloadIcs(evs, `zipbomi-apply-${n.id}.ics`)}>📥 .ics {evs.length}건</button>
       <span className="caption">.ics는 아이폰·아웃룩·삼성 캘린더에서 열면 담겨요.{n.long_open ? " 상시·선착순 공고라 마감일은 넣지 않았어요." : ""}</span>
+      {share}
     </div>
   );
 }

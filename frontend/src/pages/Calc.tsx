@@ -2,6 +2,7 @@
 // 전부 브라우저에서 계산한다 (서버·LLM·외부 호출 없음). 입력값은 방문자 상태 calc_inputs(같은 쿠키면 다른 기기에서도)와
 // localStorage 에 함께 저장 — 서버 저장이 실패해도 이 브라우저에서는 이어서 쓸 수 있게.
 // 세율·규제 비율은 법령·정책으로 자주 바뀌므로 '고급'에서 고칠 수 있게 두고, 화면에 간이 계산임을 밝힌다.
+import ScoreShare from "../components/ScoreShare";
 import AffordList from "../components/AffordList";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
@@ -481,6 +482,7 @@ function SubTab({ v, on }: { v: Sub; on: (p: Partial<Sub>) => void }) {
           <div className="re-metric"><div className="k">통장 가입</div><div className="v">{s3}<small className="caption"> / 17</small></div></div>
         </div>
         <p className="calc-note">점수표는 「주택공급에 관한 규칙」 가점제 기준입니다. 단지마다 당첨 커트라인이 다르니 지난 당첨 가점을 함께 보세요.</p>
+        <ScoreShare score={total} />
         <div className="btn-row"><Link className="btn sm" to="/calendar?tab=scores">최근 당첨 가점과 비교 →</Link><Link className="btn sm ghost" to="/calendar">청약 일정 보기</Link></div>
       </div>
     </div>
